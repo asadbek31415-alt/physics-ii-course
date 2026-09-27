@@ -21,7 +21,8 @@ runs:
         cd circuitjs-source
         gradle makeSite --no-daemon --max-workers=2
         target="$GITHUB_WORKSPACE/site/diagrams/vendor/circuitjs"
-        cp -R site/. "$target/"
-        git archive --format=tar.gz --prefix=circuitjs1/ HEAD > "$target/circuitjs-source.tar.gz"
+        cp -R site/circuitjs1 site/font "$target/"
+        cp site/lz-string.min.js site/canvas2svg.js "$target/"
+        git archive --format=zip --prefix=circuitjs1/ HEAD > "$target/circuitjs-source.zip"
         cd "$target"
         find circuitjs1 -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
