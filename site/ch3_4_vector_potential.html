@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Vector Potential</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- MathJax Setup -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-mml-chtml.js">
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                Magnetic Vector Potential
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>Magnetic Vector Potential</h1>
+        
+        <section data-concept-title="The Vector Potential A" id="concept-1-the-vector-potential-a">
+            <h2>The Vector Potential A</h2>
+            <p>
+                Because the magnetic field is solenoidal ($\nabla \cdot \mathbf{B} = 0$), Helmholtz's theorem assures us that $\mathbf{B}$ can be expressed as the curl of a vector function. We define this function as the <strong>magnetic vector potential</strong>, denoted by $\mathbf{A}$:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{B} = \nabla \times \mathbf{A} \]
+            </div>
+            <p>
+                While $\mathbf{B}$ is physically measurable, $\mathbf{A}$ is a theoretical construct that simplifies calculations. By imposing the <strong>Coulomb Gauge</strong> condition ($\nabla \cdot \mathbf{A} = 0$), Ampère's law transforms into a vector Poisson equation. The general solution for a localized current distribution $\mathbf{J}$ is given by:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}(\mathbf{r}) = \frac{\mu_0}{4\pi} \int \frac{\mathbf{J}(\mathbf{r}')}{|\mathbf{r} - \mathbf{r}'|} d\tau' \]
+            </div>
+            <p>
+                This integral suggests that the vector potential is parallel to the current flow, unlike the magnetic field which curls around it.
+            </p>
+
+            <!-- 3D Diagram: Vector Potential Visualization -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_4_vector_potential_c0.html" title="Vector Potential Visualization" loading="lazy"></iframe>
+            </div>
+            
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="gauge_freedom.html?back=ch3_4_vector_potential.html%23concept-1-the-vector-potential-a"><span aria-hidden="true">+</span> Deep Dive: Gauge Freedom</a>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+        
+        <section data-concept-title="Multipole Expansion of the Vector Potential" id="concept-2-multipole-expansion-of-the-vector-potential">
+            <h2>Multipole Expansion of the Vector Potential</h2>
+            <p>
+                When calculating the magnetic effects of a localized current loop at large distances ($r \gg r'$), it is often easier to approximate the potential using a multipole expansion in powers of $1/r$.
+            </p>
+            <p>
+                The first term (monopole) is always zero because magnetic monopoles do not exist ($\oint \mathbf{J} \, d\tau = 0$ for steady currents). The dominant term is usually the <strong>magnetic dipole</strong> term:
+            </p>
+
+            <div class="math-block">
+                \[ \mathbf{A}_{\text{dip}}(\mathbf{r}) = \frac{\mu_0}{4\pi} \frac{\mathbf{m} \times \hat{\mathbf{r}}}{r^2} \]
+            </div>
+
+            <p>
+                Here, $\mathbf{m}$ is the magnetic dipole moment, defined as $I \int d\mathbf{a}$. This approximation reveals that far from a current loop, the field structure is determined solely by the loop's orientation and total magnetic moment, regardless of the loop's specific shape.
+            </p>
+
+            <!-- 2D/3D Diagram: Multipole Visualization -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_4_vector_potential_c1.html" title="Multipole Expansion Visualization" loading="lazy"></iframe>
+            </div>
+            
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="multipole_expansion_of_a.html?back=ch3_4_vector_potential.html%23concept-2-multipole-expansion-of-the-vector-potential"><span aria-hidden="true">+</span> Deep Dive: Multipole Expansion of A</a>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+        
+        <section data-concept-title="Boundary Conditions" id="concept-3-boundary-conditions">
+            <h2>Boundary Conditions</h2>
+            <p>
+                Just as the scalar potential $V$ is continuous in electrostatics, the vector potential $\mathbf{A}$ is continuous across a surface boundary carrying a surface current density $\mathbf{K}$. However, the derivative of the potential undergoes a discontinuity.
+            </p>
+            <p>
+                At an interface, the conditions are:
+            </p>
+            <div class="math-block">
+                $$ \mathbf{A}_{\text{above}} = \mathbf{A}_{\text{below}} $$
+                $$ \frac{\partial \mathbf{A}_{\text{above}}}{\partial n} - \frac{\partial \mathbf{A}_{\text{below}}}{\partial n} = -\mu_0 \mathbf{K} $$
+            </div>
+            <p>
+                This implies that while the "height" of the potential matches on both sides of the sheet, the "slope" (normal derivative) kinks sharply by an amount proportional to the surface current. This ensures that $\mathbf{B} = \nabla \times \mathbf{A}$ properly reflects the discontinuity in the tangential magnetic field.
+            </p>
+
+            <!-- 3D Diagram: Boundary Conditions -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_4_vector_potential_c2.html" title="Boundary Conditions" loading="lazy"></iframe>
+            </div>
+            
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="derivation_boundary_conditions.html?back=ch3_4_vector_potential.html%23concept-3-boundary-conditions"><span aria-hidden="true">+</span> Deep Dive: Boundary Conditions</a>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+            
+    </main>
+    <footer></footer>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Auxiliary Field H</title>
+
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['$$', '$$']],
+                macros: {
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\mathbf{l}",
+                    tau: "d\\tau",
+                    B: "\\mathbf{B}",
+                    H: "\\mathbf{H}",
+                    M: "\\mathbf{M}",
+                    J: "\\mathbf{J}",
+                    E: "\\mathbf{E}",
+                    D: "\\mathbf{D}",
+                    P: "\\mathbf{P}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* Tables for Comparisons */
+        .comparison-table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background-color: #2c3e50;
+            color: var(--accent-color);
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> >
+                The Auxiliary Field H
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>The Auxiliary Field H</h1>
+
+        <p>
+            In the previous section, we discovered that magnetized matter contains internal "bound currents"
+            (\(\mathbf{J}_b\)) that generate magnetic fields. However, there is a practical problem: we cannot directly
+            control these microscopic currents.
+        </p>
+        <p>
+            In a laboratory, we control the current in the copper wires wrapped around a material (the <strong>free
+                current</strong>, \(\mathbf{J}_f\)). We need a version of Ampère’s law that relies only on
+            \(\mathbf{J}_f\) and the material properties, ignoring the messy details of \(\mathbf{J}_b\). To do this, we
+            introduce the auxiliary field, <strong>H</strong>.
+        </p>
+
+        <!-- SECTION 1: AMPERE'S LAW IN MAGNETIZED MATERIALS -->
+        <section data-concept-title="1. Ampère’s Law in Magnetized Materials" id="concept-1-1-amp-re-s-law-in-magnetized-materials">
+            <h2>1. Ampère’s Law in Magnetized Materials</h2>
+            <p>
+                The total current density is the sum of free and bound currents: \(\mathbf{J} = \mathbf{J}_f +
+                \mathbf{J}_b\). From our study of magnetization, we know that bound current is the curl of
+                magnetization: \(\mathbf{J}_b = \nabla \times \mathbf{M}\).
+            </p>
+            <p>
+                By rearranging the original Ampère’s law, we can group the terms involving the fields (\(\mathbf{B}\)
+                and \(\mathbf{M}\)) on one side and the free current on the other. This gives us the definition of
+                \(\mathbf{H}\):
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--accent-color);">
+                $$ \mathbf{H} \equiv \frac{1}{\mu_0}\mathbf{B} - \mathbf{M} $$
+            </div>
+
+            <p>
+                Consequently, Ampère's law takes a new, elegant form that depends only on the currents we can control:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \nabla \times \mathbf{H} = \mathbf{J}_f \quad \text{or} \quad \oint \mathbf{H} \cdot d\mathbf{l} =
+                I_{f_{\text{enc}}} $$
+            </div>
+
+            <p>
+                <strong>Electric Analogy:</strong> This is perfectly analogous to the electric displacement field
+                \(\mathbf{D}\), defined as \(\epsilon_0 \mathbf{E} + \mathbf{P}\), which obeys \(\nabla \cdot \mathbf{D}
+                = \rho_f\). Both \(\mathbf{H}\) and \(\mathbf{D}\) are mathematical constructs designed to handle matter
+                by factoring out bound charges/currents.
+            </p>
+
+            <!-- SIMULATOR: FREE VS BOUND CURRENT -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ampere_law_h.html" title="Free Current vs H Field"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_3_ampere_derivation_details.html?back=ch4_3_auxiliary_field.html%23concept-1-1-amp-re-s-law-in-magnetized-materials"><span aria-hidden="true">+</span> Deep Dive: Deriving Ampère’s Law for H</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: A DECEPTIVE PARALLEL -->
+        <section data-concept-title="2. A Deceptive Parallel" id="concept-2-2-a-deceptive-parallel">
+            <h2>2. A Deceptive Parallel</h2>
+            <p>
+                It is tempting to think that \(\mathbf{H}\) is "the magnetic field due to free current" just as
+                \(\mathbf{B}\) is the field due to total current. <strong>This is generally false.</strong>
+            </p>
+            <p>
+                While the curl of \(\mathbf{H}\) is simple (\(\mathbf{J}_f\)), the <em>divergence</em> of \(\mathbf{H}\)
+                is not necessarily zero.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--danger-color);">
+                $$ \nabla \cdot \mathbf{H} = - \nabla \cdot \mathbf{M} $$
+            </div>
+
+            <p>
+                Because \(\nabla \cdot \mathbf{H} \neq 0\) (usually), \(\mathbf{H}\) lines act as if they start and stop
+                inside the material (specifically, at the "poles" where magnetization ends). Therefore, you cannot
+                blindly use the Biot-Savart law for \(\mathbf{H}\) using \(\mathbf{J}_f\).
+            </p>
+            <p>
+                For example, in a permanent magnet with no free current (\(I_f = 0\)), \(\mathbf{H}\) is not zero; it is
+                determined entirely by the divergence of \(\mathbf{M}\).
+            </p>
+
+
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_3_dive_examples.html?back=ch4_3_auxiliary_field.html%23concept-2-2-a-deceptive-parallel"><span aria-hidden="true">+</span> Deep Dive: The Copper Rod</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: BOUNDARY CONDITIONS -->
+        <section data-concept-title="3. Boundary Conditions" id="concept-3-3-boundary-conditions">
+            <h2>3. Boundary Conditions</h2>
+            <p>
+                Just as we did for electrostatics, we must determine how fields change when crossing the interface
+                between two materials (or vacuum and matter). We use the integral forms of the divergence and curl laws.
+            </p>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Field Component</th>
+                        <th>Electric Boundary Condition</th>
+                        <th>Magnetic Boundary Condition</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Perpendicular</strong></td>
+                        <td>
+                            \(D_{1}^{\perp} - D_{2}^{\perp} = \sigma_f\)<br>
+                            <small>(Discontinuous by free charge)</small>
+                        </td>
+                        <td>
+                            \(B_{1}^{\perp} - B_{2}^{\perp} = 0\)<br>
+                            <small>(Always Continuous! No magnetic monopoles)</small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Parallel</strong></td>
+                        <td>
+                            \(E_{1}^{\parallel} - E_{2}^{\parallel} = 0\)<br>
+                            <small>(Always Continuous)</small>
+                        </td>
+                        <td>
+                            \(\mathbf{H}_{1}^{\parallel} - \mathbf{H}_{2}^{\parallel} = \mathbf{K}_f \times
+                            \mathbf{\hat{n}}\)<br>
+                            <small>(Discontinuous by free surface current)</small>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Notice the symmetry breaking here. For electric fields, the fundamental field \(\mathbf{E}\) is
+                continuous parallel to the surface. For magnetic fields, the fundamental field \(\mathbf{B}\) is
+                continuous perpendicular to the surface.
+            </p>
+            <p>
+                However, notice that \(H^{\perp}\) is discontinuous if there is a discontinuity in Magnetization
+                (\(M^{\perp}\)), acting like a "magnetic surface charge."
+            </p>
+
+            <!-- SIMULATOR: BOUNDARY REFRACTION -->
+            <div class="iframe-container">
+                <iframe src="diagrams/boundary_conditions_mag.html" title="Magnetic Field Refraction"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a href="ch4_4_boundary_conditions.html" class="dive-btn deep-dive-link"><span aria-hidden="true">+</span> Deep Dive: Boundary Conditions & Shielding</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

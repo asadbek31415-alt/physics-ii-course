@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Gauge Freedom</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-mml-chtml.js">
+    </script>
+
+    <style>
+        .split-view {
+            display: flex;
+            gap: 20px;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        .canvas-wrapper {
+            flex: 1;
+            min-width: 300px;
+            background: #111;
+            border-radius: 12px;
+            border: 1px solid #333;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-header {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 15px;
+            border-bottom: 1px solid #333;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 350px; /* Fixed height for consistency */
+        }
+
+        .controls-container {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        input[type=range] {
+            width: 200px;
+            accent-color: #4ecdc4;
+            cursor: pointer;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                <a href="ch3_4_vector_potential.html">Vector Potential</a> >
+                Gauge Freedom
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Gauge Freedom</h1>
+        
+        <section>
+            <h2>The Non-Uniqueness of A</h2>
+            <p>
+                Because the magnetic field is defined as a curl ($\mathbf{B} = \nabla \times \mathbf{A}$), the vector potential $\mathbf{A}$ is not unique. We can add the gradient of any scalar function $\lambda$ to $\mathbf{A}$ without changing the physical physics.
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}' = \mathbf{A} + \nabla \lambda \quad \Longrightarrow \quad \nabla \times \mathbf{A}' = \nabla \times \mathbf{A} = \mathbf{B} \]
+            </div>
+        </section>
+
+        <section>
+            <h2>Interactive Visualization</h2>
+            <p>
+                <strong>The Setup:</strong>
+                <ul>
+                    <li>The base field $\mathbf{A}$ is a "whirlpool" (creating a magnetic field $\mathbf{B}$ pointing out of the screen in the center).</li>
+                    <li>The "Gauge" slider adds a <strong>Radial Gradient</strong> ($\nabla \lambda$) to the field.</li>
+                </ul>
+            </p>
+            <p>
+                <strong>Try it:</strong> Drag the slider below. Watch how the Vector Potential (Left) transforms from a circle to a spiral to a starburst. Notice that the Magnetic Field (Right) <strong>does not change at all</strong>.
+            </p>
+
+            <div class="controls-container">
+                <label for="gaugeSlider" style="font-weight: 600; color: #ccc;">Add Gradient Field ($\nabla \lambda$):</label>
+                <input type="range" id="gaugeSlider" min="-50" max="50" value="0">
+            </div>
+
+            <div class="split-view">
+                <!-- Field A -->
+                <div class="canvas-wrapper">
+                    <div class="canvas-header">
+                        <span style="color: #4ecdc4;">Field A (Vector Potential)</span>
+                    </div>
+                    <canvas id="canvasA"></canvas>
+                </div>
+
+                <!-- Field B -->
+                <div class="canvas-wrapper">
+                    <div class="canvas-header">
+                        <span style="color: #ffe66d;">Field B (Magnetic Field)</span>
+                        <span style="font-size: 0.75rem; color: #888; font-weight: normal;">Calculated via Curl(A)</span>
+                    </div>
+                    <canvas id="canvasB"></canvas>
+                </div>
+            </div>
+
+            <p style="font-size: 0.9rem; color: #aaa; margin-top: 10px; text-align: center;">
+                <em>Note: In the right panel, the size of the yellow dots represents the strength of the magnetic field coming out of the screen.</em>
+            </p>
+        </section>
+
+        <section>
+            <h2>Why does this happen?</h2>
+            <p>
+                The slider adds a "radial" component (pointing straight out from the center). Radial fields have <strong>zero curl</strong> (they don't rotate). 
+            </p>
+            <p>
+                Even though the arrows on the left look drastically different—changing from a circular flow to an outward explosion—the amount of "net rotation" at any specific point remains exactly the same. Therefore, $\mathbf{B}$ stays constant.
+            </p>
+        </section>
+        
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <a href="ch3_4_vector_potential.html" class="dive-btn" style="display: inline-block;">
+                ← Back to Vector Potential
+            </a>
+        </div>
+    </main>
+
+    <script>
+        const cvsA = document.getElementById('canvasA');
+        const ctxA = cvsA.getContext('2d');
+        const cvsB = document.getElementById('canvasB');
+        const ctxB = cvsB.getContext('2d');
+        const slider = document.getElementById('gaugeSlider');
+
+        let width, height;
+        const RES = 24; // Grid spacing
+
+        function resize() {
+            // Get CSS size
+            const rect = cvsA.parentElement.getBoundingClientRect();
+            // Allow for header height
+            const w = rect.width;
+            const h = 350;
+            
+            // Set canvas resolution to match display for sharpness
+            const dpr = window.devicePixelRatio || 1;
+            
+            cvsA.width = w * dpr; cvsA.height = h * dpr;
+            cvsB.width = w * dpr; cvsB.height = h * dpr;
+            
+            ctxA.scale(dpr, dpr);
+            ctxB.scale(dpr, dpr);
+
+            width = w;
+            height = h;
+            
+            draw();
+        }
+
+        // --- Physics Functions ---
+
+        // 1. Base A: A Rotational Vortex (creates a Gaussian B-field)
+        // A = (-y, x) * exp(-r^2)
+        function getBaseField(x, y) {
+            // Normalized coords (-2 to 2)
+            const nx = (x - width/2) / 100;
+            const ny = (y - height/2) / 100;
+            const r2 = nx*nx + ny*ny;
+            
+            // Localization factor
+            const envelope = Math.exp(-r2); 
+
+            return {
+                x: -ny * envelope,
+                y: nx * envelope
+            };
+        }
+
+        // 2. Gauge Gradient: A Radial Field
+        // lambda = 0.5 * r^2  --> Grad(lambda) = (x, y)
+        // This is a "source" field. Curl is zero.
+        function getGaugeField(x, y, strength) {
+            const nx = (x - width/2) / 100;
+            const ny = (y - height/2) / 100;
+            
+            return {
+                x: nx * strength,
+                y: ny * strength
+            };
+        }
+
+        function drawArrow(ctx, x, y, ax, ay, color) {
+            const len = Math.sqrt(ax*ax + ay*ay);
+            if(len < 0.05) return;
+
+            // Scale for visualization
+            const scale = 40; 
+            const dx = ax * scale;
+            const dy = ay * scale;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + dx, y + dy);
+            ctx.stroke();
+
+            // Arrow Head
+            const angle = Math.atan2(dy, dx);
+            const headLen = 5;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x + dx, y + dy);
+            ctx.lineTo(x + dx - headLen*Math.cos(angle - 0.5), y + dy - headLen*Math.sin(angle - 0.5));
+            ctx.lineTo(x + dx - headLen*Math.cos(angle + 0.5), y + dy - headLen*Math.sin(angle + 0.5));
+            ctx.fill();
+        }
+
+        function draw() {
+            ctxA.clearRect(0,0,width,height);
+            ctxB.clearRect(0,0,width,height);
+            
+            const gaugeStr = parseFloat(slider.value) / 20;
+
+            for(let y = RES/2; y < height; y+=RES) {
+                for(let x = RES/2; x < width; x+=RES) {
+                    
+                    // --- LEFT CANVAS: Vector Potential A ---
+                    
+                    // 1. Calculate A at point (x,y)
+                    const base = getBaseField(x, y);
+                    const gauge = getGaugeField(x, y, gaugeStr);
+                    
+                    const Ax = base.x + gauge.x;
+                    const Ay = base.y + gauge.y;
+
+                    drawArrow(ctxA, x, y, Ax, Ay, '#4ecdc4');
+
+
+                    // --- RIGHT CANVAS: Magnetic Field B ---
+                    
+                    // 2. Calculate Curl Numerically (dAy/dx - dAx/dy)
+                    // We calculate A at small offsets to approximate derivative
+                    const eps = 2.0; // pixel step
+                    
+                    // Right
+                    const bR = getBaseField(x+eps, y); const gR = getGaugeField(x+eps, y, gaugeStr);
+                    const Ay_R = bR.y + gR.y;
+                    
+                    // Left
+                    const bL = getBaseField(x-eps, y); const gL = getGaugeField(x-eps, y, gaugeStr);
+                    const Ay_L = bL.y + gL.y;
+                    
+                    // Down
+                    const bD = getBaseField(x, y+eps); const gD = getGaugeField(x, y+eps, gaugeStr);
+                    const Ax_D = bD.x + gD.x;
+                    
+                    // Up
+                    const bU = getBaseField(x, y-eps); const gU = getGaugeField(x, y-eps, gaugeStr);
+                    const Ax_U = bU.x + gU.x;
+
+                    // Curl z = (dAy/dx) - (dAx/dy)
+                    const dAy_dx = (Ay_R - Ay_L) / (2*eps);
+                    const dAx_dy = (Ax_D - Ax_U) / (2*eps);
+                    const Bz = (dAy_dx - dAx_dy); // Note: Grid Y is inverted vs Cartesian, but for vis consistent
+
+                    // 3. Draw B
+                    if(Math.abs(Bz) > 0.001) {
+                        const r = Math.min(RES/2 - 1, Math.abs(Bz) * 500); // Visual scaling
+                        ctxB.beginPath();
+                        ctxB.arc(x, y, r, 0, Math.PI*2);
+                        // Yellow = Positive (Out), Red = Negative (In)
+                        ctxB.fillStyle = Bz > 0 ? '#ffe66d' : '#ff6b6b';
+                        ctxB.fill();
+                    }
+                }
+            }
+        }
+
+        slider.addEventListener('input', draw);
+        window.addEventListener('resize', resize);
+        
+        // Initial setup
+        setTimeout(resize, 100);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motional Electromotive Force (Motional EMF): From Motion to Current</title>
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <link rel="stylesheet" href="motional_emf.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/three-legacy/three.min.js"></script>
+    <script defer src="shared/sliding-bar-model.js"></script>
+    <script defer src="motional_emf.js"></script>
+</head>
+<body>
+    <main class="simulation" data-stage="1">
+        <header class="lesson-header">
+            <h1>Motional Electromotive Force (Motional EMF) <span>From motion to current</span></h1>
+            <div class="stages" role="tablist" aria-label="Explanation stage">
+                <button type="button" role="tab" id="stage-1" aria-selected="true" aria-controls="lesson-panel" data-step="1">1. Magnetic force</button>
+                <button type="button" role="tab" id="stage-2" aria-selected="false" aria-controls="lesson-panel" tabindex="-1" data-step="2">2. Voltage</button>
+                <button type="button" role="tab" id="stage-3" aria-selected="false" aria-controls="lesson-panel" tabindex="-1" data-step="3">3. Current</button>
+                <button type="button" role="tab" id="stage-4" aria-selected="false" aria-controls="lesson-panel" tabindex="-1" data-step="4">4. Flux rule</button>
+            </div>
+        </header>
+        <section class="controls" aria-label="Physical inputs and results">
+            <div id="lesson-panel" role="tabpanel" aria-labelledby="stage-1" tabindex="0">
+                <div class="reason given"><h2>Given</h2><p id="given-text"></p></div>
+                <div class="reason law"><h2 id="law-heading">Established law</h2><div id="law-equation"></div><p id="law-text"></p></div>
+                <div class="reason result"><h2>Result</h2><div id="result-equation"></div><p id="result-text"></p></div>
+            </div>
+            <dl class="measurements">
+                <div data-from="2"><dt>Bar voltage magnitude</dt><dd id="voltage">0.00 V</dd></div>
+                <div data-from="3"><dt>Current magnitude</dt><dd id="current">0.00 A</dd></div>
+                <div data-from="3"><dt>Heat in load</dt><dd id="power">0.00 W</dd></div>
+            </dl>
+            <h2 class="input-title">Imposed conditions</h2>
+            <div class="mode" role="group" aria-label="Bar motion">
+                <button id="moving" type="button" aria-pressed="true">Moving bar</button>
+                <button id="held" type="button" aria-pressed="false">Held still</button>
+            </div>
+            <div class="parameters">
+                <label class="parameter" for="field"><span>Field strength B</span><output id="field-value" for="field">0.8 T</output><input id="field" type="range" min="0" max="1.5" step="0.1" value="0.8"></label>
+                <label class="check"><input id="reverse" type="checkbox"> Reverse field</label>
+                <label class="parameter" for="speed"><span>Peak speed</span><output id="speed-value" for="speed">0.6 m/s</output><input id="speed" type="range" min="0.2" max="1.2" step="0.1" value="0.6"></label>
+                <label class="check" data-from="3"><input id="closed" type="checkbox" checked> Circuit closed</label>
+                <label class="parameter" for="resistance" data-from="3"><span>Load resistance R</span><output id="resistance-value" for="resistance">2.0 ohm</output><input id="resistance" type="range" min="1" max="10" step="0.5" value="2"></label>
+            </div>
+        </section>
+        <section class="visual" aria-label="Generator visualization">
+            <div id="viewport">
+                <div class="scene-heading"><h2 id="scene-title">Moving conductor</h2><span id="field-direction">B into the page</span></div>
+                <div class="scene-data" data-from="4">
+                    <div><span data-tex="A=hx"></span><output id="area"></output></div>
+                    <div><span data-tex="\Phi_B=B_z A"></span><output id="flux"></output></div>
+                </div>
+                <div id="scene-labels" aria-hidden="true">
+                    <span id="rod-label" class="scene-label rod-label">Moving conductor</span>
+                    <span id="rail-label" class="scene-label muted-label">Fixed rails</span>
+                    <span id="area-label" class="scene-label area-label" data-tex="A"></span>
+                    <span id="length-label" class="scene-label" data-tex="h=1\,\mathrm{m}"></span>
+                    <span id="distance-label" class="scene-label dimension"></span>
+                    <span id="velocity-label" class="scene-label velocity"></span>
+                    <span id="top-polarity" class="scene-label polarity"></span>
+                    <span id="bottom-polarity" class="scene-label polarity"></span>
+                    <span id="ammeter-label" class="scene-label ammeter">A</span>
+                    <span id="load-label" class="scene-label load-label">R</span>
+                    <span id="magnetic-label" class="scene-label magnetic">v &times; B</span>
+                    <span id="electric-label" class="scene-label electric">E</span>
+                    <span id="switch-label" class="scene-label muted-label">Open switch</span>
+                </div>
+                <div class="scene-caption"><span id="force-key">Pink: magnetic force per positive charge</span><span id="current-direction"></span></div>
+                <p id="render-error" role="alert" hidden>The interactive scene needs WebGL. Please open the course in a browser with graphics acceleration enabled.</p>
+            </div>
+            <div class="observation"><strong id="observation-title"></strong><p id="observation-text"></p></div>
+            <div id="flux-history" data-from="4">
+                <div class="plot-heading"><span>Signed flux <b id="flux-rate"></b></span><span>EMF <b id="signed-emf"></b></span></div>
+                <canvas id="history" role="img" aria-label="Flux and EMF over the last twelve seconds; EMF is the negative slope of flux"></canvas>
+                <p>Time &rarr; &nbsp; Positive loop direction: counterclockwise. Positive flux: out of the page.</p>
+            </div>
+            <p class="assumptions">Ideal conductor; all resistance in R. Charge redistribution and switching transients are not resolved. Field controls select a new static field.</p>
+        </section>
+    </main>
+</body>
+</html>

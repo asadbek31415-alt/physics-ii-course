@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 5.1: Electromotive Force</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="motional-emf-embed.css">
+    <style>
+        #concept-0-from-fields-to-circuits .math-block {
+            margin: 1.25rem 0 1.75rem;
+            padding: 1.15rem 1.25rem;
+            font-size: clamp(1.06rem, 1.8vw, 1.22rem);
+            background: linear-gradient(180deg, rgba(28, 39, 52, 0.92), rgba(18, 26, 35, 0.94));
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+        }
+
+        .course-current-balance-embed {
+            --junction-height: 560px;
+            margin: 2rem 0 2.4rem;
+        }
+
+        .course-current-balance-embed.course-responsive-embed {
+            height: var(--junction-height);
+            min-height: 0;
+        }
+
+        .course-current-balance-embed .diagram-frame {
+            height: var(--junction-height);
+        }
+
+        @media (max-width: 900px) {
+            .course-current-balance-embed {
+                --junction-height: 620px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            #concept-0-from-fields-to-circuits .math-block {
+                padding: 1rem;
+            }
+
+            .course-current-balance-embed {
+                --junction-height: 600px;
+            }
+        }
+    </style>
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > Electromotive
+                Force
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Electromotive Force</h1>
+
+        <!-- BRIDGE: FROM FIELDS TO CIRCUITS -->
+        <section data-concept-title="From Fields to Circuits" id="concept-0-from-fields-to-circuits">
+            <h2>From Fields to Circuits</h2>
+            <p>
+                Electromagnetic fields vary throughout space, but an ordinary circuit can often be described using
+                only a current in each branch and a voltage across each element. This is the
+                <strong>lumped-element approximation</strong>: the circuit is small compared with the relevant
+                electromagnetic wavelength, changes are slow enough that propagation delays across it are negligible,
+                and charge in the wires redistributes quickly. Under these low-frequency conditions, field laws become
+                simpler circuit rules.
+            </p>
+            <p>
+                The reduction starts by replacing the current-density field with the total current through a wire's
+                cross-section:
+            </p>
+            <div class="math-block">
+                $$ I=\int_A \mathbf{J}\cdot d\mathbf{a} $$
+            </div>
+
+            <p>
+                At a junction, this current balance is called <strong>Kirchhoff's Current Law (KCL)</strong>, named
+                after physicist Gustav Kirchhoff. If current enters faster than it leaves, charge piles up at the node:
+            </p>
+            <div class="math-block">
+                $$ \sum I_{\mathrm{in}}-\sum I_{\mathrm{out}}=\frac{dQ_{\mathrm{node}}}{dt} $$
+            </div>
+
+            <div class="iframe-container course-current-balance-embed">
+                <iframe class="diagram-frame" src="diagrams/current_balance_junction.html" title="Current balance at a circuit junction"
+                    scrolling="no"></iframe>
+            </div>
+
+            <p>
+                In an ordinary steady circuit, the node does not store a growing amount of charge, so KCL becomes the
+                familiar form $\sum I_{\mathrm{in}}=\sum I_{\mathrm{out}}$. The current can split between branches,
+                but the total leaving the junction must match the total entering it.
+            </p>
+
+            <p>
+                This is the first circuit rule we need: a steady junction cannot keep storing a growing amount of
+                charge. The next concept adds the material relation that tells us how a particular resistor responds
+                to the current flowing through it.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_kcl_details.html?back=ch5_1_electromotive_force.html%23concept-0-from-fields-to-circuits"><span aria-hidden="true">+</span> Deep Dive: Why Current Cannot Pile Up</a>
+            </div>
+
+        </section>
+
+        <!-- CONCEPT 1: OHM'S LAW -->
+        <section data-concept-title="1. Ohm's Law & Resistance" id="concept-1-1-ohm-s-law-resistance">
+            <h2>1. Ohm's Law & Resistance</h2>
+
+            <p>
+                To maintain a current flow, a "push" is required to overcome the internal resistance of a material. In
+                most substances, the current density $\mathbf{J}$ is directly proportional to the force per unit charge
+                $\mathbf{f}$.
+            </p>
+
+            <ul class="fact-list">
+                <li>
+                    <strong>Microscopic Ohm's Law:</strong> For most purposes, the driving force is the electric field
+                    $\mathbf{E}$, leading to:
+                    <div class="math-block">$$ \mathbf{J} = \sigma \mathbf{E} $$</div>
+                    where $\sigma$ is the <strong>conductivity</strong> of the material. Its reciprocal, $\rho =
+                    1/\sigma$, is the <strong>resistivity</strong>.
+                </li>
+                <li>
+                    <strong>Macroscopic Ohm's Law:</strong> For a specific object (like a wire), the total current $I$
+                    is proportional to the potential difference $V$:
+                    <div class="math-block">$$ V = IR $$</div>
+                    where $R$ (resistance) is a function of the material's conductivity and the geometry of the
+                    arrangement.
+                </li>
+                <li>
+                    <strong>Joule Heating:</strong> As charges collide with the material, work done by the electrical
+                    force is converted into heat. The power delivered is:
+                    <div class="math-block">$$ P = VI = I^2R $$</div>
+                </li>
+            </ul>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/propagation_media.html" title="Conductivity Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_ohms_details.html?back=ch5_1_electromotive_force.html%23concept-1-1-ohm-s-law-resistance"><span aria-hidden="true">+</span> Deep Dive: The Drude Model</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 2: ELECTROMOTIVE FORCE -->
+        <section data-concept-title="2. Electromotive Force (EMF)" id="concept-2-2-electromotive-force-emf">
+            <h2>2. Electromotive Force (EMF)</h2>
+            <p>
+                A battery or generator supplies energy to charges so that current can keep going around a complete
+                circuit. The source may use chemistry, as in a battery, or mechanical motion, as in a generator. The
+                quantity that measures this source action is called <strong>electromotive force</strong>, abbreviated
+                <strong>EMF</strong>.
+            </p>
+            <div class="highlight-box">
+                <p>
+                    The symbol $\mathcal{E}$ is the script (calligraphic) capital E used for EMF; it is often called
+                    “epsilon” in this context. It means <strong>energy supplied by the source per unit charge</strong>
+                    around the loop:
+                    $1\,\mathrm{V}=1\,\mathrm{J/C}$. It is not the electric field $\mathbf{E}$ and it is not a
+                    mechanical force, despite the word “force” in its name.
+                </p>
+            </div>
+            <p>
+                To write the definition, let $\mathbf{E}$ be the electrostatic electric field and let
+                $\mathbf{f}_s$ be the non-electrostatic source force per unit charge inside the battery or generator.
+                The total force per unit charge is $\mathbf{f}=\mathbf{E}+\mathbf{f}_s$.
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E}\equiv\oint \mathbf{f}\cdot d\mathbf{l}
+                =\oint(\mathbf{E}+\mathbf{f}_s)\cdot d\mathbf{l}
+                =\oint\mathbf{f}_s\cdot d\mathbf{l} $$
+            </div>
+            <p>
+                Why does the last equality hold? An electrostatic field is conservative, so its closed-loop integral is
+                zero: $\oint\mathbf{E}\cdot d\mathbf{l}=0$. Therefore, the EMF is the closed-loop work per unit charge
+                supplied by the non-electrostatic source force $\mathbf{f}_s$.
+            </p>
+
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">$\mathcal{E}$ vs $V$</span>
+                    <span class="def-text">$\mathcal{E}$ describes energy supplied by the source per charge around
+                        the loop. $V$ is a potential difference between two points, usually measured across a circuit
+                        element or source terminals.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$\mathbf{E}$ vs $\mathcal{E}$</span>
+                    <span class="def-text">Bold $\mathbf{E}$ is the electric-field vector. Script $\mathcal{E}$ is a
+                        scalar loop quantity: the EMF, measured in volts.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$\mathbf{f}$ vs $\mathbf{f}_s$</span>
+                    <span class="def-text">$\mathbf{f}$ is total force per charge; $\mathbf{f}_s$ is the chemically
+                        or mechanically generated source push per charge.</span>
+                </div>
+            </div>
+
+            <ul class="fact-list">
+                <li><strong>Open circuit:</strong> when $I=0$, an ideal source has terminal voltage $V=\mathcal{E}$.
+                    Inside a real source, $\mathbf{f}_s$ balances the internal electrostatic field.</li>
+                <li><strong>Closed circuit:</strong> when current $I$ flows through internal resistance $r$, the
+                    terminal voltage is reduced to $V=\mathcal{E}-Ir$.</li>
+            </ul>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/battery_emf.html" title="Battery EMF Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_emf_details.html?back=ch5_1_electromotive_force.html%23concept-2-2-electromotive-force-emf"><span aria-hidden="true">+</span> Deep Dive: Batteries & Sources</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 3: MOTIONAL ELECTROMOTIVE FORCE & THE FLUX RULE -->
+        <section data-concept-title="3. Motional Electromotive Force (Motional EMF)" id="concept-3-3-motional-emf">
+            <h2>3. Motional Electromotive Force (Motional EMF)</h2>
+            <p>
+                Start with the physical setup. Two fixed, parallel conducting rails are joined on the left through a
+                resistor $R$ and an ammeter. A vertical conducting bar of length $h$ touches both rails through
+                sliding contacts and forms the right side of the circuit. An external agent moves the bar to the
+                right with velocity $\mathbf{v}$ through a uniform, externally supplied, static magnetic field
+                $\mathbf{B}$. The rails, resistor, and ammeter remain stationary.
+            </p>
+            <p>
+                When the circuit is closed, the path for conventional current is up through the moving bar, left
+                along the upper rail, down through the ammeter and resistor, and right along the lower rail back to the
+                bar. The field and motion determine the direction; the resistor determines how much current flows.
+            </p>
+            <p>
+                <strong>Established law:</strong> every charge in the moving bar obeys the Lorentz force law
+                $\mathbf{F}_{mag}=q(\mathbf{v}\times\mathbf{B})$. This identifies the physical cause: the force pushes
+                positive charges in one direction and negative charges in the other.
+            </p>
+            <div class="math-block">
+                $$ \mathbf{F}_{mag}=q(\mathbf{v}\times\mathbf{B}) $$
+            </div>
+            <p>
+                <strong>Definition:</strong> motional EMF is the source push per unit charge produced because the
+                conductor moves through the field. In this geometry, only the moving bar contributes a motional term:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E}=\oint (\mathbf{v}\times\mathbf{B})\cdot d\mathbf{l}
+                =\int_0^h (vB)\,dl=vBh $$
+            </div>
+            <p>
+                <strong>Result for the sliding bar:</strong> the moving bar is a voltage source with
+                $|\mathcal{E}|=Bh|v|$. This result comes before the current calculation. If the circuit is open,
+                the bar has a voltage but $I=0$.
+            </p>
+            <div class="iframe-container course-motional-emf-embed">
+                <iframe class="diagram-frame" src="diagrams/motional_emf.html" title="Sliding-bar generator: motional Electromotive Force (motional EMF)"
+                    scrolling="no"></iframe>
+            </div>
+            <p>
+                <strong>Then close the circuit:</strong> the resistor sets the current, $I=\mathcal{E}/R$, and the load
+                receives $P=I^2R$. The energy comes from the external mechanical drive; the magnetic force redirects
+                charges but does no work by itself.
+            </p>
+            <p>
+                <strong>Equivalent flux description:</strong> the shaded loop area is $A=hx$. With a signed field
+                component $B_z$, $\Phi_B=B_zA=B_zhx$, so
+                $$\mathcal{E}=-\frac{d\Phi_B}{dt}=-B_zhv.$$
+                The flux rule gives the same result after the moving boundary has been accounted for. Holding the bar
+                still leaves flux in the loop, but $d\Phi_B/dt=0$, so there is no motional EMF.
+            </p>
+            <ul class="fact-list">
+                <li><strong>One flux rule, two mechanisms:</strong> flux can change because the circuit moves, because
+                    the magnetic field changes, or because both change. This example isolates the motional mechanism.
+                </li>
+                <li><strong>Eddy currents:</strong> a solid piece of metal can contain circulating induced currents,
+                    producing magnetic braking as mechanical energy becomes heat.</li>
+            </ul>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_motional_details.html?back=ch5_1_electromotive_force.html%23concept-3-3-motional-emf"><span aria-hidden="true">+</span> Deep Dive: Motional Electromotive Force (Motional EMF)</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

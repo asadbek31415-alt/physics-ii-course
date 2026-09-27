@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss's Law: Arbitrary Surface</title>
+    
+    
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <script async src="../vendor/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../vendor/three/build/three.module.js",
+            "three/addons/": "../vendor/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --panel-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --primary-color: #3498db;
+            --border-color: #3a4a5c;
+            --success-color: #28a745;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        #sim-wrapper { display: flex; width: 100%; height: 100%; }
+        #canvas-container { flex-grow: 1; position: relative; background-color: #0a0a0a; }
+        
+        .sidebar {
+            width: 300px;
+            background-color: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        h2 { margin: 0 0 1rem 0; font-size: 1.3rem; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        
+        .btn-group { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        .btn-add-pos { background-color: var(--danger-color); }
+        .btn-add-neg { background-color: #3498db; }
+        .btn-toggle { background-color: #f39c12; width: 100%; margin-bottom: 1rem; }
+        .btn-clear { background-color: #7f8c8d; width: 100%; }
+
+        .status-box {
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+        }
+        .status-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .status-val { font-weight: bold; }
+
+        .info-text { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-top: auto; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="sim-wrapper">
+        <div id="canvas-container"></div>
+        
+        <div class="sidebar">
+            <h2>Arbitrary Surface</h2>
+            
+            <div class="btn-group">
+                <button class="btn-add-pos" id="addPosBtn">+q</button>
+                <button class="btn-add-neg" id="addNegBtn">-q</button>
+            </div>
+            
+            <button class="btn-toggle" id="toggleFieldBtn">Hide Field Vectors</button>
+            
+            <div class="status-box">
+                <div class="status-item">
+                    <span>Total Charges:</span>
+                    <span id="totalCount" class="status-val">0</span>
+                </div>
+                <div class="status-item">
+                    <span>Inside Surface:</span>
+                    <span id="insideCount" class="status-val" style="color: #f1c40f">0</span>
+                </div>
+                <div class="status-item">
+                    <span>Net Enclosed ($Q_{enc}$):</span>
+                    <span id="netCharge" class="status-val">0</span>
+                </div>
+                <div class="status-item" style="border-top: 1px solid #444; padding-top: 8px; margin-top: 8px;">
+                    <span>Net Flux ($\Phi_E$):</span>
+                    <span id="fluxVal" class="status-val">0</span>
+                </div>
+            </div>
+
+            <button class="btn-clear" id="clearBtn">Clear All Charges</button>
+
+            <p class="info-text">
+                <strong>Gauss's Law holds true:</strong><br>
+                $\oint \vec{E} \cdot d\vec{A} = Q_{enc}/\epsilon_0$
+                <br><br>
+                Only charges <em>inside</em> the blob contribute to the net flux. Charges outside create field lines that enter and exit, canceling out.
+            </p>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { SimplexNoise } from 'three/addons/math/SimplexNoise.js'; // Note: Three.js doesn't have built-in Simplex, usually external. I'll use a simple vertex displacement instead.
+
+        // --- Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, 0, 18);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 10, 10);
+        scene.add(dirLight);
+
+        // --- The Arbitrary Surface (Blob) ---
+        const geom = new THREE.IcosahedronGeometry(4, 3); // High detail sphere
+        const posAttribute = geom.attributes.position;
+        const vertex = new THREE.Vector3();
+        
+        // Deform it to make it "Arbitrary"
+        for (let i = 0; i < posAttribute.count; i++) {
+            vertex.fromBufferAttribute(posAttribute, i);
+            // Simple noise-like displacement based on position
+            const noise = Math.sin(vertex.x * 0.8) * Math.cos(vertex.y * 0.8) * Math.sin(vertex.z * 0.8);
+            const scale = 1 + noise * 0.3; 
+            vertex.multiplyScalar(scale);
+            posAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
+        }
+        geom.computeVertexNormals();
+
+        const mat = new THREE.MeshPhongMaterial({ 
+            color: 0x95a5a6, 
+            transparent: true, 
+            opacity: 0.2, 
+            side: THREE.DoubleSide,
+            shininess: 50,
+            wireframe: false
+        });
+        const blob = new THREE.Mesh(geom, mat);
+        scene.add(blob);
+
+        // Wireframe helper for clarity
+        const wireGeo = new THREE.WireframeGeometry(geom);
+        const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05 });
+        const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+        blob.add(wireframe);
+
+        // --- Charges & Logic ---
+        const charges = []; // { mesh, q, pos }
+        const fieldArrows = new THREE.Group();
+        scene.add(fieldArrows);
+
+        // Helper to check if point is inside blob (Raycasting method approximation or distance check)
+        // Since we deformed a sphere, exact "inside" check is complex. 
+        // Simplified: We'll define "inside" as distance < 3.0 (approx min radius) for logic, 
+        // but visually charges can be anywhere.
+        // BETTER: Use a Raycaster to count intersections.
+        const raycaster = new THREE.Raycaster();
+        const center = new THREE.Vector3(0,0,0);
+
+        function isInside(pos) {
+            // Cast ray from point to far away. If odd intersections with blob, it's inside.
+            // Actually, easier: Cast ray from (0,0,0) to point. If it hits blob before point, point is OUTSIDE.
+            // If it hits blob AFTER point, point is INSIDE.
+            // Assuming (0,0,0) is inside.
+            
+            const dir = pos.clone().normalize();
+            raycaster.set(center, dir);
+            const intersects = raycaster.intersectObject(blob);
+            
+            if (intersects.length > 0) {
+                const distToSurface = intersects[0].distance;
+                const distToPoint = pos.length();
+                return distToPoint < distToSurface;
+            }
+            return false;
+        }
+
+        function addCharge(q) {
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 16, 16),
+                new THREE.MeshBasicMaterial({ color: q > 0 ? 0xe74c3c : 0x3498db })
+            );
+            
+            // Random position
+            const r = Math.random() * 8; // Some inside (<~4), some outside (>~4)
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            
+            mesh.position.set(
+                r * Math.sin(phi) * Math.cos(theta),
+                r * Math.sin(phi) * Math.sin(theta),
+                r * Math.cos(phi)
+            );
+            
+            scene.add(mesh);
+            charges.push({ mesh, q, pos: mesh.position });
+            updateCalculation();
+        }
+
+        function updateCalculation() {
+            let totalQ = 0;
+            let insideQ = 0;
+            let insideCount = 0;
+
+            charges.forEach(c => {
+                totalQ += c.q;
+                if (isInside(c.pos)) {
+                    insideQ += c.q;
+                    insideCount++;
+                    c.mesh.material.opacity = 1.0; // Solid if inside
+                } else {
+                    c.mesh.material.opacity = 0.6; // Ghostly if outside
+                }
+            });
+
+            // Update UI
+            document.getElementById('totalCount').textContent = charges.length;
+            document.getElementById('insideCount').textContent = insideCount;
+            document.getElementById('netCharge').textContent = insideQ > 0 ? `+${insideQ}q` : `${insideQ}q`;
+            document.getElementById('fluxVal').textContent = insideQ > 0 ? `+${insideQ}q/ε₀` : `${insideQ}q/ε₀`;
+
+            updateFieldVectors();
+        }
+
+        // --- Field Visualization ---
+        // We will sample points on the surface and draw E vectors
+        const surfaceSamples = [];
+        const samplerGeo = new THREE.IcosahedronGeometry(4, 1); // Lower res for arrows
+        const posAttr = samplerGeo.attributes.position;
+        
+        // Deform sampler same as blob
+        for(let i=0; i<posAttr.count; i++){
+             vertex.fromBufferAttribute(posAttr, i);
+             const noise = Math.sin(vertex.x * 0.8) * Math.cos(vertex.y * 0.8) * Math.sin(vertex.z * 0.8);
+             const scale = 1 + noise * 0.3; 
+             vertex.multiplyScalar(scale);
+             surfaceSamples.push({ pos: vertex.clone(), normal: vertex.clone().normalize() }); // Approx normal
+        }
+
+        function updateFieldVectors() {
+            fieldArrows.clear();
+            if (!fieldVisible) return;
+
+            surfaceSamples.forEach(sample => {
+                const E = new THREE.Vector3(0,0,0);
+                
+                // Superposition
+                charges.forEach(c => {
+                    const rVec = new THREE.Vector3().subVectors(sample.pos, c.pos);
+                    const distSq = rVec.lengthSq();
+                    if (distSq > 0.1) {
+                        const mag = c.q / distSq; // Proportional to 1/r^2
+                        E.add(rVec.normalize().multiplyScalar(mag));
+                    }
+                });
+
+                const mag = E.length();
+                if (mag > 0.01) {
+                    const dir = E.clone().normalize();
+                    // Color based on flux direction (dot product with normal)
+                    // Note: We need accurate normals for the blob. 
+                    // For visual simplicity, we'll just use E direction color.
+                    // Outward flux (aligned with pos) = Greenish, Inward = Reddish
+                    
+                    const dot = dir.dot(sample.pos.clone().normalize());
+                    const color = dot > 0 ? 0x2ecc71 : 0xe74c3c;
+
+                    const arrow = new THREE.ArrowHelper(dir, sample.pos, 1.5, color, 0.3, 0.2);
+                    fieldArrows.add(arrow);
+                }
+            });
+        }
+
+        let fieldVisible = true;
+
+        // --- Listeners ---
+        document.getElementById('addPosBtn').addEventListener('click', () => addCharge(1));
+        document.getElementById('addNegBtn').addEventListener('click', () => addCharge(-1));
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            charges.forEach(c => scene.remove(c.mesh));
+            charges.length = 0;
+            updateCalculation();
+        });
+        document.getElementById('toggleFieldBtn').addEventListener('click', (e) => {
+            fieldVisible = !fieldVisible;
+            e.target.textContent = fieldVisible ? "Hide Field Vectors" : "Show Field Vectors";
+            updateFieldVectors();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // --- Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            blob.rotation.y += 0.002; // Slow rotation
+            // Note: Rotating blob breaks the static sampling logic unless we rotate samples too.
+            // For simplicity, let's rotate the CAMERA or SCENE, or just static blob.
+            // Let's keep blob static to match field vectors.
+            blob.rotation.y = 0; 
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="diagram_arbitrary.0.offline.js"></script>
+
+
+</body>
+</html>

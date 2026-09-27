@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3b1b Style Curl</title>
+    
+    <!-- MathJax (Static only) -->
+    <script>
+        MathJax = { 
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } 
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Inter', sans-serif; color: #eee; }
+        
+        canvas { display: block; }
+
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            backdrop-filter: blur(5px);
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid #555;
+            color: #aaa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        button:hover { background: #333; color: #fff; }
+        button.active { background: #3498db; color: #fff; border-color: #3498db; box-shadow: 0 0 10px rgba(52, 152, 219, 0.4); }
+
+        /* Toggle Switch */
+        .toggle-container { display: flex; align-items: center; margin-left: 10px; border-left: 1px solid #555; padding-left: 15px; }
+        .toggle-label { font-size: 0.85rem; color: #aaa; margin-right: 8px; }
+        input[type="checkbox"] { accent-color: #3498db; cursor: pointer; transform: scale(1.2); }
+
+        /* Readout Box */
+        #readout {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border-left: 4px solid #888;
+            padding: 15px;
+            border-radius: 4px;
+            pointer-events: none;
+            width: 320px;
+        }
+        
+        .readout-title { font-size: 0.85rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        
+        .readout-val-container { font-size: 2rem; font-weight: 700; font-family: 'Courier New', monospace; display: flex; align-items: baseline; gap: 10px; }
+        
+        .readout-desc { font-size: 0.95rem; margin-top: 8px; line-height: 1.4; color: #ddd; }
+        
+        .highlight { font-weight: bold; }
+        .pos { color: #69f0ae; } /* Green for CCW */
+        .neg { color: #ff5252; } /* Red for CW */
+        .neu { color: #fff; }
+        
+        /* Icons for text */
+        .icon-out::before { content: "⊙"; font-size: 1.2em; vertical-align: middle; margin-right: 4px; }
+        .icon-in::before { content: "⊗"; font-size: 1.2em; vertical-align: middle; margin-right: 4px; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="readout">
+        <div class="readout-title">Curl Vector ($\nabla \times \vec{F}$)</div>
+        <div class="readout-val-container">
+            <span id="val-num" class="neu">0.00</span>
+            <span id="val-unit" class="neu">$\mathbf{\hat{k}}$</span>
+        </div>
+        <div id="curl-desc" class="readout-desc">Move mouse to place paddlewheel.</div>
+    </div>
+
+    <div id="ui-container">
+        <button onclick="setScene(0)" class="active" id="btn0">1. Solid Rotation</button>
+        <button onclick="setScene(1)" id="btn1">2. Shear Flow</button>
+        <button onclick="setScene(2)" id="btn2">3. Variable Shear</button>
+        <button onclick="setScene(3)" id="btn3">4. Irrotational Vortex</button>
+        <button onclick="setScene(4)" id="btn4">5. Expansion (Div)</button>
+        <button onclick="setScene(5)" id="btn5">6. Sinusoidal</button>
+        
+        <div class="toggle-container">
+            <span class="toggle-label">Fluid</span>
+            <input type="checkbox" id="fluidToggle" checked>
+        </div>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- CONFIGURATION ---
+        let width, height, cx, cy;
+        const SCALE = 50; 
+        const PARTICLE_COUNT = 1500;
+        const ARROW_SPACING = 40;
+        const PADDLE_RADIUS = 30;
+
+        // --- STATE ---
+        let mouse = { x: 0, y: 0 };
+        let currentScene = 0;
+        let showFluid = true;
+        let paddleAngle = 0; 
+        
+        // Particles
+        const particles = [];
+        for(let i=0; i<PARTICLE_COUNT; i++) {
+            particles.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                age: Math.random() * 100
+            });
+        }
+
+        // --- SCENES ---
+        const scenes = [
+            // 0: Solid Rotation
+            { field: (x, y) => { return { x: -y * 0.5, y: x * 0.5 }; } },
+            // 1: Shear Flow
+            { field: (x, y) => { return { x: y * 0.5, y: 0 }; } },
+            // 2: Variable Shear
+            { field: (x, y) => { return { x: Math.sin(y * 0.5), y: 0 }; } },
+            // 3: Irrotational Vortex
+            { field: (x, y) => { 
+                let r2 = x*x + y*y + 0.1;
+                return { x: -y / r2, y: x / r2 }; 
+            }},
+            // 4: Expansion (From Divergence Demo)
+            // Curl should be zero everywhere!
+            { field: (x, y) => { return { x: x * 0.3, y: y * 0.3 }; } },
+            // 5: Sinusoidal (From Divergence Demo)
+            // F = <sin(x), sin(y)>. Curl = d/dx(sin y) - d/dy(sin x) = 0.
+            // Wait, let's make it interesting. F = <sin(y), sin(x)>
+            // Curl = d/dx(sin x) - d/dy(sin y) = cos(x) - cos(y).
+            { field: (x, y) => { return { x: Math.sin(y * 0.5), y: Math.sin(x * 0.5) }; } }
+        ];
+
+        function getField(screenX, screenY) {
+            const u = (screenX - cx) / SCALE;
+            const v = -(screenY - cy) / SCALE; // Y flipped
+            const vec = scenes[currentScene].field(u, v);
+            return { x: vec.x, y: -vec.y, mathX: vec.x, mathY: vec.y };
+        }
+
+        function getCurl(screenX, screenY) {
+            const h = 1.0; 
+            const fRight = getField(screenX + h, screenY);
+            const fLeft  = getField(screenX - h, screenY);
+            const fUp    = getField(screenX, screenY - h); 
+            const fDown  = getField(screenX, screenY + h);
+
+            const dFy_dx = (fRight.mathY - fLeft.mathY) / (2 * h / SCALE);
+            const dFx_dy = (fUp.mathX - fDown.mathX) / (2 * h / SCALE);
+
+            return dFy_dx - dFx_dy;
+        }
+
+        // --- RENDERING ---
+
+        function drawArrow(x, y, vx, vy, color, alpha) {
+            const len = Math.sqrt(vx*vx + vy*vy);
+            if(len < 0.01) return;
+            
+            const scale = Math.min(30, len * 20); 
+            const nx = (vx / len) * scale;
+            const ny = (vy / len) * scale;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = alpha;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + nx, y + ny);
+            ctx.stroke();
+
+            const angle = Math.atan2(ny, nx);
+            const headLen = 5;
+            ctx.beginPath();
+            ctx.moveTo(x + nx, y + ny);
+            ctx.lineTo(x + nx - headLen * Math.cos(angle - Math.PI/6), y + ny - headLen * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(x + nx - headLen * Math.cos(angle + Math.PI/6), y + ny - headLen * Math.sin(angle + Math.PI/6));
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawPaddlewheel() {
+            const curl = getCurl(mouse.x, mouse.y);
+            
+            // Update rotation
+            paddleAngle -= curl * 0.1; 
+
+            // Draw Hub
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, 12, 0, Math.PI*2);
+            ctx.fillStyle = "#222";
+            ctx.fill();
+
+            // Draw Blades
+            const blades = 4;
+            ctx.lineWidth = 4;
+            const color = curl > 0.0005 ? "#69f0ae" : (curl < -0.0005 ? "#ff5252" : "#aaa");
+            ctx.strokeStyle = color;
+
+            for(let i=0; i<blades; i++) {
+                const theta = paddleAngle + (i * Math.PI * 2 / blades);
+                const ex = mouse.x + Math.cos(theta) * PADDLE_RADIUS;
+                const ey = mouse.y + Math.sin(theta) * PADDLE_RADIUS;
+                
+                ctx.beginPath();
+                ctx.moveTo(mouse.x, mouse.y);
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(ex, ey, 5, 0, Math.PI*2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+
+            // Draw Ring
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, PADDLE_RADIUS, 0, Math.PI*2);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.stroke();
+
+            // Draw Vector Tip/Tail
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, 8, 0, Math.PI*2);
+            ctx.fillStyle = "#000";
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            if (curl > 0.1) {
+                // Dot (Out)
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI*2);
+                ctx.fill();
+            } else if (curl < -0.1) {
+                // X (In)
+                ctx.lineWidth = 2;
+                const s = 4;
+                ctx.beginPath();
+                ctx.moveTo(mouse.x - s, mouse.y - s);
+                ctx.lineTo(mouse.x + s, mouse.y + s);
+                ctx.moveTo(mouse.x + s, mouse.y - s);
+                ctx.lineTo(mouse.x - s, mouse.y + s);
+                ctx.stroke();
+            }
+
+            updateReadout(curl);
+        }
+
+        function updateReadout(curl) {
+            const valNum = document.getElementById('val-num');
+            const valUnit = document.getElementById('val-unit');
+            const descEl = document.getElementById('curl-desc');
+            const box = document.getElementById('readout');
+
+            // Update Number
+            let sign = curl > 0 ? "+" : "";
+            if (Math.abs(curl) < 0.0005) sign = "";
+            valNum.innerText = sign + curl.toFixed(2);
+
+            // Update Colors & Text using HTML entities instead of MathJax
+            if (curl > 0.0005) {
+                valNum.className = "pos";
+                valUnit.className = "pos";
+                box.style.borderLeftColor = "#69f0ae";
+                descEl.innerHTML = "<span class='pos highlight'>Positive Curl (CCW)</span><br>Vector points <strong>OUT</strong> (<span class='icon-out'></span>).<br>Right-Hand Rule: Thumb points at you.";
+            } else if (curl < -0.0005) {
+                valNum.className = "neg";
+                valUnit.className = "neg";
+                box.style.borderLeftColor = "#ff5252";
+                descEl.innerHTML = "<span class='neg highlight'>Negative Curl (CW)</span><br>Vector points <strong>INTO</strong> (<span class='icon-in'></span>).<br>Right-Hand Rule: Thumb points away.";
+            } else {
+                valNum.className = "neu";
+                valUnit.className = "neu";
+                box.style.borderLeftColor = "#fff";
+                descEl.innerHTML = "<span class='neu highlight'>(Almost) Zero Curl</span><br>(Almost) No spin.<br>";
+            }
+        }
+
+        function loop() {
+            // Clear with fade effect
+            ctx.fillStyle = "rgba(0, 0, 0, 0.2)"; 
+            ctx.fillRect(0, 0, width, height);
+
+            // 1. Draw Background Vectors
+            for (let x = 0; x < width; x += ARROW_SPACING) {
+                for (let y = 0; y < height; y += ARROW_SPACING) {
+                    const f = getField(x, y);
+                    const angle = Math.atan2(f.y, f.x);
+                    const hue = (angle * 180 / Math.PI) + 180;
+                    const color = `hsl(${hue}, 70%, 60%)`; 
+                    drawArrow(x, y, f.x, f.y, color, 0.3);
+                }
+            }
+
+            // 2. Draw Fluid Particles
+            if (showFluid) {
+                ctx.fillStyle = "#fff";
+                for(let p of particles) {
+                    const f = getField(p.x, p.y);
+                    p.x += f.x * 3; 
+                    p.y += f.y * 3;
+                    p.age++;
+
+                    if (p.x < 0 || p.x > width || p.y < 0 || p.y > height || p.age > 100) {
+                        p.x = Math.random() * width;
+                        p.y = Math.random() * height;
+                        p.age = 0;
+                    }
+
+                    const alpha = 1 - (p.age / 100);
+                    ctx.globalAlpha = alpha * 0.5;
+                    ctx.fillRect(p.x, p.y, 2, 2);
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            // 3. Draw Paddlewheel
+            drawPaddlewheel();
+
+            requestAnimationFrame(loop);
+        }
+
+        // --- EVENTS ---
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        document.getElementById('fluidToggle').addEventListener('change', (e) => {
+            showFluid = e.target.checked;
+        });
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            cx = width / 2;
+            cy = height / 2;
+        }
+
+        window.setScene = function(idx) {
+            currentScene = idx;
+            for(let i=0; i<6; i++) {
+                const btn = document.getElementById(`btn${i}`);
+                if(btn) btn.className = (i===idx) ? 'active' : '';
+            }
+        }
+
+        // Init
+        resize();
+        mouse.x = cx + 100; 
+        mouse.y = cy;
+        loop();
+
+    </script>
+</body>
+</html>

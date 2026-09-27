@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capacitor Simulator - Random & Dynamic</title>
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body { margin: 0; overflow: hidden; background-color: #0d1117; font-family: 'Segoe UI', sans-serif; color: #c9d1d9; display: flex; height: 100vh; }
+        
+        #ui-panel {
+            width: 320px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 10;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .desc-text { font-size: 0.95rem; color: #8b949e; line-height: 1.6; margin-top: 5px; }
+        .control-group { background: #21262d; padding: 15px; border-radius: 6px; border: 1px solid #30363d; }
+        label { display: block; margin-bottom: 10px; font-weight: 600; font-size: 0.9rem; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .readout { font-family: monospace; color: #7ee787; text-align: right; margin-top: 5px; font-size: 1.1rem; }
+
+        .legend-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 0.85rem; }
+        .dot { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: white;}
+        .l-ion { background: #ff4757; }
+        .l-elec { background: #1e90ff; box-shadow: 0 0 5px #1e90ff; }
+
+        #canvas-container { flex-grow: 1; position: relative; background: #0d1117; min-width: 0; min-height: 0; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+        @media (max-width: 900px) {
+            html,
+            body {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            body {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100%;
+                min-height: 0;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+                width: 100%;
+                height: 100%;
+                min-height: 0;
+            }
+
+            #ui-panel {
+                grid-column: 1;
+                grid-row: 2;
+                width: 100%;
+                padding: 8px 10px;
+                gap: 7px 10px;
+                border-right: 0;
+                border-top: 1px solid #30363d;
+                overflow: hidden;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .control-group {
+                padding: 8px;
+            }
+
+            label,
+            .desc-text,
+            .legend-row {
+                font-size: 0.8rem;
+                line-height: 1.3;
+            }
+
+            #ui-panel > .desc-text:first-child {
+                grid-column: 1 / -1;
+            }
+
+            #ui-panel > .desc-text:last-child {
+                display: none;
+            }
+
+            .readout {
+                font-size: 0.92rem;
+            }
+
+            input[type=range] {
+                min-height: 34px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <div class="desc-text">
+            <span id="tex-desc"></span>
+        </div>
+
+        <div class="control-group">
+            <label>Battery Voltage (EMF)</label>
+            <input type="range" id="voltageSlider" min="-12" max="12" step="1" value="0">
+            <div class="readout" id="voltageVal">0 V</div>
+        </div>
+
+        <div class="control-group">
+            <label>Material View</label>
+            <div class="legend-row">
+                <div class="dot l-ion">+</div>
+                <span>Fixed Positive Ion</span>
+            </div>
+            <div class="legend-row">
+                <div class="dot l-elec">e<sup>-</sup></div>
+                <span>Mobile Electron</span>
+            </div>
+        </div>
+        
+        <div class="desc-text" style="border-top: 1px solid #30363d; padding-top: 15px; font-size: 0.85rem;">
+            <strong>Physics Note:</strong> Electrons drift randomly. When charging, they are plucked from random atoms throughout the lattice, not just the edge.
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            katex.render("e^-", document.getElementById('tex-desc'));
+            let el = document.getElementById('tex-desc');
+            el.innerHTML = "Electrons (" + el.innerHTML + ") flow physically from one plate to the other, charging the capacitor.";
+        });
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- Configuration ---
+        const PLATE_W = 260;
+        const PLATE_H = 70;
+        const GAP = 150;
+        const ROW_COUNT = 3;
+        const COL_COUNT = 10;
+        const TOTAL_ATOMS = ROW_COUNT * COL_COUNT; 
+        const WIRE_OFFSET = 240;
+        
+        let cx, cy;
+        let voltage = 0;
+        
+        // --- Global Sim State ---
+        let incomingTop = 0; 
+        let incomingBot = 0;
+        let spawnCooldown = 0;
+        let electronsInTransit = []; 
+
+        class Plate {
+            constructor(y, isTop) {
+                this.y = y;
+                this.isTop = isTop;
+                this.atoms = [];
+                this.electrons = [];
+                this.initLattice();
+            }
+
+            initLattice() {
+                const startX = cx - PLATE_W/2 + 25;
+                const startY = this.y - PLATE_H/2 + 15;
+                const stepX = (PLATE_W - 50) / (COL_COUNT - 1);
+                const stepY = (PLATE_H - 30) / (ROW_COUNT - 1);
+
+                for(let r=0; r<ROW_COUNT; r++) {
+                    for(let c=0; c<COL_COUNT; c++) {
+                        const px = startX + c*stepX;
+                        const py = startY + r*stepY;
+                        this.atoms.push({x: px, y: py});
+                        
+                        // Initially Neutral: 1 electron per atom
+                        this.electrons.push({
+                            x: px, 
+                            y: py, 
+                            atomIndex: (r*COL_COUNT + c) 
+                        });
+                    }
+                }
+            }
+
+            // --- CHANGED: Pick Random Electron ---
+            popElectron() {
+                if(this.electrons.length === 0) return null;
+
+                // 1. Separate excess (interstitial) vs bound (on atoms)
+                let excess = this.electrons.filter(e => e.atomIndex === -1);
+                let bound = this.electrons.filter(e => e.atomIndex !== -1);
+                
+                let candidate = null;
+
+                // Priority: Remove excess electrons first
+                if(excess.length > 0) {
+                    // Pick random excess
+                    let r = Math.floor(Math.random() * excess.length);
+                    candidate = excess[r];
+                } else {
+                    // Pick random bound electron (Creating a scattered hole)
+                    let r = Math.floor(Math.random() * bound.length);
+                    candidate = bound[r];
+                }
+
+                // Remove from main array
+                let index = this.electrons.indexOf(candidate);
+                if (index > -1) {
+                    this.electrons.splice(index, 1);
+                    return candidate;
+                }
+                return null;
+            }
+
+            // Add an electron arriving
+            pushElectron() {
+                // Identify empty atoms (holes)
+                let occupiedIndices = new Set(this.electrons.map(e => e.atomIndex));
+                let freeAtomIndices = [];
+                for(let i=0; i<TOTAL_ATOMS; i++) {
+                    if(!occupiedIndices.has(i)) freeAtomIndices.push(i);
+                }
+
+                if(freeAtomIndices.length > 0) {
+                    // Fill a random hole
+                    let idx = freeAtomIndices[Math.floor(Math.random() * freeAtomIndices.length)];
+                    let atom = this.atoms[idx];
+                    this.electrons.push({ x: atom.x, y: atom.y, atomIndex: idx });
+                } else {
+                    // Place interstitially (random spot in plate)
+                    const pad = 10;
+                    const rx = (cx - PLATE_W/2 + pad) + Math.random() * (PLATE_W - 2*pad);
+                    const ry = (this.y - PLATE_H/2 + pad) + Math.random() * (PLATE_H - 2*pad);
+                    this.electrons.push({ x: rx, y: ry, atomIndex: -1 });
+                }
+            }
+
+            draw(ctx) {
+                // Container
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 2;
+                ctx.fillStyle = 'rgba(255,255,255,0.03)';
+                ctx.fillRect(cx - PLATE_W/2, this.y - PLATE_H/2, PLATE_W, PLATE_H);
+                ctx.strokeRect(cx - PLATE_W/2, this.y - PLATE_H/2, PLATE_W, PLATE_H);
+
+                // Atoms (Red +)
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = 'bold 12px sans-serif';
+                for(let a of this.atoms) {
+                    ctx.beginPath();
+                    ctx.arc(a.x, a.y, 8, 0, Math.PI*2);
+                    ctx.fillStyle = '#ff4757'; 
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                    ctx.fillText('+', a.x, a.y);
+                }
+
+                // Electrons (Blue e-)
+                for(let e of this.electrons) {
+                    drawElectron(ctx, e.x, e.y);
+                }
+
+                // Indicators
+                const netCharge = this.electrons.length - TOTAL_ATOMS;
+                if(Math.abs(netCharge) > 2) {
+                    ctx.font = 'bold 30px sans-serif';
+                    ctx.shadowBlur = 15;
+                    const xPos = cx - PLATE_W/2 - 40;
+                    if(netCharge < 0) { // Positive
+                        ctx.fillStyle = '#ff4757';
+                        ctx.shadowColor = '#ff4757';
+                        ctx.fillText("+", xPos, this.y);
+                    } else { // Negative
+                        ctx.fillStyle = '#1e90ff';
+                        ctx.shadowColor = '#1e90ff';
+                        ctx.fillText("-", xPos, this.y - 3);
+                    }
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        class MovingElectron {
+            constructor(startX, startY, destination) {
+                this.path = [];
+                this.destination = destination; 
+                this.t = 0;
+                this.speed = 0.08; 
+
+                const wireX = cx + WIRE_OFFSET;
+                const destY = (destination === 'top') ? (cy - GAP/2) : (cy + GAP/2);
+
+                this.path.push({x: startX, y: startY}); 
+                this.path.push({x: wireX, y: startY});   
+                this.path.push({x: wireX, y: destY});    
+                this.path.push({x: cx + PLATE_W/2 - 10, y: destY}); 
+            }
+
+            update() {
+                this.t += this.speed;
+                return (this.t >= 1);
+            }
+
+            draw(ctx) {
+                let totalSegs = 3;
+                let st = this.t * totalSegs;
+                let idx = Math.floor(st);
+                let lt = st - idx;
+                if(idx >= totalSegs) { idx=totalSegs-1; lt=1; }
+
+                let p1 = this.path[idx];
+                let p2 = this.path[idx+1];
+                let x = p1.x + (p2.x - p1.x)*lt;
+                let y = p1.y + (p2.y - p1.y)*lt;
+                drawElectron(ctx, x, y);
+            }
+        }
+
+        function drawElectron(ctx, x, y) {
+            ctx.beginPath();
+            ctx.arc(x, y, 7, 0, Math.PI*2);
+            ctx.fillStyle = '#1e90ff';
+            ctx.fill();
+            ctx.shadowColor = '#1e90ff';
+            ctx.shadowBlur = 5;
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('e-', x, y);
+        }
+
+        function drawCircuit(ctx) {
+            const wx = cx + WIRE_OFFSET;
+            const topY = cy - GAP/2;
+            const botY = cy + GAP/2;
+
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#444';
+            ctx.beginPath();
+            ctx.moveTo(cx + PLATE_W/2, topY); ctx.lineTo(wx, topY); ctx.lineTo(wx, cy - 35);
+            ctx.moveTo(cx + PLATE_W/2, botY); ctx.lineTo(wx, botY); ctx.lineTo(wx, cy + 35);
+            ctx.stroke();
+
+            // Battery
+            ctx.strokeStyle = '#ccc';
+            ctx.beginPath();
+            let topW = (voltage >= 0) ? 40 : 20;
+            let botW = (voltage >= 0) ? 20 : 40;
+            if(voltage === 0) { topW=30; botW=30; }
+
+            ctx.moveTo(wx - topW/2, cy - 10); ctx.lineTo(wx + topW/2, cy - 10);
+            ctx.moveTo(wx - botW/2, cy + 10); ctx.lineTo(wx + botW/2, cy + 10);
+            ctx.moveTo(wx, cy-35); ctx.lineTo(wx, cy-10);
+            ctx.moveTo(wx, cy+10); ctx.lineTo(wx, cy+35);
+            ctx.stroke();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px monospace';
+            ctx.fillText(Math.abs(voltage) + "V", wx + 30, cy);
+        }
+
+        // --- Main Loop ---
+        let topPlate, botPlate;
+
+        function resize() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            cx = canvas.width / 2;
+            cy = canvas.height / 2;
+            topPlate = new Plate(cy - GAP/2, true);
+            botPlate = new Plate(cy + GAP/2, false);
+            electronsInTransit = [];
+            incomingTop = 0;
+            incomingBot = 0;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function animate() {
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            drawCircuit(ctx);
+
+            // Flow Logic
+            // 1 Volt ~ 1.5 electrons
+            const shift = voltage * 1.5; 
+            const targetTop = TOTAL_ATOMS - shift;
+
+            const currentTop = topPlate.electrons.length;
+            const effectiveTop = currentTop + incomingTop;
+
+            if(spawnCooldown <= 0) {
+                if (effectiveTop > targetTop + 0.5) { 
+                    if(incomingTop === 0) {
+                        let e = topPlate.popElectron();
+                        if(e) {
+                            electronsInTransit.push(new MovingElectron(e.x, e.y, 'bot'));
+                            incomingBot++;
+                            spawnCooldown = 3; 
+                        }
+                    }
+                } 
+                else if (effectiveTop < targetTop - 0.5) {
+                    if(incomingBot === 0) {
+                        let e = botPlate.popElectron();
+                        if(e) {
+                            electronsInTransit.push(new MovingElectron(e.x, e.y, 'top'));
+                            incomingTop++;
+                            spawnCooldown = 3;
+                        }
+                    }
+                }
+            } else {
+                spawnCooldown--;
+            }
+
+            topPlate.draw(ctx);
+            botPlate.draw(ctx);
+
+            // Transit
+            for(let i = electronsInTransit.length - 1; i >= 0; i--) {
+                let p = electronsInTransit[i];
+                p.draw(ctx);
+                if(p.update()) {
+                    if(p.destination === 'top') {
+                        topPlate.pushElectron();
+                        incomingTop--;
+                    } else {
+                        botPlate.pushElectron();
+                        incomingBot--;
+                    }
+                    electronsInTransit.splice(i, 1);
+                }
+            }
+            
+            // --- CHANGED: Dynamic Electric Field Intensity ---
+            // Max shift is approx 18 e-.
+            const netCharge = (TOTAL_ATOMS - topPlate.electrons.length); 
+            // Calculate opacity: 0 to 1 based on charge
+            const opacity = Math.min(Math.abs(netCharge) / 18, 1.0);
+
+            if(opacity > 0.05) {
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = `rgba(255,255,0,${opacity})`; // Scale opacity
+                
+                const step = PLATE_W / 12;
+                for(let x = cx - PLATE_W/2 + step; x < cx + PLATE_W/2; x+=step) {
+                    const ty = cy - GAP/2 + PLATE_H/2;
+                    const by = cy + GAP/2 - PLATE_H/2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, ty); ctx.lineTo(x, by);
+                    
+                    // Arrow
+                    let ay = cy; let as=4;
+                    if(netCharge > 0) { 
+                        ctx.moveTo(x-as, ay-as); ctx.lineTo(x, ay+as); ctx.lineTo(x+as, ay-as);
+                    } else { 
+                        ctx.moveTo(x-as, ay+as); ctx.lineTo(x, ay-as); ctx.lineTo(x+as, ay+as);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        const slider = document.getElementById('voltageSlider');
+        slider.addEventListener('input', (e) => {
+            voltage = parseFloat(e.target.value);
+            document.getElementById('voltageVal').innerText = voltage + " V";
+        });
+
+        animate();
+    </script>
+</body>
+</html>

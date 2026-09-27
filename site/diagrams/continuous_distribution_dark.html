@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous Charge Distribution</title>
+    <style>
+        :root {
+            --bg: #020609;
+            --panel: #151515;
+            --panel-2: #1e1e1e;
+            --text: #f8fafc;
+            --muted: #a7b0bf;
+            --border: rgba(148, 163, 184, 0.34);
+            --charge: #ff4b55;
+            --sum: #22d3ee;
+            --integral: #facc15;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            width: 100vw;
+            height: 100vh;
+            min-height: 390px;
+            background: #000;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 0;
+            padding: 12px;
+            border-right: 1px solid var(--border);
+            background: var(--panel);
+        }
+
+        h1 {
+            margin: 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+            font-size: 1rem;
+            line-height: 1.15;
+        }
+
+        .mode-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+        }
+
+        button {
+            min-height: 36px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 6px;
+            background: rgba(30, 41, 59, 0.86);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.76rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button.active {
+            border-color: rgba(34, 211, 238, 0.85);
+            background: rgba(8, 145, 178, 0.76);
+        }
+
+        .explain {
+            min-height: 112px;
+            padding: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 7px;
+            background: var(--panel-2);
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        .explain strong {
+            color: var(--text);
+        }
+
+        .formula {
+            min-height: 86px;
+            padding: 4px 0;
+            color: var(--text);
+            font-size: 0.82rem;
+            line-height: 1.45;
+            overflow-x: auto;
+            overflow-y: visible;
+        }
+
+        .formula .equation {
+            display: block;
+            width: max-content;
+            max-width: 100%;
+            margin: 0 0 7px;
+        }
+
+        .slider-card {
+            margin-top: auto;
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 0.74rem;
+            font-weight: 700;
+        }
+
+        .slider-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--sum);
+        }
+
+        .canvas-wrap {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            background: radial-gradient(circle at 55% 45%, rgba(15, 23, 42, 0.52), #000 72%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        @media (max-width: 680px) {
+            .layout {
+                grid-template-columns: 232px 1fr;
+            }
+
+            .panel {
+                padding: 8px;
+                gap: 7px;
+            }
+
+            h1 {
+                font-size: 0.84rem;
+            }
+
+            button,
+            .explain,
+            .formula,
+            .slider-card {
+                font-size: 0.72rem;
+            }
+
+            .explain {
+                min-height: 92px;
+            }
+
+            .formula {
+                min-height: 96px;
+                padding: 7px;
+            }
+        }
+    </style>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)'], ['$', '$']],
+                macros: {
+                    rsep: '{\\mathscr r}',
+                    hatrsep: '{\\hat{\\mathscr r}}'
+                }
+            },
+            svg: { fontCache: 'global' },
+            startup: { typeset: false }
+        };
+    </script>
+    <script defer src="../vendor/mathjax/tex-svg.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="panel">
+            <h1>Sum to Integral</h1>
+            <div class="mode-row">
+                <button id="sum-mode" class="active" type="button">Summation</button>
+                <button id="int-mode" type="button">Integration</button>
+            </div>
+            <div id="explain" class="explain"></div>
+            <div id="formula" class="formula"></div>
+            <label class="slider-card">
+                <span class="slider-head">
+                    <span id="slider-title">Charge-by-charge</span>
+                    <span id="slider-value">q1</span>
+                </span>
+                <input id="process-slider" type="range" min="0" max="100" value="0">
+            </label>
+        </aside>
+        <main class="canvas-wrap">
+            <canvas id="continuous-canvas" aria-label="Summation of individual charges and integration over continuous charge density"></canvas>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('continuous-canvas');
+        const ctx = canvas.getContext('2d');
+        const sumModeBtn = document.getElementById('sum-mode');
+        const intModeBtn = document.getElementById('int-mode');
+        const explain = document.getElementById('explain');
+        const formula = document.getElementById('formula');
+        const processSlider = document.getElementById('process-slider');
+        const sliderTitle = document.getElementById('slider-title');
+        const sliderValue = document.getElementById('slider-value');
+        const INTEGRATION_COLS = 24;
+        const INTEGRATION_ROWS = 14;
+        const GRID_U_EXTENT = 1.08;
+        const GRID_V_EXTENT = 0.72;
+
+        let width = 1;
+        let height = 1;
+        let dpr = 1;
+        let mode = 'sum';
+        let modeBlend = 0;
+        let targetBlend = 0;
+        let process = 0;
+        let autoProcess = true;
+        let lastTime = performance.now();
+        let pointP = { x: 0, y: 0 };
+        let draggingP = false;
+        let lastFormulaMode = '';
+
+        const charges = Array.from({ length: 308 }, (_, i) => {
+            const col = i % 22;
+            const row = Math.floor(i / 22);
+            const jitterX = hash(i * 5.31) - 0.5;
+            const jitterY = hash(i * 8.77) - 0.5;
+            return {
+                u: -0.98 + (col / 21) * 1.96 + jitterX * 0.045,
+                v: -0.66 + (row / 13) * 1.32 + jitterY * 0.055
+            };
+        }).filter(p => insideShape(p.u, p.v));
+
+        const integrationCells = Array.from({ length: INTEGRATION_COLS * INTEGRATION_ROWS }, (_, i) => {
+            const row = Math.floor(i / INTEGRATION_COLS);
+            const col = i % INTEGRATION_COLS;
+            return {
+                u: -GRID_U_EXTENT + (col + 0.5) * (2 * GRID_U_EXTENT / INTEGRATION_COLS),
+                v: -GRID_V_EXTENT + (row + 0.5) * (2 * GRID_V_EXTENT / INTEGRATION_ROWS),
+                col,
+                row
+            };
+        }).filter(cell => insideShape(cell.u, cell.v));
+
+        function insideShape(u, v) {
+            const angle = Math.atan2(v / 0.66, u);
+            const wobble = 1 + 0.07 * Math.sin(4 * Math.cos(angle)) * Math.cos(4 * Math.sin(angle));
+            return Math.hypot(u, v / 0.66) <= wobble;
+        }
+
+        function hash(seed) {
+            const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+            return value - Math.floor(value);
+        }
+
+        function resize() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            canvas.width = Math.floor(width * dpr);
+            canvas.height = Math.floor(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            pointP = { x: width * 0.82, y: height * 0.32 };
+        }
+
+        function center() {
+            return { x: width * 0.43, y: height * 0.52 };
+        }
+
+        function scale() {
+            return Math.min(width * 0.36, height * 0.37);
+        }
+
+        function toCanvas(u, v) {
+            const c = center();
+            const s = scale();
+            return { x: c.x + u * s * 1.35, y: c.y + v * s };
+        }
+
+        function setMode(nextMode) {
+            mode = nextMode;
+            targetBlend = mode === 'int' ? 1 : 0;
+            autoProcess = true;
+            process = 0;
+            processSlider.value = 0;
+            sumModeBtn.classList.toggle('active', mode === 'sum');
+            intModeBtn.classList.toggle('active', mode === 'int');
+            updateUi();
+        }
+
+        function updateUi() {
+            const selectedLabel = mode === 'sum' ? `q${selectedChargeIndex() + 1}` : `dq ${selectedElementIndex() + 1}`;
+            sliderValue.textContent = selectedLabel;
+            if (lastFormulaMode === mode) return;
+            lastFormulaMode = mode;
+
+            if (mode === 'sum') {
+                explain.innerHTML = '<strong>Many individual charges.</strong> To find the field at the observation point \\(\\vec r\\), we must know every charge value and the exact position of each charge. The slider shows the sum being built one source charge at a time.';
+                formula.innerHTML = '<span class="equation">\\(\\displaystyle \\vec E(\\vec r)=\\frac{1}{4\\pi\\epsilon_0}\\sum_{i=1}^{N}\\frac{q_i}{\\rsep_i^2}\\,\\hatrsep_i\\)</span>';
+                sliderTitle.textContent = 'Charge-by-charge';
+            } else {
+                explain.innerHTML = "<strong>Continuous charge.</strong> We stop tracking each carrier separately. Instead, we need the density \\(\\rho(\\vec{r}')\\) and the exact shape of the object. The slider scans tiny source volume elements, each with charge \\(dq=\\rho\\,d\\tau'\\).";
+                formula.innerHTML = "<span class=\"equation\">\\(\\displaystyle dq=\\rho(\\vec{r}')\\,d\\tau'\\)</span><span class=\"equation\">\\(\\displaystyle \\vec E(\\vec r)=\\frac{1}{4\\pi\\epsilon_0}\\int_{V}\\frac{\\rho(\\vec{r}')\\,\\hatrsep}{\\rsep^2}\\,d\\tau'\\)</span>";
+                sliderTitle.textContent = 'Element-by-element';
+            }
+            if (window.MathJax?.typesetPromise) {
+                window.MathJax.typesetPromise([explain, formula]).catch(() => {});
+            }
+        }
+
+        function boundedProcess() {
+            if (!Number.isFinite(process)) return 0;
+            return Math.min(0.999999, Math.max(0, process));
+        }
+
+        function selectedChargeIndex() {
+            if (!charges.length) return -1;
+            return Math.min(charges.length - 1, Math.floor(boundedProcess() * charges.length));
+        }
+
+        function selectedCellIndex() {
+            return selectedElementIndex();
+        }
+
+        function selectedElementIndex() {
+            if (!integrationCells.length) return -1;
+            return Math.min(integrationCells.length - 1, Math.floor(boundedProcess() * integrationCells.length));
+        }
+
+        function selectedDqPosition() {
+            return integrationCells[selectedElementIndex()] || { u: 0, v: 0 };
+        }
+
+        function shapePath() {
+            const c = center();
+            const s = scale();
+            ctx.beginPath();
+            for (let i = 0; i <= 180; i++) {
+                const a = (i / 180) * Math.PI * 2;
+                const wobble = 1 + 0.07 * Math.sin(4 * Math.cos(a)) * Math.cos(4 * Math.sin(a));
+                const x = c.x + Math.cos(a) * s * 1.35 * wobble;
+                const y = c.y + Math.sin(a) * s * 0.66 * wobble;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+        }
+
+        function drawShapeOutline() {
+            if (modeBlend < 0.01) return;
+            ctx.save();
+            ctx.globalAlpha = modeBlend;
+            shapePath();
+            ctx.fillStyle = 'rgba(255, 75, 85, 0.12)';
+            ctx.strokeStyle = 'rgba(255, 75, 85, 0.86)';
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCharges() {
+            const alpha = 0.95 * (1 - modeBlend);
+            if (alpha < 0.01) return;
+            const selected = selectedChargeIndex();
+            for (let i = 0; i < charges.length; i++) {
+                const p = toCanvas(charges[i].u, charges[i].v);
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, i === selected && modeBlend < 0.35 ? 5.2 : 3.05, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff4b55';
+                ctx.shadowColor = 'rgba(255, 75, 85, 0.58)';
+                ctx.shadowBlur = 4 * (1 - modeBlend);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawIntegrationGrid() {
+            if (modeBlend < 0.01) return;
+            const c = center();
+            const s = scale();
+            const left = c.x - s * 1.35 * GRID_U_EXTENT;
+            const right = c.x + s * 1.35 * GRID_U_EXTENT;
+            const top = c.y - s * GRID_V_EXTENT;
+            const bottom = c.y + s * GRID_V_EXTENT;
+            const cellW = (right - left) / INTEGRATION_COLS;
+            const cellH = (bottom - top) / INTEGRATION_ROWS;
+            const idx = selectedElementIndex();
+
+            ctx.save();
+            ctx.globalAlpha = modeBlend;
+            shapePath();
+            ctx.clip();
+            ctx.fillStyle = 'rgba(250, 204, 21, 0.12)';
+            ctx.fillRect(left, top, right - left, bottom - top);
+
+            ctx.strokeStyle = 'rgba(250, 204, 21, 0.24)';
+            ctx.lineWidth = 1;
+            const selectedCell = integrationCells[idx] || integrationCells[0] || { row: 0, col: 0 };
+            const selectedOrder = selectedCell.row * INTEGRATION_COLS + selectedCell.col;
+            for (let row = 0; row < INTEGRATION_ROWS; row++) {
+                for (let col = 0; col < INTEGRATION_COLS; col++) {
+                    const order = row * INTEGRATION_COLS + col;
+                    const x = left + col * cellW;
+                    const y = top + row * cellH;
+                    const isSelected = row === selectedCell.row && col === selectedCell.col;
+                    if (order <= selectedOrder) {
+                        ctx.fillStyle = isSelected ? 'rgba(250, 204, 21, 0.34)' : 'rgba(250, 204, 21, 0.18)';
+                        ctx.fillRect(x, y, cellW, cellH);
+                    }
+                    ctx.strokeStyle = isSelected ? '#facc15' : 'rgba(250, 204, 21, 0.2)';
+                    ctx.lineWidth = isSelected ? 2 : 1;
+                    ctx.beginPath();
+                    ctx.rect(x, y, cellW, cellH);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function drawArrow(from, to, color, widthLine = 2.2, alpha = 1) {
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const len = Math.hypot(dx, dy);
+            if (len < 2) return;
+            const ux = dx / len;
+            const uy = dy / len;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = widthLine;
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(to.x, to.y);
+            ctx.lineTo(to.x - ux * 12 - uy * 6, to.y - uy * 12 + ux * 6);
+            ctx.lineTo(to.x - ux * 12 + uy * 6, to.y - uy * 12 - ux * 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawContribution() {
+            const chargeAlpha = 1 - modeBlend;
+            const charge = charges[selectedChargeIndex()];
+            if (charge && chargeAlpha > 0.02) {
+                const chargeStart = toCanvas(charge.u, charge.v);
+                drawArrow(chargeStart, pointP, '#22d3ee', 2.4, chargeAlpha);
+                label(`q${selectedChargeIndex() + 1}`, chargeStart.x + 8, chargeStart.y - 8, '#22d3ee', 13, chargeAlpha);
+            }
+
+            if (modeBlend > 0.02) {
+                const element = selectedDqPosition();
+                const dqStart = toCanvas(element.u, element.v);
+                drawArrow(dqStart, pointP, '#facc15', 2.8, modeBlend);
+                label('dq', dqStart.x + 13, dqStart.y + 4, '#facc15', 13, modeBlend);
+            }
+        }
+
+        function drawPointP() {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pointP.x, pointP.y, 7, 0, Math.PI * 2);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.shadowColor = 'rgba(255,255,255,0.65)';
+            ctx.shadowBlur = 9;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            label('P', pointP.x + 13, pointP.y - 8, '#f8fafc', 16);
+            ctx.restore();
+        }
+
+        function label(text, x, y, color = '#e5e7eb', size = 13, alpha = 1) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = color;
+            ctx.font = `700 ${size}px Segoe UI, Arial, sans-serif`;
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function draw(time) {
+            const frameTime = Number.isFinite(time) ? time : lastTime + 16;
+            const dt = Math.min(34, Math.max(0, frameTime - lastTime));
+            lastTime = frameTime;
+            modeBlend += (targetBlend - modeBlend) * Math.min(1, dt * 0.0018);
+
+            if (autoProcess) {
+                process += dt * (mode === 'sum' ? 0.000055 : 0.00009);
+                if (process >= 1) process = 0;
+                processSlider.value = Math.round(process * 100);
+            } else {
+                process = Number(processSlider.value) / 100;
+            }
+
+            updateUi();
+            ctx.clearRect(0, 0, width, height);
+            drawShapeOutline();
+            drawCharges();
+            drawIntegrationGrid();
+            drawContribution();
+            drawPointP();
+            requestAnimationFrame(draw);
+        }
+
+        function canvasPoint(event) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        sumModeBtn.addEventListener('click', () => setMode('sum'));
+        intModeBtn.addEventListener('click', () => setMode('int'));
+        processSlider.addEventListener('input', () => {
+            autoProcess = false;
+            process = Number(processSlider.value) / 100;
+            updateUi();
+        });
+        canvas.addEventListener('pointerdown', event => {
+            const p = canvasPoint(event);
+            const dist = Math.hypot(p.x - pointP.x, p.y - pointP.y);
+            draggingP = dist < 36;
+            pointP = p;
+            autoProcess = false;
+            canvas.setPointerCapture(event.pointerId);
+        });
+        canvas.addEventListener('pointermove', event => {
+            if (!draggingP) return;
+            pointP = canvasPoint(event);
+        });
+        canvas.addEventListener('pointerup', event => {
+            draggingP = false;
+            if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+        });
+        canvas.addEventListener('pointercancel', () => {
+            draggingP = false;
+        });
+        window.addEventListener('resize', resize);
+        window.addEventListener('load', () => {
+            lastFormulaMode = '';
+            updateUi();
+        });
+
+        resize();
+        setMode('sum');
+        requestAnimationFrame(draw);
+    </script>
+</body>
+
+</html>

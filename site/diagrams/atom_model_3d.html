@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atomic to Macroscopic Charge</title>
+    <style>
+        :root {
+            --panel: rgba(20, 24, 31, 0.96);
+            --line: #384252;
+            --text: #eef2f7;
+            --muted: #aeb8c8;
+            --positive: #ef4444;
+            --negative: #3b82f6;
+            --neutral: #94a3b8;
+            --accent: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            color: var(--text);
+            font-family: "Inter", "Segoe UI", sans-serif;
+            touch-action: none;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 286px minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        #controls {
+            z-index: 10;
+            padding: 14px;
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+            overflow-y: auto;
+            user-select: none;
+        }
+
+        #scene-container {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        h2 {
+            margin: 0 0 9px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+            color: var(--accent);
+            font-size: 1rem;
+            line-height: 1.15;
+        }
+
+        .control-group {
+            margin: 0 0 13px;
+        }
+
+        label,
+        .group-label {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+            color: var(--text);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.72rem;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        button {
+            min-height: 34px;
+            border: 1px solid #46556b;
+            border-radius: 7px;
+            color: #fff;
+            background: #182033;
+            font: inherit;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            border-color: var(--accent);
+            filter: brightness(1.08);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+            filter: none;
+        }
+
+        #remove-electron {
+            background: rgba(239, 68, 68, 0.22);
+        }
+
+        #add-electron {
+            background: rgba(59, 130, 246, 0.24);
+        }
+
+        .readout {
+            display: grid;
+            gap: 7px;
+            padding: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            font-size: 0.78rem;
+            line-height: 1.35;
+        }
+
+        .readout-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .readout strong {
+            color: #fff;
+        }
+
+        #charge-state {
+            font-size: 0.92rem;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 7px 8px;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }
+
+        .hint {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.76rem;
+            line-height: 1.38;
+        }
+
+        #caption {
+            position: absolute;
+            left: 20px;
+            right: 20px;
+            bottom: 16px;
+            padding: 9px 12px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.48);
+            color: rgba(238, 242, 247, 0.82);
+            font-size: 0.82rem;
+            line-height: 1.35;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .math {
+            font-family: "Times New Roman", serif;
+            font-style: italic;
+        }
+
+        @media (max-width: 720px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #controls {
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            #caption {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                font-size: 0.74rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <aside id="controls">
+            <h2>Atomic Picture of Charge</h2>
+
+            <div class="control-group">
+                <label for="scale-slider">
+                    <span>View scale</span>
+                    <strong id="scale-readout">Microscopic</strong>
+                </label>
+                <input type="range" id="scale-slider" min="0" max="100" value="0">
+                <div class="scale-labels">
+                    <span>Microscopic</span>
+                    <span>Macroscopic</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="group-label">
+                    <span>Electrons</span>
+                    <strong id="electron-readout">6</strong>
+                </div>
+                <div class="button-row">
+                    <button id="remove-electron" type="button">Remove e-</button>
+                    <button id="add-electron" type="button">Add e-</button>
+                </div>
+            </div>
+
+            <div class="readout">
+                <div class="readout-row">
+                    <span>Protons <span class="math">N<sub>p</sub></span></span>
+                    <strong>6</strong>
+                </div>
+                <div class="readout-row">
+                    <span>Neutrons</span>
+                    <strong>6</strong>
+                </div>
+                <div class="readout-row">
+                    <span>Net charge</span>
+                    <strong id="net-readout">0e</strong>
+                </div>
+                <div id="charge-state">Neutral atom</div>
+            </div>
+
+            <div class="legend">
+                <span class="dot" style="background: var(--positive);"></span>
+                <span>Positive charge, protons</span>
+                <span class="dot" style="background: var(--negative);"></span>
+                <span>Negative charge, electrons</span>
+                <span class="dot" style="background: var(--neutral);"></span>
+                <span>Neutrons, no electric charge</span>
+            </div>
+
+            <p class="hint">
+                Moving electrons changes the net charge of the whole atom/object. The protons remain in the nucleus;
+                ordinary charging is usually electron gain or loss.
+            </p>
+        </aside>
+
+        <main id="scene-container">
+            <div id="caption">Microscopic view: count the protons and electrons. Equal counts give zero net charge.</div>
+        </main>
+    </div>
+
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+
+    <script>
+        const PROTONS = 6;
+        const NEUTRONS = 6;
+        const MIN_ELECTRONS = 2;
+        const MAX_ELECTRONS = 10;
+        const POSITIVE_COLOR = 0xef4444;
+        const NEGATIVE_COLOR = 0x3b82f6;
+        const NEUTRON_COLOR = 0x94a3b8;
+
+        let electronCount = 6;
+        let scaleT = 0;
+
+        const container = document.getElementById('scene-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        const microCameraPosition = new THREE.Vector3(8, 6, 14);
+        const macroCameraPosition = new THREE.Vector3(0, 3, 34);
+        camera.position.copy(microCameraPosition);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.35;
+        controls.enablePan = false;
+        controls.minDistance = 7;
+        controls.maxDistance = 30;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+        const keyLight = new THREE.PointLight(0xffffff, 1.1);
+        keyLight.position.set(7, 7, 8);
+        scene.add(keyLight);
+        const fillLight = new THREE.DirectionalLight(0x7dd3fc, 0.55);
+        fillLight.position.set(-5, 4, -7);
+        scene.add(fillLight);
+
+        const microGroup = new THREE.Group();
+        const macroGroup = new THREE.Group();
+        scene.add(microGroup, macroGroup);
+
+        const protonMat = new THREE.MeshStandardMaterial({
+            color: POSITIVE_COLOR,
+            emissive: 0x3b0707,
+            roughness: 0.25,
+            metalness: 0.2
+        });
+        const neutronMat = new THREE.MeshStandardMaterial({
+            color: NEUTRON_COLOR,
+            emissive: 0x0b1220,
+            roughness: 0.25,
+            metalness: 0.2
+        });
+        const electronMat = new THREE.MeshStandardMaterial({
+            color: NEGATIVE_COLOR,
+            emissive: 0x123f8f,
+            emissiveIntensity: 1.4
+        });
+        const nucleusGeo = new THREE.SphereGeometry(0.58, 28, 20);
+        const electronGeo = new THREE.SphereGeometry(0.22, 18, 14);
+
+        const nucleusGroup = new THREE.Group();
+        microGroup.add(nucleusGroup);
+
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+        for (let i = 0; i < PROTONS + NEUTRONS; i++) {
+            const y = 1 - (i / (PROTONS + NEUTRONS - 1)) * 2;
+            const radius = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = i * goldenAngle;
+            const clusterRadius = i < 2 ? 0.14 : 0.78 + (i % 2) * 0.11;
+            const isProton = i % 2 === 0;
+            const mesh = new THREE.Mesh(nucleusGeo, isProton ? protonMat : neutronMat);
+            mesh.position.set(
+                Math.cos(theta) * radius * clusterRadius,
+                y * clusterRadius,
+                Math.sin(theta) * radius * clusterRadius
+            );
+            nucleusGroup.add(mesh);
+        }
+
+        function createGlowTexture(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const electronGlow = createGlowTexture('#3b82f6');
+        const orbits = [];
+        const electrons = [];
+
+        function createOrbit(radius, tilt, rotation, opacity) {
+            const group = new THREE.Group();
+            group.rotation.x = tilt;
+            group.rotation.y = rotation;
+            microGroup.add(group);
+
+            const orbit = new THREE.Mesh(
+                new THREE.TorusGeometry(radius, 0.025, 12, 96),
+                new THREE.MeshBasicMaterial({ color: NEGATIVE_COLOR, transparent: true, opacity })
+            );
+            orbit.rotation.x = Math.PI / 2;
+            group.add(orbit);
+            const orbitData = { group, radius, orbit, speed: radius < 4 ? 0.024 : 0.015 };
+            orbits.push(orbitData);
+            return orbitData;
+        }
+
+        const innerOrbit = createOrbit(3.2, Math.PI / 3, 0, 0.17);
+        const outerOrbit = createOrbit(6.0, Math.PI / 2.7, -Math.PI / 7, 0.11);
+
+        for (let i = 0; i < MAX_ELECTRONS; i++) {
+            const mesh = new THREE.Mesh(electronGeo, electronMat);
+            const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: electronGlow,
+                transparent: true,
+                blending: THREE.AdditiveBlending
+            }));
+            glow.scale.set(1.35, 1.35, 1.35);
+            mesh.add(glow);
+            const orbit = i < 2 ? innerOrbit : outerOrbit;
+            orbit.group.add(mesh);
+            electrons.push({
+                mesh,
+                orbit,
+                slot: i < 2 ? i : i - 2,
+                angle: 0
+            });
+        }
+
+        const macroSphereMat = new THREE.MeshStandardMaterial({
+            color: NEUTRON_COLOR,
+            transparent: true,
+            opacity: 0,
+            roughness: 0.35,
+            emissive: 0x111827,
+            emissiveIntensity: 0.4
+        });
+        const macroSphere = new THREE.Mesh(new THREE.SphereGeometry(3.4, 56, 36), macroSphereMat);
+        macroGroup.add(macroSphere);
+
+        const macroHaloMat = new THREE.SpriteMaterial({
+            map: createGlowTexture('#ffffff'),
+            color: NEUTRON_COLOR,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending
+        });
+        const macroHalo = new THREE.Sprite(macroHaloMat);
+        macroHalo.scale.set(10, 10, 10);
+        macroGroup.add(macroHalo);
+
+        function makeTextSprite(text, color = '#eef2f7') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.72)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+            ctx.fillStyle = color;
+            ctx.font = '700 34px Inter, Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+            const texture = new THREE.CanvasTexture(canvas);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+            sprite.scale.set(5.8, 1.45, 1);
+            return sprite;
+        }
+
+        let macroLabel = makeTextSprite('q_net = 0');
+        let macroLabelText = 'q_net = 0';
+        macroLabel.position.set(0, 4.35, 0);
+        macroGroup.add(macroLabel);
+
+        function signedE(value) {
+            if (value > 0) return `+${value}e`;
+            if (value < 0) return `${value}e`;
+            return '0e';
+        }
+
+        function setMaterialOpacity(material, opacity) {
+            material.opacity = opacity;
+            material.transparent = opacity < 1;
+        }
+
+        function updateUI() {
+            const netCharge = PROTONS - electronCount;
+            document.getElementById('electron-readout').textContent = String(electronCount);
+            document.getElementById('net-readout').textContent = signedE(netCharge);
+            document.getElementById('remove-electron').disabled = electronCount <= MIN_ELECTRONS;
+            document.getElementById('add-electron').disabled = electronCount >= MAX_ELECTRONS;
+
+            const state = document.getElementById('charge-state');
+            if (netCharge > 0) {
+                state.textContent = `Positive ion: ${Math.abs(netCharge)} electron${Math.abs(netCharge) === 1 ? '' : 's'} missing.`;
+                state.style.color = '#fecaca';
+            } else if (netCharge < 0) {
+                state.textContent = `Negative ion: ${Math.abs(netCharge)} extra electron${Math.abs(netCharge) === 1 ? '' : 's'}.`;
+                state.style.color = '#bfdbfe';
+            } else {
+                state.textContent = 'Neutral atom: positive and negative charges cancel.';
+                state.style.color = '#e5e7eb';
+            }
+        }
+
+        function updateElectrons() {
+            const innerCount = Math.min(electronCount, 2);
+            const outerCount = Math.max(0, electronCount - 2);
+            electrons.forEach((electron, index) => {
+                const visible = index < electronCount;
+                electron.mesh.visible = visible;
+                if (!visible) return;
+                const countOnOrbit = index < 2 ? innerCount : outerCount;
+                const slot = index < 2 ? index : index - 2;
+                electron.angle = (slot / Math.max(1, countOnOrbit)) * Math.PI * 2 + (index < 2 ? 0 : Math.PI / 9);
+            });
+        }
+
+        function replaceMacroLabel(text, color) {
+            if (text === macroLabelText) return;
+            macroGroup.remove(macroLabel);
+            macroLabel.material.map.dispose?.();
+            macroLabel.material.dispose?.();
+            macroLabel = makeTextSprite(text, color);
+            macroLabelText = text;
+            macroLabel.position.set(0, 4.35, 0);
+            macroGroup.add(macroLabel);
+        }
+
+        function updateSceneState() {
+            scaleT = Number(document.getElementById('scale-slider').value) / 100;
+            const netCharge = PROTONS - electronCount;
+            const microOpacity = Math.max(0, 1 - scaleT * 1.35);
+            const macroOpacity = Math.max(0, Math.min(1, (scaleT - 0.18) / 0.82));
+            const chargeColor = netCharge > 0 ? POSITIVE_COLOR : (netCharge < 0 ? NEGATIVE_COLOR : NEUTRON_COLOR);
+            camera.position.copy(microCameraPosition).lerp(macroCameraPosition, scaleT);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+
+            document.getElementById('scale-readout').textContent = scaleT < 0.45 ? 'Microscopic' : (scaleT < 0.8 ? 'Transition' : 'Macroscopic');
+            document.getElementById('caption').textContent = scaleT < 0.45
+                ? 'Microscopic view: count the protons and electrons. Equal counts give zero net charge.'
+                : scaleT < 0.8
+                    ? 'Zooming out: the internal charged particles become too small to track one by one.'
+                    : 'Macroscopic view: we represent the whole atom/object by its net charge q_net.';
+
+            microGroup.traverse(object => {
+                if (!object.material) return;
+                if (Array.isArray(object.material)) return;
+                setMaterialOpacity(object.material, microOpacity);
+            });
+            microGroup.visible = microOpacity > 0.02;
+
+            macroSphereMat.color.setHex(chargeColor);
+            macroSphereMat.emissive.setHex(chargeColor);
+            macroSphereMat.emissiveIntensity = netCharge === 0 ? 0.14 : 0.42;
+            macroSphereMat.opacity = 0.18 + macroOpacity * 0.58;
+            macroSphere.visible = macroOpacity > 0.02;
+            macroHalo.material.color.setHex(chargeColor);
+            macroHalo.material.opacity = macroOpacity * (netCharge === 0 ? 0.12 : 0.36);
+            replaceMacroLabel(`q_net = ${signedE(netCharge)}`, netCharge > 0 ? '#fecaca' : (netCharge < 0 ? '#bfdbfe' : '#e5e7eb'));
+            macroLabel.material.opacity = macroOpacity;
+            macroLabel.visible = macroOpacity > 0.05;
+
+            updateUI();
+        }
+
+        function resize() {
+            const width = Math.max(container.clientWidth, 1);
+            const height = Math.max(container.clientHeight, 1);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        document.getElementById('scale-slider').addEventListener('input', updateSceneState);
+        document.getElementById('remove-electron').addEventListener('click', () => {
+            if (electronCount > MIN_ELECTRONS) {
+                electronCount -= 1;
+                updateElectrons();
+                updateSceneState();
+            }
+        });
+        document.getElementById('add-electron').addEventListener('click', () => {
+            if (electronCount < MAX_ELECTRONS) {
+                electronCount += 1;
+                updateElectrons();
+                updateSceneState();
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            orbits.forEach(orbit => {
+                orbit.electrons = electrons.filter(electron => electron.orbit === orbit && electron.mesh.visible);
+            });
+
+            electrons.forEach(electron => {
+                if (!electron.mesh.visible) return;
+                electron.angle += electron.orbit.speed;
+                electron.mesh.position.x = Math.cos(electron.angle) * electron.orbit.radius;
+                electron.mesh.position.z = Math.sin(electron.angle) * electron.orbit.radius;
+            });
+
+            nucleusGroup.rotation.y += 0.004;
+            nucleusGroup.rotation.z += 0.002;
+            macroGroup.rotation.y += 0.0025;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', resize);
+
+        resize();
+        updateElectrons();
+        updateSceneState();
+        animate();
+    </script>
+</body>
+
+</html>

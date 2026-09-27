@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Cyclotron Frequency</title>
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="ch3_1_lorentz_force.html">Magnetostatics</a> > 
+                Derivation: Cyclotron Frequency
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>Deep Dive: Cyclotron Frequency</h1>
+        <div class="iframe-container"><iframe src="diagrams/dd_derivation_cyclotron_frequency.html"></iframe></div>
+<section>
+    <h2>Motion in a Uniform Magnetic Field</h2>
+    <p>
+        Consider a charged particle of mass <em>m</em> and charge <em>q</em>, moving in a region where there exists a uniform magnetic field <strong>B</strong>. If we assume there is no electric field present, the motion of the particle is governed exclusively by the magnetic component of the Lorentz force law:
+    </p>
+
+    <div class="math-block">
+        $$ \mathbf{F} = q(\mathbf{v} \times \mathbf{B}) $$
+    </div>
+
+    <p>
+        There is a crucial physical consequence hidden in this cross product: the magnetic force is always perpendicular to the velocity. Since the force is perpendicular to the motion, it does no work on the particle ($W = \int \mathbf{F} \cdot d\mathbf{l} = 0$). Consequently, the kinetic energy is conserved, and the speed <em>v</em> remains constant.
+    </p>
+
+    <p>
+        Now, let us restrict our attention to the case where the initial velocity is perpendicular to the magnetic field. For the sake of argument, let <strong>B</strong> point in the <em>z</em>-direction, while the particle moves in the <em>xy</em>-plane. Since the force is constant in magnitude ($qvB$) and always perpendicular to the direction of motion, the particle will execute uniform circular motion.
+    </p>
+</section>
+
+<section>
+    <h3>Deriving the Cyclotron Radius</h3>
+    <p>
+        To find the geometry of this orbit, we recall from mechanics that circular motion requires a centripetal force directed toward the center of the circle. In this system, the magnetic force provides precisely that centripetal acceleration. By equating the magnitude of the magnetic force to the centripetal term (Newton's second law), we have:
+    </p>
+
+    <div class="math-block">
+        $$ qvB = m \frac{v^2}{R} $$
+    </div>
+
+    <p>
+        where <em>R</em> is the radius of the circle. We can easily solve for <em>R</em> by canceling one factor of <em>v</em>:
+    </p>
+
+    <div class="math-block">
+        $$ R = \frac{mv}{qB} $$
+    </div>
+
+    <p>
+        This is the <strong>cyclotron radius</strong> (or Larmor radius). As you might suspect, the radius is proportional to the momentum ($p = mv$) of the particle and inversely proportional to the strength of the magnetic field. A heavier, faster particle swings out in a wide arc; a strong magnetic field tightens the orbit.
+    </p>
+</section>
+
+<section>
+    <h3>Deriving the Cyclotron Frequency</h3>
+    <p>
+        We are often less interested in the spatial size of the orbit than in the periodicity of the motion. The angular frequency, $\omega$, is related to the linear speed and the radius by the kinematic relationship $v = \omega R$. Substituting our expression for <em>R</em> back into this relationship yields:
+    </p>
+
+    <div class="math-block">
+        $$ \omega = \frac{v}{R} = \frac{v}{(mv/qB)} $$
+    </div>
+
+    <p>
+        The speed cancels out entirely, leaving us with a result of fundamental importance:
+    </p>
+
+    <div class="math-block">
+        $$ \omega = \frac{qB}{m} $$
+    </div>
+
+    <p>
+        This is the <strong>cyclotron frequency</strong>. Notice the remarkable feature of this result: $\omega$ is independent of the speed of the particle (and the radius of the orbit). All particles with the same charge-to-mass ratio revolve with the same period, regardless of their energy. This property is the operating principle behind the cyclotron particle accelerator.
+    </p>
+</section>
+    </main>
+    <footer></footer>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Potential</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    hat: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}",
+                    dtau: "d\\tau",
+                    rcurs: "\\mathcal{r}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons (Styled like ch1_2) */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > Electric
+                Potential
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Electric Potential</h1>
+
+        <p>
+            The Electric Field \(\vec{E}\) is a vector quantity, which makes it computationally expensive to handle. To
+            simplify the analysis of electrostatics, we introduce a scalar field: the <strong>Electric Potential
+                (\(V\))</strong>.
+        </p>
+        <p>
+            The useful idea is that \(V\) stores the same electrostatic information in a scalar form. Once we know the
+            potential at two points, we can compare them directly: moving a charge \(Q\) from \(a\) to \(b\) involves the
+            potential difference \(\Delta V = V_b - V_a\). The electric field does work
+            \(W_{\text{field}} = Q(V_a - V_b)\), so in many problems we can avoid following the full vector field along
+            the path and just compare the endpoint potentials.
+        </p>
+
+
+        <!-- SECTION 1: DEFINITION -->
+        <section data-concept-title="1. Definition and The Curl" id="concept-1-1-definition-and-the-curl">
+            <h2>1. Definition and The Curl</h2>
+            <p>
+                The definition of potential relies entirely on a specific property of the electrostatic field. Because
+                the field is conservative, its <strong>curl is zero</strong> everywhere.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \nabla \times \vec{E} = 0 $$
+            </div>
+
+            <p>
+                A vector field with zero curl can always be written as the gradient of a scalar. This allows us to
+                define \(V\) such that:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{E} = - \nabla V $$
+            </div>
+
+            <p>
+                To find the potential at a specific point \(\vec{r}\), we integrate the field from a reference point
+                \(\mathcal{O}\):
+            </p>
+
+            <div class="math-block">
+                $$ V(\vec{r}) = - \int_{\mathcal{O}}^{\vec{r}} \vec{E} \cdot d\vec{l} $$
+            </div>
+
+            <p>
+                <strong>What is \(\mathcal{O}\)?</strong><br>
+                The symbol \(\mathcal{O}\) represents the standard reference point where we agree that \(V=0\). For
+                localized charge distributions (like a single atom or a charged ball), we typically place this reference
+                point at <strong>infinity</strong> (\(\infty\)).
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_3_curl_potential_connection.html?back=ch1_3_electric_potential.html%23concept-1-1-definition-and-the-curl"><span aria-hidden="true">+</span> Deep Dive: Derivation & The Curl Condition</a>
+            </div>
+
+            <p>
+                The simulator below visualizes \(V\) as a color map. Red means positive potential, blue means negative
+                potential, and black means the potential is close to zero. Brighter color means a larger magnitude
+                \(|V|\). Place charges, move the pointer over the canvas to read \(V\), and try the listed experiments
+                to see how equipotentials change for single charges, dipoles, and multiple charges.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/potential_simulator.html" title="V Simulator"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 2: LOCALIZED CHARGE -->
+        <section data-concept-title="2. Potential of a Localized Charge Distribution" id="concept-2-2-potential-of-a-localized-charge-distribution">
+            <h2>2. Potential of a Localized Charge Distribution</h2>
+            <p>
+                Typically, we know where the charge is (we know \(\rho\)), and we want to find \(\vec{E}\). We
+                <em>could</em> use Coulomb's Law, but vector integrals are difficult.
+            </p>
+            <p>
+                The strategy is to find \(V\) first. Poisson's equation (\(\nabla^2 V = -\rho/\epsilon_0\)) relates the
+                two, but it is a differential equation. To solve for \(V\) directly from \(\rho\), we essentially
+                "invert" Poisson's equation.
+            </p>
+            <p>
+                By summing the potential contributions of infinitesimal charge elements \(dq = \rho d\tau'\), we arrive
+                at the superposition integral:
+            </p>
+
+            <div class="math-block">
+                $$ V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \int \frac{\rho(\vec{r}')}{|\vec{r} - \vec{r}'|} d\tau' $$
+            </div>
+
+            <p>
+                This scalar integral is generally much easier to compute than the vector integral required for Coulomb's
+                Law. Once we have \(V\), we simply take the gradient (\(-\nabla V\)) to get the field.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_3_potential_derivation_examples.html?back=ch1_3_electric_potential.html%23concept-2-2-potential-of-a-localized-charge-distribution#localized"><span aria-hidden="true">+</span> Deep Dive: Calculations & Examples</a>
+            </div>
+
+            <p>
+                In the next simulator, the left canvas is where you draw a charge distribution and the right canvas
+                shows the resulting potential. The same color rule applies: red is positive \(V\), blue is negative
+                \(V\), black is near zero, and brighter color means a larger \(|V|\). Use it to compare a few separated
+                charges with a smoother continuous distribution.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/continuous_potential.html" title="Continuous Charge Drawing"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 3: BOUNDARY CONDITIONS -->
+        <section data-concept-title="3. Boundary Conditions" id="concept-3-3-boundary-conditions">
+            <h2>3. Boundary Conditions</h2>
+            <p>
+                Why do we study boundary conditions? In many problems, we don't know the charge distribution \(\rho\)
+                everywhere. Instead, we have to solve Laplace's Equation (\(\nabla^2 V = 0\)) in different regions and
+                "stitch" the solutions together at the boundaries.
+            </p>
+            <p>
+                When crossing a surface charge density \(\sigma\), the electric field \(\vec{E}\) suffers a
+                discontinuity. However, the potential \(V\) remains continuous.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ V_{\text{above}} = V_{\text{below}} $$
+                $$ \frac{\partial V_{\text{above}}}{\partial n} - \frac{\partial V_{\text{below}}}{\partial n} =
+                -\frac{\sigma}{\epsilon_0} $$
+            </div>
+
+            <p>
+                This means the potential function does not "jump" at boundaries, but its slope (the normal derivative)
+                changes sharply, corresponding to the discontinuity in the electric field.
+            </p>
+
+
+            
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_3_potential_dicsontinuety.html?back=ch1_3_electric_potential.html%23concept-3-3-boundary-conditions#boundary"><span aria-hidden="true">+</span> Deep Dive: Boundary Conditions</a>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ampere's Law - General Case</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script src="vendor/katex/katex.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .header {
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(15,23,42,0));
+            text-align: center;
+            pointer-events: auto;
+        }
+        h1 { margin: 0; color: #f8fafc; font-size: 22px; }
+        .subtitle { margin-top: 8px; color: #94a3b8; font-size: 14px; }
+
+        .controls-area {
+            padding: 20px;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid #475569;
+            padding: 20px;
+            border-radius: 16px;
+            color: #e2e8f0;
+            min-width: 280px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #cbd5e1;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        button:hover { background: #334155; color: white; border-color: #64748b; }
+        button.add-pos { border-color: rgba(239, 68, 68, 0.5); color: #fca5a5; }
+        button.add-pos:hover { background: rgba(239, 68, 68, 0.2); }
+        button.add-neg { border-color: rgba(59, 130, 246, 0.5); color: #93c5fd; }
+        button.add-neg:hover { background: rgba(59, 130, 246, 0.2); }
+
+        /* Slider */
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: #475569;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            margin: 10px 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #fbbf24;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #1e293b;
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        .stat-val { font-family: 'Fira Code', monospace; font-weight: 700; }
+        
+        .match-indicator {
+            text-align: center;
+            padding: 8px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid #059669;
+            color: #34d399;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 15px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .match-indicator.visible { opacity: 1; }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            top: 20px; right: 20px;
+            text-align: right;
+            font-size: 12px;
+            color: #94a3b8;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            pointer-events: auto;
+        }
+        .key { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 6px; }
+        .key:last-child { margin-bottom: 0; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; margin-left: 10px; }
+
+        /* Wire Labels */
+        .wire-label {
+            position: absolute;
+            color: white;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 6px;
+            border-radius: 4px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+        }
+
+    </style>
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "vendor/three/build/three.module.js",
+                "three/addons/": "vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="header">
+            <h1 id="title-tex"></h1>
+            <div class="subtitle">Drag the loop. Add wires. Verify the law in a non-symmetrical setup.</div>
+        </div>
+        
+        <div class="legend">
+            <div class="key">Current OUT (+)<span class="dot" style="background:#ef4444"></span></div>
+            <div class="key">Current IN (-)<span class="dot" style="background:#3b82f6"></span></div>
+            <div class="key">B Field<span class="dot" style="background:#38bdf8"></span></div>
+            <div class="key">Path dl<span class="dot" style="background:#fbbf24"></span></div>
+        </div>
+
+        <div class="controls-area">
+            <div class="panel">
+                <div class="panel-title">Scene Controls</div>
+                <div class="btn-group">
+                    <button class="add-pos" onclick="addWire(1)">+ Wire</button>
+                    <button class="add-neg" onclick="addWire(-1)">- Wire</button>
+                    <button onclick="clearWires()">Clear</button>
+                </div>
+                <div class="panel-title" style="margin-top:20px;">Loop Radius</div>
+                <input type="range" id="radiusSlider" min="2" max="9" step="0.1" value="5">
+            </div>
+
+            <div class="panel">
+                <div class="stat-row">
+                    <span id="tex-integral"></span>
+                    <span class="stat-val" id="val-integral" style="color:#fbbf24">0.00</span>
+                </div>
+                <div class="stat-row">
+                    <span id="tex-enc"></span>
+                    <span class="stat-val" id="val-enc" style="color:#e2e8f0">0.00</span>
+                </div>
+                <div class="match-indicator visible" id="match-box">AMPÈRE'S LAW VERIFIED</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container for Wire Labels -->
+    <div id="labels-container"></div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- KaTeX Rendering ---
+        document.addEventListener("DOMContentLoaded", () => {
+            katex.render("\\text{Ampère's Law: } \\oint \\mathbf{B} \\cdot d\\mathbf{l} = \\mu_0 I_{\\text{enc}}", document.getElementById('title-tex'), { throwOnError: false });
+            katex.render("\\oint \\mathbf{B} \\cdot d\\mathbf{l}", document.getElementById('tex-integral'), { throwOnError: false });
+            katex.render("\\mu_0 \\sum I_{\\text{enc}}", document.getElementById('tex-enc'), { throwOnError: false });
+        });
+
+        // --- Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 25, 20);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.enableDamping = true;
+        orbit.maxPolarAngle = Math.PI / 2 - 0.1;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0x404040, 3));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // Grid
+        const grid = new THREE.GridHelper(50, 50, 0x1e293b, 0x1e293b);
+        scene.add(grid);
+
+        // --- State ---
+        const wires = []; 
+        let loopState = { x: 0, z: 0, r: 5 };
+
+        // --- Objects ---
+        const loopGroup = new THREE.Group();
+        scene.add(loopGroup);
+
+        // Loop Mesh
+        // Note: TorusGeometry is in XY plane. We rotate the MESH to lie flat (XZ).
+        const loopGeo = new THREE.TorusGeometry(loopState.r, 0.08, 32, 100);
+        const loopMesh = new THREE.Mesh(loopGeo, new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+        loopMesh.rotation.x = -Math.PI / 2; // Flat on ground
+        loopGroup.add(loopMesh);
+
+        // Drag Plane
+        const dragPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        dragPlane.rotation.x = -Math.PI / 2;
+        scene.add(dragPlane);
+
+        // Vectors
+        const vectorGroup = new THREE.Group();
+        scene.add(vectorGroup);
+
+        // --- Interaction ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+
+        window.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', () => { isDragging = false; orbit.enabled = true; });
+
+        function onMouseDown(event) {
+            updateMouse(event);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(dragPlane);
+            if (intersects.length > 0) {
+                const pt = intersects[0].point;
+                const dist = Math.sqrt(Math.pow(pt.x - loopState.x, 2) + Math.pow(pt.z - loopState.z, 2));
+                // Click anywhere inside or near loop to drag
+                if (dist < loopState.r + 2) {
+                    isDragging = true;
+                    orbit.enabled = false;
+                }
+            }
+        }
+
+        function onMouseMove(event) {
+            if (!isDragging) return;
+            updateMouse(event);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(dragPlane);
+            if (intersects.length > 0) {
+                loopState.x = intersects[0].point.x;
+                loopState.z = intersects[0].point.z;
+                updateLoopVisuals();
+            }
+        }
+
+        function updateMouse(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        // --- Logic ---
+
+        function createWireLabel(wireObj) {
+            const div = document.createElement('div');
+            div.className = 'wire-label';
+            const sign = wireObj.current > 0 ? '+' : '';
+            div.textContent = `I = ${sign}${wireObj.current.toFixed(1)}`;
+            document.getElementById('labels-container').appendChild(div);
+            return div;
+        }
+
+        window.addWire = (current) => {
+            const x = (Math.random() - 0.5) * 12;
+            const z = (Math.random() - 0.5) * 12;
+            
+            const geo = new THREE.CylinderGeometry(0.15, 0.15, 40, 16);
+            const color = current > 0 ? 0xef4444 : 0x3b82f6;
+            const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.2 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, 0, z);
+            
+            scene.add(mesh);
+            
+            const label = createWireLabel({current, x, z});
+            
+            wires.push({ mesh, current, x, z, label });
+            updateLoopVisuals();
+        };
+
+        window.clearWires = () => {
+            wires.forEach(w => {
+                scene.remove(w.mesh);
+                w.label.remove();
+            });
+            wires.length = 0;
+            updateLoopVisuals();
+        };
+
+        // Add initial wires
+        addWire(1);
+        addWire(-1);
+        addWire(1);
+
+        function getFieldAt(px, pz) {
+            let Bx = 0;
+            let Bz = 0;
+            wires.forEach(w => {
+                const dx = px - w.x;
+                const dz = pz - w.z;
+                const r2 = dx*dx + dz*dz;
+                if (r2 < 0.001) return;
+                const mag = w.current / r2; 
+                Bx += -dz * mag;
+                Bz += dx * mag;
+            });
+            return new THREE.Vector3(Bx, 0, Bz);
+        }
+
+        function updateLoopVisuals() {
+            // 1. Update Loop Position
+            loopGroup.position.set(loopState.x, 0, loopState.z);
+
+            // 2. Update Loop Geometry (Radius)
+            const r = parseFloat(document.getElementById('radiusSlider').value);
+            if (Math.abs(r - loopState.r) > 0.01) {
+                loopState.r = r;
+                loopMesh.geometry.dispose();
+                // Create geometry in standard XY orientation
+                loopMesh.geometry = new THREE.TorusGeometry(r, 0.08, 64, 100);
+                // No geometry rotation here! Mesh rotation handles orientation.
+            }
+
+            // 3. Integration
+            vectorGroup.clear();
+            let integral = 0;
+            const segments = 80;
+            
+            for(let i=0; i<segments; i++) {
+                const theta = (i/segments) * Math.PI * 2;
+                
+                // Local coords (on XZ plane relative to loop center)
+                const lx = loopState.r * Math.cos(theta);
+                const lz = loopState.r * Math.sin(theta);
+                
+                const wx = loopState.x + lx;
+                const wz = loopState.z + lz;
+                
+                // Tangent vector (CCW)
+                const dlDir = new THREE.Vector3(-Math.sin(theta), 0, Math.cos(theta));
+                const dlLen = (2 * Math.PI * loopState.r) / segments;
+                
+                const B = getFieldAt(wx, wz);
+                integral += B.dot(dlDir) * dlLen;
+
+                // Visuals
+                if (i % 4 === 0) {
+                    const bLen = B.length();
+                    if (bLen > 0.05) {
+                        const arrow = new THREE.ArrowHelper(
+                            B.clone().normalize(),
+                            new THREE.Vector3(wx, 0, wz),
+                            Math.min(bLen, 2.5),
+                            0x38bdf8, 0.3, 0.2
+                        );
+                        vectorGroup.add(arrow);
+                    }
+                }
+            }
+
+            // 4. Enclosed Current
+            let encCurrent = 0;
+            wires.forEach(w => {
+                const dx = w.x - loopState.x;
+                const dz = w.z - loopState.z;
+                if (Math.sqrt(dx*dx + dz*dz) < loopState.r) {
+                    encCurrent += w.current;
+                }
+            });
+
+            // 5. UI Update
+            // Normalize: In our units (mu0/2pi = 1), Integral = I * 2pi.
+            const displayIntegral = integral / (2 * Math.PI);
+            
+            document.getElementById('val-integral').innerText = displayIntegral.toFixed(2);
+            document.getElementById('val-enc').innerText = encCurrent.toFixed(2);
+
+            const diff = Math.abs(displayIntegral - encCurrent);
+            const badge = document.getElementById('match-box');
+            if (diff < 0.1) {
+                badge.innerText = "AMPÈRE'S LAW VERIFIED";
+                badge.style.borderColor = "#059669";
+                badge.style.color = "#34d399";
+                badge.style.background = "rgba(16, 185, 129, 0.15)";
+            } else {
+                badge.innerText = "BOUNDARY SINGULARITY";
+                badge.style.borderColor = "#d97706";
+                badge.style.color = "#fbbf24";
+                badge.style.background = "rgba(245, 158, 11, 0.15)";
+            }
+        }
+
+        function updateLabels() {
+            wires.forEach(w => {
+                const pos = new THREE.Vector3(w.x, 5, w.z);
+                pos.project(camera);
+                
+                const x = (pos.x * .5 + .5) * window.innerWidth;
+                const y = (pos.y * -.5 + .5) * window.innerHeight;
+                
+                w.label.style.left = `${x}px`;
+                w.label.style.top = `${y}px`;
+                
+                // Hide if behind camera
+                if (pos.z > 1) w.label.style.display = 'none';
+                else w.label.style.display = 'block';
+            });
+        }
+
+        document.getElementById('radiusSlider').addEventListener('input', updateLoopVisuals);
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            orbit.update();
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+        updateLoopVisuals();
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ch3_3_div_curl_B_c1.0.offline.js"></script>
+
+
+
+</body>
+</html>

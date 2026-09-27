@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coulomb's Law Geometry</title>
+
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            macros: {
+                '\\rsep': '{\\text{𝓻}}',
+                '\\vecrsep': '{\\vec{\\text{𝓻}}}',
+                '\\hatrsep': '{\\hat{\\text{𝓻}}}'
+            },
+            throwOnError: false
+        });"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            color: #e5e5e5;
+            font-family: 'Inter', sans-serif;
+            touch-action: none;
+            position: relative;
+        }
+
+        #scene-stage {
+            position: fixed;
+            inset: 0;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #scene-stage canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .math-label {
+            color: #eee;
+            font-size: 1.2rem;
+            font-weight: 700;
+            pointer-events: none;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 3px #000;
+            white-space: nowrap;
+        }
+
+        .charge-label {
+            padding: 2px 7px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.72);
+        }
+
+        #ui-panel {
+            position: absolute;
+            inset: 0 auto 0 0;
+            z-index: 10;
+            width: 312px;
+            box-sizing: border-box;
+            padding: 16px;
+            overflow: hidden;
+            user-select: none;
+            color: #e5e5e5;
+            background: rgba(18, 18, 18, 0.96);
+            border-right: 1px solid #333;
+            box-shadow: 8px 0 32px rgba(0, 0, 0, 0.36);
+            backdrop-filter: blur(12px);
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            color: #60a5fa;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .math-block {
+            margin: 10px 0;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            text-align: center;
+            font-size: 1em;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .law-formula {
+            display: flex;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        .notation-definitions {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 6px 10px;
+            margin-top: 7px;
+            font-size: 11px;
+            line-height: 1.25;
+            text-align: left;
+        }
+
+        .notation-definitions div {
+            min-width: 0;
+            white-space: normal;
+        }
+
+        .notation-definitions strong {
+            color: #93c5fd;
+        }
+
+        .notation-definitions .separation-definition {
+            grid-column: 1 / -1;
+        }
+
+        .description,
+        .slider-row,
+        .legend {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .description {
+            margin-bottom: 12px;
+            color: #a1a1aa;
+        }
+
+        .control-stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .slider-row {
+            display: grid;
+            gap: 6px;
+            color: #d4d4d8;
+        }
+
+        .slider-row label {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #60a5fa;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid #333;
+            color: #d4d4d8;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .experiment-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid #333;
+        }
+
+        .experiment-grid button {
+            padding: 8px;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: #e5e7eb;
+            background: #18181b;
+            font: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .experiment-grid button:hover {
+            border-color: #60a5fa;
+            color: #fff;
+        }
+
+        .experiment-grid button.active {
+            border-color: #60a5fa;
+            color: #fff;
+            background: rgba(37, 99, 235, 0.38);
+            box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.45) inset;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #scene-stage {
+                position: relative;
+                inset: auto;
+                grid-column: 1;
+                grid-row: 1;
+                align-self: stretch;
+            }
+
+            #ui-panel {
+                position: relative;
+                inset: auto;
+                grid-column: 1;
+                grid-row: 2;
+                width: 100%;
+                max-height: none;
+                padding: 9px 10px 10px;
+                border-right: 0;
+                border-top: 1px solid #333;
+                overflow: hidden;
+            }
+
+            .math-block {
+                margin: 6px 0;
+                padding: 7px 9px;
+            }
+
+            .notation-definitions {
+                margin-top: 4px;
+                font-size: 10px;
+            }
+
+            .description {
+                margin-bottom: 8px;
+            }
+
+            .control-stack {
+                grid-template-columns: 1fr 1fr;
+                gap: 5px 8px;
+            }
+
+            .legend {
+                grid-column: 1 / -1;
+                grid-template-columns: auto 1fr auto 1fr;
+                gap: 4px 6px;
+                padding-top: 5px;
+                font-size: 10.5px;
+            }
+
+            .experiment-grid {
+                grid-column: 1 / -1;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 5px;
+                padding-top: 5px;
+            }
+
+            .experiment-grid button {
+                min-height: 34px;
+                padding: 5px 3px;
+                font-size: 10px;
+            }
+
+            .math-label {
+                font-size: 1rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div id="ui-panel">
+        <h2>Coulomb's Law</h2>
+        <div class="math-block">
+            <div class="law-formula">
+                $$ \vec{F}_Q = \frac{1}{4\pi\epsilon_0} \frac{q Q}{\rsep^2}\hatrsep $$
+            </div>
+            <div class="notation-definitions">
+                <div><strong>$\vec{r}'$</strong>: source position of $q$</div>
+                <div><strong>$\vec{r}$</strong>: test position of $Q$</div>
+                <div class="separation-definition"><strong>$\vecrsep$</strong> = $\vec{r}-\vec{r}'$</div>
+            </div>
+        </div>
+
+        <div class="control-stack">
+            <div class="slider-row">
+                <label for="source-mag">
+                    <span>Source charge $q$</span>
+                    <strong><span id="source-value">+3</span> units</strong>
+                </label>
+                <input type="range" id="source-mag" min="-5" max="5" step="1" value="3">
+            </div>
+
+            <div class="slider-row">
+                <label for="test-mag">
+                    <span>Test charge $Q$</span>
+                    <strong><span id="test-value">+3</span> units</strong>
+                </label>
+                <input type="range" id="test-mag" min="-5" max="5" step="1" value="3">
+            </div>
+
+            <div class="legend">
+                <div class="dot" style="background:#ef4444;"></div>
+                <div>Positive charge</div>
+
+                <div class="dot" style="background:#3b82f6;"></div>
+                <div>Negative charge</div>
+
+                <div class="dot" style="background:#60a5fa;"></div>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-sep" checked> Separation vector $\vecrsep$
+                </label>
+
+                <div class="dot" style="background:#fcd34d;"></div>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-hat"> Unit vector $\hatrsep$
+                </label>
+
+                <div class="dot" style="background:#94a3b8;"></div>
+                <label class="checkbox-group">
+                    Distance $\rsep=|\vecrsep|$
+                </label>
+
+                <div class="dot" style="background:#f472b6;"></div>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-force" checked> Forces $\vec{F}_Q,\vec{F}_q$
+                </label>
+
+                <div style="display: flex; gap: 2px;">
+                    <div class="dot" style="background:#ef4444;"></div>
+                    <div class="dot" style="background:#22c55e;"></div>
+                </div>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="chk-coords"> Position vectors $\vec{r}',\vec{r}$
+                </label>
+            </div>
+
+            <div class="experiment-grid">
+                <button type="button" data-exp="repel">Like repel</button>
+                <button type="button" data-exp="attract">Opposites attract</button>
+                <button type="button" data-exp="far">Double distance</button>
+                <button type="button" data-exp="strong">Bigger charges</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { DragControls } from 'three/addons/controls/DragControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+
+        const d = 10;
+        const camera = new THREE.OrthographicCamera(-d, d, d, -d, 0.1, 1000);
+        camera.position.set(0, 0, 10);
+        camera.lookAt(0, 0, 0);
+
+        const uiPanel = document.getElementById('ui-panel');
+        const stage = document.createElement('div');
+        stage.id = 'scene-stage';
+        document.body.insertBefore(stage, uiPanel);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        stage.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.inset = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        stage.appendChild(labelRenderer.domElement);
+
+        const grid = new THREE.GridHelper(40, 40, 0x222222, 0x111111);
+        grid.rotation.x = Math.PI / 2;
+
+        const POSITIVE_COLOR = 0xef4444;
+        const NEGATIVE_COLOR = 0x3b82f6;
+        const SEP_COLOR = 0x60a5fa;
+        const COORD_COLOR = 0x22c55e;
+        const sourceMat = new THREE.MeshBasicMaterial({ color: POSITIVE_COLOR });
+        const testMat = new THREE.MeshBasicMaterial({ color: POSITIVE_COLOR });
+        const chargeGeo = new THREE.SphereGeometry(0.42, 32, 32);
+        const presetLineCenter = new THREE.Vector3(0.15, -0.25, 0.1);
+        const presetLineDirection = new THREE.Vector3(1, 0.28, 0).normalize();
+
+        function placeChargesOnPresetLine(halfDistance) {
+            sourceCharge.position.copy(presetLineCenter).addScaledVector(presetLineDirection, -halfDistance);
+            testCharge.position.copy(presetLineCenter).addScaledVector(presetLineDirection, halfDistance);
+        }
+
+        const sourceCharge = new THREE.Mesh(chargeGeo, sourceMat);
+        scene.add(sourceCharge);
+
+        const testCharge = new THREE.Mesh(chargeGeo, testMat);
+        scene.add(testCharge);
+        placeChargesOnPresetLine(3);
+
+        const originNode = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+
+        function createArrow(color) {
+            return new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                1,
+                color,
+                0.34,
+                0.22
+            );
+        }
+
+        function renderMath(str) {
+            if (window.katex) {
+                try {
+                    return katex.renderToString(str, {
+                        macros: {
+                            '\\rsep': '{\\text{𝓻}}',
+                            '\\vecrsep': '{\\vec{\\text{𝓻}}}',
+                            '\\hatrsep': '{\\hat{\\text{𝓻}}}'
+                        }
+                    });
+                } catch (e) {
+                    return str;
+                }
+            }
+            return str;
+        }
+
+        function createMathLabel(str, pos, color = 'white', extraClass = '') {
+            const div = document.createElement('div');
+            div.className = `math-label ${extraClass}`.trim();
+            div.style.color = color;
+            div.innerHTML = renderMath(str);
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            return label;
+        }
+
+        function setMathLabel(label, str, color) {
+            label.element.style.color = color;
+            label.element.innerHTML = renderMath(str);
+        }
+
+        const arrowRPrime = createArrow(POSITIVE_COLOR);
+        const arrowR = createArrow(COORD_COLOR);
+        const arrowSep = createArrow(SEP_COLOR);
+        const arrowHat = createArrow(0xfcd34d);
+        const arrowForceQ = createArrow(0xf472b6);
+        const arrowForceq = createArrow(0xf472b6);
+
+        const coordGroup = new THREE.Group();
+        coordGroup.add(arrowRPrime, arrowR, grid, originNode);
+        scene.add(coordGroup);
+        scene.add(arrowSep, arrowHat, arrowForceQ, arrowForceq);
+
+        const labelRPrime = createMathLabel("\\vec{r}'", new THREE.Vector3(), '#ef4444');
+        const labelR = createMathLabel("\\vec{r}", new THREE.Vector3(), '#22c55e');
+        const labelSep = createMathLabel("\\vecrsep", new THREE.Vector3(), '#60a5fa');
+        const labelHat = createMathLabel("\\hatrsep", new THREE.Vector3(), '#fcd34d');
+        const labelForceQ = createMathLabel("\\vec{F}_Q", new THREE.Vector3(), '#f472b6');
+        const labelForceq = createMathLabel("\\vec{F}_q", new THREE.Vector3(), '#f472b6');
+        const labelQ = createMathLabel('q', new THREE.Vector3(), '#ef4444', 'charge-label');
+        const labelTestQ = createMathLabel('Q', new THREE.Vector3(), '#ef4444', 'charge-label');
+
+        coordGroup.add(labelRPrime, labelR);
+        scene.add(labelSep, labelHat, labelForceQ, labelForceq, labelQ, labelTestQ);
+
+        const dragControls = new DragControls([sourceCharge, testCharge], camera, renderer.domElement);
+        dragControls.addEventListener('dragstart', () => setActiveExperiment(null));
+        dragControls.addEventListener('drag', update);
+
+        const chkSep = document.getElementById('chk-sep');
+        const chkHat = document.getElementById('chk-hat');
+        const chkForce = document.getElementById('chk-force');
+        const chkCoords = document.getElementById('chk-coords');
+        const sourceMag = document.getElementById('source-mag');
+        const testMag = document.getElementById('test-mag');
+        const sourceValue = document.getElementById('source-value');
+        const testValue = document.getElementById('test-value');
+        const experimentButtons = Array.from(document.querySelectorAll('[data-exp]'));
+        let activeExperiment = 'repel';
+
+        function signedCharge(slider) {
+            return Number(slider.value);
+        }
+
+        function formatCharge(value) {
+            return `${value > 0 ? '+' : ''}${value}`;
+        }
+
+        function colorForCharge(charge) {
+            return charge >= 0 ? POSITIVE_COLOR : NEGATIVE_COLOR;
+        }
+
+        function cssColorForCharge(charge) {
+            return charge >= 0 ? '#ef4444' : '#3b82f6';
+        }
+
+        function setArrowLength(arrow, length, headRatio = 0.24) {
+            const safeLength = Math.max(length, 0.05);
+            const headLength = Math.min(Math.max(safeLength * headRatio, 0.18), 0.55);
+            const headWidth = Math.min(Math.max(headLength * 0.7, 0.12), 0.34);
+            arrow.setLength(safeLength, headLength, headWidth);
+        }
+
+        function setActiveExperiment(name) {
+            activeExperiment = name;
+            experimentButtons.forEach(button => {
+                button.classList.toggle('active', button.dataset.exp === activeExperiment);
+            });
+        }
+
+        function configureCamera() {
+            const rect = stage.getBoundingClientRect();
+            const width = Math.max(1, rect.width);
+            const height = Math.max(1, rect.height);
+            const aspect = width / height;
+            const halfW = d * aspect;
+            const compact = width <= 760;
+            const panelRatio = compact ? 0 : Math.min(uiPanel.offsetWidth / Math.max(width, 1), 0.36);
+            const centerX = compact ? 0 : -halfW * panelRatio;
+            const centerY = 0;
+
+            camera.left = centerX - halfW;
+            camera.right = centerX + halfW;
+            camera.top = centerY + d;
+            camera.bottom = centerY - d;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+        }
+
+        function update() {
+            const pS = sourceCharge.position;
+            const pT = testCharge.position;
+            const q = signedCharge(sourceMag);
+            const Q = signedCharge(testMag);
+
+            sourceMat.color.setHex(colorForCharge(q));
+            testMat.color.setHex(colorForCharge(Q));
+            sourceValue.textContent = formatCharge(q);
+            testValue.textContent = formatCharge(Q);
+            setMathLabel(labelQ, 'q', cssColorForCharge(q));
+            setMathLabel(labelTestQ, 'Q', cssColorForCharge(Q));
+
+            arrowRPrime.setDirection(pS.clone().normalize());
+            setArrowLength(arrowRPrime, pS.length(), 0.18);
+            labelRPrime.position.copy(pS).multiplyScalar(0.5).add(new THREE.Vector3(0.2, 0.2, 0));
+
+            arrowR.setDirection(pT.clone().normalize());
+            setArrowLength(arrowR, pT.length(), 0.18);
+            labelR.position.copy(pT).multiplyScalar(0.5).add(new THREE.Vector3(0.2, 0.2, 0));
+
+            const rSepVec = new THREE.Vector3().subVectors(pT, pS);
+            const rSepMag = Math.max(rSepVec.length(), 0.001);
+            const dir = rSepVec.clone().normalize();
+
+            arrowSep.position.copy(pS);
+            arrowSep.setDirection(dir);
+            setArrowLength(arrowSep, Math.max(rSepMag - 0.4, 0.1), 0.12);
+            labelSep.position.copy(pS).add(rSepVec.clone().multiplyScalar(0.32)).add(new THREE.Vector3(0.3, 0.12, 0));
+
+            arrowHat.position.copy(pS);
+            arrowHat.setDirection(dir);
+            setArrowLength(arrowHat, 1.5, 0.22);
+            labelHat.position.copy(pS).add(dir.clone().multiplyScalar(1.85)).add(new THREE.Vector3(0.2, 0.2, 0));
+
+            const forceSign = Math.sign(q * Q) || 1;
+            const forceDir = dir.clone().multiplyScalar(forceSign);
+            const physicalForce = Math.abs(q * Q) / (rSepMag * rSepMag);
+            const forceMag = physicalForce === 0
+                ? 0
+                : Math.max(7.2 * Math.pow(physicalForce, 0.55), 0.55);
+
+            arrowForceQ.position.copy(pT);
+            arrowForceQ.setDirection(forceDir);
+            setArrowLength(arrowForceQ, forceMag || 0.05, 0.22);
+            labelForceQ.position.copy(pT).add(forceDir.clone().multiplyScalar(forceMag + 0.55));
+
+            arrowForceq.position.copy(pS);
+            arrowForceq.setDirection(forceDir.clone().multiplyScalar(-1));
+            setArrowLength(arrowForceq, forceMag || 0.05, 0.22);
+            labelForceq.position.copy(pS).add(forceDir.clone().multiplyScalar(-forceMag - 0.55));
+
+            labelQ.position.copy(pS).add(new THREE.Vector3(0, 0.95, 0));
+            labelTestQ.position.copy(pT).add(new THREE.Vector3(0, 0.95, 0));
+
+            labelSep.visible = arrowSep.visible = chkSep.checked;
+            labelHat.visible = arrowHat.visible = chkHat.checked;
+            labelForceQ.visible = arrowForceQ.visible = chkForce.checked && physicalForce > 0;
+            labelForceq.visible = arrowForceq.visible = chkForce.checked && physicalForce > 0;
+            labelRPrime.visible = labelR.visible = coordGroup.visible = chkCoords.checked;
+        }
+
+        [chkSep, chkHat, chkForce, chkCoords].forEach(control => {
+            control.addEventListener('input', update);
+            control.addEventListener('change', update);
+        });
+
+        [sourceMag, testMag].forEach(control => {
+            control.addEventListener('input', () => {
+                setActiveExperiment(null);
+                update();
+            });
+            control.addEventListener('change', update);
+        });
+
+        experimentButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const exp = button.dataset.exp;
+                setActiveExperiment(exp);
+                if (exp === 'repel') {
+                    sourceMag.value = 3;
+                    testMag.value = 3;
+                    placeChargesOnPresetLine(3);
+                }
+                if (exp === 'attract') {
+                    sourceMag.value = 3;
+                    testMag.value = -3;
+                    placeChargesOnPresetLine(3);
+                }
+                if (exp === 'far') {
+                    sourceMag.value = 3;
+                    testMag.value = 3;
+                    placeChargesOnPresetLine(6);
+                }
+                if (exp === 'strong') {
+                    sourceMag.value = 5;
+                    testMag.value = 5;
+                    placeChargesOnPresetLine(3);
+                }
+                update();
+            });
+        });
+
+        configureCamera();
+        setActiveExperiment(activeExperiment);
+        update();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            configureCamera();
+            update();
+        });
+    </script>
+<script defer data-offline-bundle src="coulombs_law_geometry.0.offline.js"></script>
+
+
+</body>
+
+</html>

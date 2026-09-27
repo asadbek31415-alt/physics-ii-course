@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Point Charge Assembly</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    rcurs: "\\mathcal{r}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 1rem;
+            color: white;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3rem;
+            margin-top: 3rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .step-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .math-block {
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .highlight {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-top: 3rem;
+            padding: 0.8rem 1.5rem;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 50px;
+            border: 1px solid var(--accent-color);
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > <a
+                    href="ch1_4_work_energy.html">Work & Energy</a> > Point Charge Assembly
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Point Charge Assembly</h1>
+        <p>
+            How much work does it take to assemble an entire collection of point charges? We imagine bringing the
+            charges in, one by one, from "far away" (infinity), where the potential is zero.
+        </p>
+
+        <section>
+            <h2>Step-by-Step Construction</h2>
+
+            <div class="step-box">
+                <strong>Charge 1 (\(q_1\)):</strong>
+                <p>Bringing in the first charge takes <span class="highlight">no work</span> (\(W_1 = 0\)), since there
+                    is no field yet to fight against.</p>
+            </div>
+
+            <div class="step-box">
+                <strong>Charge 2 (\(q_2\)):</strong>
+                <p>Now bring in \(q_2\). It feels the potential created by \(q_1\). The work required is:</p>
+                <div class="math-block">
+                    $$ W_2 = q_2 V_1(\vec{r}_2) = \frac{1}{4\pi\epsilon_0} q_2 \left( \frac{q_1}{r_{12}} \right) $$
+                </div>
+            </div>
+
+            <div class="step-box">
+                <strong>Charge 3 (\(q_3\)):</strong>
+                <p>Now bring in \(q_3\); this requires work against the combined potential of \(q_1\) and \(q_2\):</p>
+                <div class="math-block">
+                    $$ W_3 = q_3 [V_1(\vec{r}_3) + V_2(\vec{r}_3)] = \frac{1}{4\pi\epsilon_0} q_3 \left(
+                    \frac{q_1}{r_{13}} + \frac{q_2}{r_{23}} \right) $$
+                </div>
+            </div>
+
+            <div class="step-box">
+                <strong>Charge 4 (\(q_4\)):</strong>
+                <div class="math-block">
+                    $$ W_4 = \frac{1}{4\pi\epsilon_0} q_4 \left( \frac{q_1}{r_{14}} + \frac{q_2}{r_{24}} +
+                    \frac{q_3}{r_{34}} \right) $$
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>The General Rule</h2>
+            <p>
+                The total work necessary to assemble the first $n$ charges is the sum of these individual steps. The
+                pattern is clear: take the product of each <strong>pair</strong> of charges, divide by their separation
+                distance, and add it all up.
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{4\pi\epsilon_0} \sum_{i=1}^n \sum_{j > i}^n \frac{q_i q_j}{r_{ij}} $$
+            </div>
+            <p>
+                The stipulation \(j > i\) is to remind you not to count the same pair twice (e.g., once as \(q_1 q_2\)
+                and again as \(q_2 q_1\)).
+            </p>
+        </section>
+
+        <section>
+            <h2>Counting Double</h2>
+            <p>
+                A "nicer" way to accomplish this is intentionally to count each pair twice, and then divide by 2:
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{8\pi\epsilon_0} \sum_{i=1}^n \sum_{j \neq i}^n \frac{q_i q_j}{r_{ij}} $$
+            </div>
+            <p>
+                In this form, the answer plainly does not depend on the order in which you assemble the charges.
+                Finally, we can pull out the factor \(q_i\):
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{2} \sum_{i=1}^n q_i \left( \sum_{j \neq i}^n \frac{1}{4\pi\epsilon_0} \frac{q_j}{r_{ij}}
+                \right) $$
+            </div>
+            <p>
+                The term in the parentheses is the <strong>potential at point \(\vec{r}_i\)</strong> (the position of
+                \(q_i\)) due to all the <em>other</em> charges. Thus:
+            </p>
+            <div class="math-block" style="border: 2px solid var(--accent-color); font-weight: bold;">
+                $$ W = \frac{1}{2} \sum_{i=1}^n q_i V(\vec{r}_i) $$
+            </div>
+        </section>
+
+        <a href="ch1_4_work_energy.html" class="back-btn">← Back to Work & Energy</a>
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

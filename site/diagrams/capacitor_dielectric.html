@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capacitor Dielectric Visualizer</title>
+    
+    <style>
+        :root {
+            --bg: #0d1723;
+            --stage: #111d2a;
+            --panel: #0b1420;
+            --panel-2: #101c2a;
+            --border: #294057;
+            --text: #eef6ff;
+            --muted: #a8bed4;
+            --blue: #38a7ed;
+            --yellow: #f4cc19;
+            --red: #ef5948;
+            --green: #2fd17f;
+            --plate: #c6d0d8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .lab {
+            display: grid;
+            grid-template-columns: minmax(240px, 290px) minmax(0, 1fr);
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-width: 0;
+            padding: 18px;
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            border-right: 1px solid var(--border);
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--blue);
+            font-size: 1.12rem;
+            line-height: 1.2;
+        }
+
+        .hint {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
+        .label {
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        button {
+            min-height: 38px;
+            width: 100%;
+            border: 1px solid #3a5068;
+            border-radius: 7px;
+            background: #182638;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.18s ease, border-color 0.18s ease;
+        }
+
+        button:hover,
+        button.active {
+            border-color: var(--blue);
+            background: rgba(56, 167, 237, 0.26);
+        }
+
+        .legend,
+        .readout {
+            display: grid;
+            gap: 9px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(168, 190, 212, 0.22);
+        }
+
+        .legend-item,
+        .readout-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+            color: var(--muted);
+            font-size: 0.83rem;
+        }
+
+        .legend-item {
+            justify-content: flex-start;
+        }
+
+        .arrow-mark {
+            flex: 0 0 18px;
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .readout-value {
+            color: var(--text);
+            font: 700 0.88rem/1.2 "Fira Code", Consolas, monospace;
+            white-space: nowrap;
+        }
+
+        .readout-value.yellow {
+            color: var(--yellow);
+        }
+
+        .readout-value.red {
+            color: var(--red);
+        }
+
+        .readout-value.green {
+            color: var(--green);
+        }
+
+        .readout-value.blue {
+            color: var(--blue);
+        }
+
+        .stage {
+            min-width: 0;
+            min-height: 0;
+            background:
+                radial-gradient(circle at 55% 48%, rgba(56, 167, 237, 0.1), transparent 34%),
+                var(--stage);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 620px) {
+            .lab {
+                grid-template-columns: minmax(132px, 152px) minmax(0, 1fr);
+            }
+
+            .panel {
+                gap: 10px;
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 0.92rem;
+            }
+
+            .hint {
+                display: none;
+            }
+
+            .label {
+                font-size: 0.64rem;
+            }
+
+            button {
+                min-height: 34px;
+                padding: 5px 6px;
+                font-size: 0.76rem;
+            }
+
+            .legend,
+            .readout {
+                gap: 7px;
+                padding-top: 9px;
+            }
+
+            .legend-item,
+            .readout-row {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 2px;
+                font-size: 0.72rem;
+            }
+
+            .legend-item {
+                flex-direction: row;
+                align-items: center;
+                gap: 7px;
+            }
+
+            .arrow-mark {
+                flex-basis: 14px;
+                font-size: 1.05rem;
+            }
+
+            .readout-value {
+                font-size: 0.73rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div class="lab">
+        <aside class="panel">
+            <h1>Capacitor Dielectric</h1>
+            <p class="hint">
+                Insert the dielectric and watch its bound charge create an opposing field, reducing the field inside the
+                capacitor.
+            </p>
+
+            <div class="label">Setup</div>
+            <div class="mode-grid" aria-label="Capacitor setup">
+                <button id="btnVacuum" type="button" class="active">Vacuum</button>
+                <button id="btnDielectric" type="button">Insert dielectric</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="arrow-mark" style="color: var(--yellow);">&darr;</span>
+                    <span>Free field E<sub>0</sub></span>
+                </div>
+                <div class="legend-item">
+                    <span class="arrow-mark" style="color: var(--red);">&uarr;</span>
+                    <span>Polarization field E<sub>pol</sub></span>
+                </div>
+                <div class="legend-item">
+                    <span class="arrow-mark" style="color: var(--green);">&darr;</span>
+                    <span>Net field E<sub>net</sub></span>
+                </div>
+            </div>
+
+            <div class="readout" aria-live="polite">
+                <div class="readout-row">
+                    <span>E<sub>0</sub></span>
+                    <span class="readout-value yellow">1.00 E<sub>0</sub></span>
+                </div>
+                <div class="readout-row">
+                    <span>E<sub>pol</sub></span>
+                    <span id="polReadout" class="readout-value red">0.00 E<sub>0</sub></span>
+                </div>
+                <div class="readout-row">
+                    <span>E<sub>net</sub></span>
+                    <span id="netReadout" class="readout-value green">1.00 E<sub>0</sub></span>
+                </div>
+                <div class="readout-row">
+                    <span>Voltage</span>
+                    <span id="voltageReadout" class="readout-value red">1.00 V<sub>0</sub></span>
+                </div>
+                <div class="readout-row">
+                    <span>Capacitance</span>
+                    <span id="capReadout" class="readout-value blue">1.00 C<sub>0</sub></span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="stage">
+            <canvas id="simCanvas" aria-label="2D capacitor diagram showing field reduction by a dielectric"></canvas>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const btnVacuum = document.getElementById('btnVacuum');
+        const btnDielectric = document.getElementById('btnDielectric');
+        const polReadout = document.getElementById('polReadout');
+        const netReadout = document.getElementById('netReadout');
+        const voltageReadout = document.getElementById('voltageReadout');
+        const capReadout = document.getElementById('capReadout');
+
+        let targetProgress = 0;
+        let progress = 0;
+        let width = 0;
+        let height = 0;
+        let dpr = 1;
+
+        function css(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function setMode(hasDielectric) {
+            targetProgress = hasDielectric ? 1 : 0;
+            btnVacuum.classList.toggle('active', !hasDielectric);
+            btnDielectric.classList.toggle('active', hasDielectric);
+        }
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function drawArrow(x, y1, y2, color, lineWidth) {
+            const direction = y2 > y1 ? 1 : -1;
+            const head = clamp(Math.abs(y2 - y1) * 0.18, 7, 13);
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, y2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y2);
+            ctx.lineTo(x - head * 0.55, y2 - direction * head);
+            ctx.lineTo(x + head * 0.55, y2 - direction * head);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawCharge(text, x, y, color, size) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8;
+            ctx.font = `700 ${size}px Inter, Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function drawGrid() {
+            const step = clamp(width / 16, 24, 44);
+            ctx.save();
+            ctx.strokeStyle = 'rgba(168, 190, 212, 0.08)';
+            ctx.lineWidth = 1;
+            for (let x = -step; x <= width + step; x += step) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let y = -step; y <= height + step; y += step) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function updateReadout() {
+            const polarization = 0.5 * progress;
+            const net = 1 - polarization;
+            const capacitance = 1 + progress;
+
+            polReadout.innerHTML = `${polarization.toFixed(2)} E<sub>0</sub>`;
+            netReadout.innerHTML = `${net.toFixed(2)} E<sub>0</sub>`;
+            voltageReadout.innerHTML = `${net.toFixed(2)} V<sub>0</sub>`;
+            capReadout.innerHTML = `${capacitance.toFixed(2)} C<sub>0</sub>`;
+        }
+
+        function draw() {
+            if (!width || !height) return;
+
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+
+            const cx = width * 0.5;
+            const plateW = clamp(width * 0.72, 180, 560);
+            const plateH = clamp(height * 0.018, 7, 12);
+            const topY = clamp(height * 0.24, 64, height * 0.34);
+            const bottomY = clamp(height * 0.76, height * 0.66, height - 70);
+            const slabTop = topY + plateH;
+            const slabBottom = bottomY;
+            const slabH = slabBottom - slabTop;
+            const slabX = cx - plateW / 2;
+
+            if (progress > 0.01) {
+                const offset = (1 - progress) * width * 0.45;
+                ctx.save();
+                ctx.globalAlpha = 0.18 + 0.28 * progress;
+                ctx.fillStyle = css('--blue');
+                ctx.fillRect(slabX + offset, slabTop, plateW, slabH);
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.fillStyle = css('--plate');
+            ctx.shadowColor = 'rgba(198, 208, 216, 0.35)';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(slabX, topY, plateW, plateH);
+            ctx.fillRect(slabX, bottomY, plateW, plateH);
+            ctx.restore();
+
+            const count = clamp(Math.floor(plateW / 54), 5, 11);
+            const start = slabX + plateW * 0.06;
+            const end = slabX + plateW * 0.94;
+            const chargeSize = width < 320 ? 12 : 16;
+            for (let i = 0; i < count; i++) {
+                const t = count === 1 ? 0.5 : i / (count - 1);
+                const x = start + (end - start) * t;
+                drawCharge('+', x, topY - chargeSize, css('--red'), chargeSize);
+                drawCharge('-', x, bottomY + plateH + chargeSize, css('--blue'), chargeSize);
+
+                if (progress > 0.05) {
+                    const boundAlpha = Math.min(1, progress * 1.35);
+                    ctx.save();
+                    ctx.globalAlpha = boundAlpha;
+                    drawCharge('-', x, slabTop + chargeSize * 1.35, css('--blue'), chargeSize);
+                    drawCharge('+', x, slabBottom - chargeSize * 1.25, css('--red'), chargeSize);
+                    ctx.restore();
+                }
+            }
+
+            const arrowCount = width < 360 ? 4 : 6;
+            const arrowGap = plateW / (arrowCount + 1);
+            const arrowLen = clamp(slabH * 0.36, 56, 110);
+            const centerY = (topY + bottomY) / 2;
+            const polLen = arrowLen * 0.5 * progress;
+            const netLen = arrowLen * (1 - 0.5 * progress);
+
+            for (let i = 1; i <= arrowCount; i++) {
+                const x = slabX + i * arrowGap;
+                const spread = width < 340 ? 8 : 14;
+                drawArrow(x - spread, centerY - arrowLen / 2, centerY + arrowLen / 2, css('--yellow'), 2.5);
+
+                if (progress > 0.04) {
+                    drawArrow(x, centerY + polLen / 2, centerY - polLen / 2, css('--red'), 2.5);
+                }
+
+                drawArrow(x + spread, centerY - netLen / 2, centerY + netLen / 2, css('--green'), 3);
+            }
+
+            const caption = width < 340
+                ? (progress > 0.5 ? 'weaker net field' : 'vacuum field')
+                : (progress > 0.5 ? 'dielectric: bound charges weaken the net field' : 'vacuum: only the plate charges set the field');
+            ctx.save();
+            ctx.fillStyle = 'rgba(238, 246, 255, 0.82)';
+            ctx.font = `700 ${width < 360 ? 11 : 13}px Inter, Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(caption, cx, height - 22);
+            ctx.restore();
+
+            updateReadout();
+        }
+
+        function animate() {
+            progress += (targetProgress - progress) * 0.12;
+            if (Math.abs(targetProgress - progress) < 0.002) {
+                progress = targetProgress;
+            }
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        btnVacuum.addEventListener('click', () => setMode(false));
+        btnDielectric.addEventListener('click', () => setMode(true));
+
+        new ResizeObserver(resize).observe(canvas);
+        window.addEventListener('resize', resize);
+        resize();
+        animate();
+    </script>
+</body>
+
+</html>

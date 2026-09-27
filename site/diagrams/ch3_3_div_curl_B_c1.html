@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ideal Solenoid Simulation</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js & Utils -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script src="../vendor/tween.umd.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.95);
+            --accent: #58a6ff;
+            --accent-green: #2ea043;
+            --accent-red: #ff7b72;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(240px, 28vw, 320px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas-container { position: relative; grid-column: 2; grid-row: 1; width: 100%; height: 100%; z-index: 0; }
+        #canvas-container canvas { display: block; width: 100%; height: 100%; }
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            position: relative; top: auto; width: 100%;
+            display: flex; justify-content: center; gap: 10px; pointer-events: auto;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .mode-btn {
+            background: #21262d; border: 1px solid #444; color: #aaa;
+            padding: 8px 20px; border-radius: 30px; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: 0.2s;
+        }
+        .mode-btn:hover { background: #30363d; color: #fff; }
+        .mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .mode-btn.active-insight { background: var(--accent-green); border-color: var(--accent-green); color: #fff; }
+
+        /* Side Panel */
+        .side-panel {
+            position: relative; top: auto; left: auto;
+            width: 100%; max-height: none;
+            background: var(--panel-bg);
+            border-radius: 8px; border: 1px solid var(--border-color);
+            border-left: 5px solid var(--accent);
+            display: flex; flex-direction: column;
+            pointer-events: auto;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .side-panel.collapsed { display: none; transform: none; opacity: 0; pointer-events: none; }
+
+        .close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; color: #888; border: none; font-size: 1.5rem; cursor: pointer;
+            width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .open-btn {
+            position: relative; top: auto; left: auto; width: 100%; height: 40px;
+            background: var(--accent); color: white; border: none; border-radius: 50%;
+            font-weight: bold; font-size: 0.95rem; cursor: pointer; pointer-events: auto;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); opacity: 0; transform: none; transition: 0.3s;
+            z-index: 5;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .open-btn.visible { opacity: 1; transform: none; }
+
+        .panel-content { padding: 20px 20px 30px 20px; overflow-y: auto; }
+
+        h2 { margin: 0 0 15px 0; font-size: 1.2rem; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        h3 { margin: 18px 0 8px 0; font-size: 0.9rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+        .insight h3 { color: var(--accent-green); }
+        p { font-size: 0.9rem; line-height: 1.5; color: #c9d1d9; margin-bottom: 10px; }
+        ul { margin: 0; padding-left: 20px; color: #aaa; font-size: 0.85rem; }
+        li { margin-bottom: 5px; }
+
+        .math-display {
+            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px;
+            margin: 10px 0; text-align: center; font-size: 1em;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid var(--border-color);
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        
+        <div class="top-bar">
+            <button class="mode-btn active" onclick="setMode('result')" id="btn-result">Result (3D)</button>
+            <button class="mode-btn" onclick="setMode('calc')" id="btn-calc">Calculation</button>
+            <button class="mode-btn" onclick="setMode('insight')" id="btn-insight">Insight: Outside B</button>
+        </div>
+
+        <button class="open-btn" onclick="openPanel()" id="btn-open" title="Show Info">i</button>
+
+        <div class="side-panel" id="info-panel">
+            <button class="close-btn" onclick="closePanel()" title="Hide Panel">×</button>
+            <div class="panel-content">
+                
+                <!-- RESULT CONTENT -->
+                <div id="content-result">
+                    <h2>The Ideal Solenoid</h2>
+                    <p>An ideal solenoid is infinitely long with tightly wound turns. The magnetic field behaves simply:</p>
+                    
+                    <h3>Inside</h3>
+                    <p>The field is <strong>Uniform</strong> and parallel to the axis.</p>
+                    <div class="math-display">$$ B = \mu_0 n I $$</div>
+
+                    <h3>Outside</h3>
+                    <p>In the ideal approximation, the field is <strong>Zero</strong> everywhere outside the coil.</p>
+                </div>
+
+                <!-- CALCULATION CONTENT -->
+                <div id="content-calc" class="hidden">
+                    <h2>Ampère's Law</h2>
+                    <h3>1. Loop Choice</h3>
+                    <p>We choose a <strong>Rectangular Loop</strong> (Yellow) of length $L$.</p>
+
+                    <h3>2. The Integral</h3>
+                    <ul>
+                        <li><strong>Side 1 (Inside):</strong> Contribution = $BL$.</li>
+                        <li><strong>Sides 2 & 4:</strong> Contribution = $0$.</li>
+                        <li><strong>Side 3 (Outside):</strong> Contribution = $0$.</li>
+                    </ul>
+                    <div class="math-display">$$ \oint \mathbf{B} \cdot d\mathbf{l} = BL $$</div>
+
+                    <h3>3. Solve</h3>
+                    <div class="math-display">$$ BL = \mu_0 (n L I) \implies B = \mu_0 n I $$</div>
+                </div>
+
+                <!-- INSIGHT CONTENT -->
+                <div id="content-insight" class="hidden insight">
+                    <h2>Why is B outside Zero?</h2>
+                    <h3>The Outside Loop</h3>
+                    <p>Consider a second rectangular loop (Green) placed entirely <strong>outside</strong>.</p>
+
+                    <h3>Evaluation</h3>
+                    <p>This loop encloses <strong>NO Current</strong> ($I_{\text{enc}} = 0$).</p>
+                    <div class="math-display">$$ \oint \mathbf{B} \cdot d\mathbf{l} = [B(a) - B(b)]L = 0 $$</div>
+                    <p>This implies $B(a) = B(b)$. The field is constant everywhere outside.</p>
+
+                    <h3>Conclusion</h3>
+                    <p>Since the field must vanish at infinity, it must be <strong>Zero everywhere outside</strong>.</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIG ---
+    const CONFIG = {
+        radius: 6,
+        length: 30,
+        turns: 25,
+        colors: {
+            wire: 0xcd7f32,
+            field: 0x58a6ff,
+            loopCalc: 0xffff00,   // Yellow
+            loopInsight: 0x2ea043, // Green
+            arrow: 0xffffff
+        }
+    };
+
+    let state = {
+        mode: 'result', // 'result' | 'calc' | 'insight'
+    };
+
+    // --- SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.localClippingEnabled = true;
+    container.appendChild(renderer.domElement);
+
+    function resizeRenderer() {
+        const rect = container.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(rect.width));
+        const height = Math.max(1, Math.floor(rect.height));
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+    }
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const pLight = new THREE.PointLight(0xffffff, 0.8);
+    pLight.position.set(10, 20, 20);
+    scene.add(pLight);
+
+    const world = new THREE.Group();
+    scene.add(world);
+
+    // 1. Solenoid Wire
+    class SolenoidCurve extends THREE.Curve {
+        getPoint(t) {
+            const x = (t - 0.5) * CONFIG.length;
+            const angle = t * CONFIG.turns * Math.PI * 2;
+            const y = CONFIG.radius * Math.cos(angle);
+            const z = CONFIG.radius * Math.sin(angle);
+            return new THREE.Vector3(x, y, z);
+        }
+    }
+    const path = new SolenoidCurve();
+    const tubeGeo = new THREE.TubeGeometry(path, 800, 0.2, 8, false);
+    const tubeMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.wire, roughness: 0.3, metalness: 0.6, side: THREE.DoubleSide });
+    
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+    const wireMesh = new THREE.Mesh(tubeGeo, tubeMat);
+    world.add(wireMesh);
+
+    // 2. Amperian Loop 1 (Calculation - Yellow)
+    const loopL = 10;
+    const loopH_in = 0;
+    const loopH_out = CONFIG.radius + 3;
+    
+    const loopPts = [];
+    loopPts.push(new THREE.Vector3(-loopL/2, loopH_in, 0));
+    loopPts.push(new THREE.Vector3(loopL/2, loopH_in, 0));
+    loopPts.push(new THREE.Vector3(loopL/2, loopH_out, 0));
+    loopPts.push(new THREE.Vector3(-loopL/2, loopH_out, 0));
+    loopPts.push(new THREE.Vector3(-loopL/2, loopH_in, 0));
+    
+    const loopGeo = new THREE.BufferGeometry().setFromPoints(loopPts);
+    const loopMat = new THREE.LineBasicMaterial({ color: CONFIG.colors.loopCalc, linewidth: 3 });
+    const loopCalc = new THREE.Line(loopGeo, loopMat);
+    loopCalc.visible = false;
+    world.add(loopCalc);
+
+    // 3. Amperian Loop 2 (Insight - Green)
+    const loopInPts = [];
+    const inY1 = CONFIG.radius + 2;
+    const inY2 = CONFIG.radius + 6;
+    loopInPts.push(new THREE.Vector3(-loopL/2, inY1, 0));
+    loopInPts.push(new THREE.Vector3(loopL/2, inY1, 0));
+    loopInPts.push(new THREE.Vector3(loopL/2, inY2, 0));
+    loopInPts.push(new THREE.Vector3(-loopL/2, inY2, 0));
+    loopInPts.push(new THREE.Vector3(-loopL/2, inY1, 0));
+
+    const loopInGeo = new THREE.BufferGeometry().setFromPoints(loopInPts);
+    const loopInMat = new THREE.LineBasicMaterial({ color: CONFIG.colors.loopInsight, linewidth: 3 });
+    const loopInsight = new THREE.Line(loopInGeo, loopInMat);
+    loopInsight.visible = false;
+    world.add(loopInsight);
+
+
+    // 4. Labels & Indicators
+    const labelGroup = new THREE.Group();
+    labelGroup.visible = false;
+    world.add(labelGroup);
+
+    for(let i=0; i<CONFIG.turns; i++) {
+        const t = i / CONFIG.turns;
+        const x = (t - 0.5) * CONFIG.length;
+        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.25, 8), new THREE.MeshBasicMaterial({color: 0xff3333}));
+        dot.position.set(x, CONFIG.radius, 0);
+        labelGroup.add(dot);
+        const cross = new THREE.Group();
+        const lMat = new THREE.LineBasicMaterial({color: 0x3333ff});
+        const g1 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.2,-0.2,0), new THREE.Vector3(0.2,0.2,0)]);
+        const g2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.2,0.2,0), new THREE.Vector3(0.2,-0.2,0)]);
+        cross.add(new THREE.Line(g1, lMat));
+        cross.add(new THREE.Line(g2, lMat));
+        cross.position.set(x, -CONFIG.radius, 0);
+        labelGroup.add(cross);
+    }
+
+    // FIX: Increased canvas width to 512 to prevent truncation of long text
+    function createTextSprite(message, scale, color) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 512; canvas.height = 128;
+        ctx.fillStyle = color;
+        ctx.font = "Bold 40px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(message, 256, 64);
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(scale * 4, scale, 1);
+        return sprite;
+    }
+
+    const lblL = createTextSprite("L", 3, "yellow");
+    lblL.position.set(0, -1.5, 0);
+    labelGroup.add(lblL);
+    
+    const lblSide1 = createTextSprite("Side 1 (Inside)", 3, "#ccc");
+    lblSide1.position.set(0, 1, 0);
+    labelGroup.add(lblSide1);
+
+    const lblSide3 = createTextSprite("Side 3 (Outside)", 3, "#ccc");
+    lblSide3.position.set(0, CONFIG.radius + 4.5, 0);
+    labelGroup.add(lblSide3);
+
+    // ADD: Distance labels a and b for Insight mode
+    const lblA = createTextSprite("a", 2, "#2ea043");
+    lblA.position.set(-loopL/2 - 1.5, inY1, 0);
+    lblA.visible = false;
+    labelGroup.add(lblA);
+
+    const lblB_dist = createTextSprite("b", 2, "#2ea043");
+    lblB_dist.position.set(-loopL/2 - 1.5, inY2, 0);
+    lblB_dist.visible = false;
+    labelGroup.add(lblB_dist);
+
+
+    // 5. Particles
+    const pCount = 600;
+    const dummy = new THREE.Object3D();
+    const pGeo = new THREE.SphereGeometry(0.1, 4, 4);
+    const pMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.field });
+    const particlesMesh = new THREE.InstancedMesh(pGeo, pMat, pCount);
+    world.add(particlesMesh);
+
+    let particlesData = [];
+    for(let i=0; i<pCount; i++) {
+        particlesData.push({
+            x: (Math.random() - 0.5) * CONFIG.length,
+            r: Math.sqrt(Math.random()) * (CONFIG.radius - 0.5), 
+            theta: Math.random() * Math.PI * 2,
+            speed: 0.1 + Math.random() * 0.05
+        });
+    }
+
+    function updateParticles() {
+        if(!particlesMesh.visible) return;
+        for(let i=0; i<pCount; i++) {
+            const d = particlesData[i];
+            d.x += 0.2;
+            if(d.x > CONFIG.length/2) d.x = -CONFIG.length/2;
+            dummy.position.set(d.x, d.r * Math.cos(d.theta), d.r * Math.sin(d.theta));
+            dummy.scale.set(1, 1, 1);
+            dummy.updateMatrix();
+            particlesMesh.setMatrixAt(i, dummy.matrix);
+        }
+        particlesMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    const camRes = { x: 20, y: 15, z: 25 };
+    const camFlat = { x: 0, y: 0, z: 40 };
+    camera.position.set(camRes.x, camRes.y, camRes.z);
+
+    function setMode(mode) {
+        state.mode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active', 'active-insight'));
+        if(mode === 'insight') document.getElementById('btn-insight').classList.add('active-insight');
+        else document.getElementById('btn-'+mode).classList.add('active');
+        document.getElementById('content-result').classList.add('hidden');
+        document.getElementById('content-calc').classList.add('hidden');
+        document.getElementById('content-insight').classList.add('hidden');
+        document.getElementById('content-'+mode).classList.remove('hidden');
+        const panel = document.getElementById('info-panel');
+        if(mode === 'insight') panel.style.borderLeftColor = "#2ea043";
+        else panel.style.borderLeftColor = "#58a6ff";
+
+        if (mode === 'result') {
+            new TWEEN.Tween(camera.position).to(camRes, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            tubeMat.clippingPlanes = [];
+            loopCalc.visible = false; loopInsight.visible = false; labelGroup.visible = false; particlesMesh.visible = true;
+            lblA.visible = false; lblB_dist.visible = false;
+        } else if (mode === 'calc') {
+            new TWEEN.Tween(camera.position).to(camFlat, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            tubeMat.clippingPlanes = [clipPlane];
+            setTimeout(() => {
+                loopCalc.visible = true; loopInsight.visible = false; labelGroup.visible = true; particlesMesh.visible = true;
+                lblSide3.visible = true; lblA.visible = false; lblB_dist.visible = false;
+                lblL.position.set(0, -1.5, 0);
+            }, 500);
+        } else if (mode === 'insight') {
+            new TWEEN.Tween(camera.position).to(camFlat, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            tubeMat.clippingPlanes = [clipPlane];
+            setTimeout(() => {
+                loopCalc.visible = false; loopInsight.visible = true; labelGroup.visible = true; particlesMesh.visible = true;
+                lblL.position.set(0, CONFIG.radius + 1.5, 0); lblSide3.visible = false;
+                lblA.visible = true; lblB_dist.visible = true;
+            }, 500);
+        }
+    }
+
+    function closePanel() {
+        document.getElementById('info-panel').classList.add('collapsed');
+        document.getElementById('btn-open').classList.add('visible');
+    }
+    function openPanel() {
+        document.getElementById('info-panel').classList.remove('collapsed');
+        document.getElementById('btn-open').classList.remove('visible');
+    }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        TWEEN.update(time);
+        controls.update();
+        updateParticles();
+        renderer.render(scene, camera);
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.body, {
+            delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+    });
+    
+    window.addEventListener('resize', () => {
+        resizeRenderer();
+    });
+
+    resizeRenderer();
+    animate();
+</script>
+</body>
+</html>

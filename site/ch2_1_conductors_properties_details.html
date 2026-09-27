@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Basic Conductor Properties</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #fff;
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        .sim-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: #000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="electric_field_in_matter_index.html">Electric Fields in Matter</a> &gt;
+                <a href="ch2_1_conductors.html">Conductors</a> &gt;
+                Basic Properties
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Deep Dive: Basic Conductor Properties</h1>
+        <p>
+            On the main page, the conductor properties were stated compactly. Here, we slow down the logic: free
+            charges move until the internal field is zero, and the other properties follow from that one equilibrium
+            condition.
+        </p>
+
+        <section>
+            <h2>1. Why the Interior Field Must Vanish</h2>
+
+            <p>
+                A conductor contains charges that are free to move. If the total electric field inside the conducting
+                material were not zero, those charges would feel $\vec{F}=q\vec{E}$ and begin to flow.
+            </p>
+            <p>
+                When an external field is applied, the mobile charges do move at first. They pile up on different parts
+                of the surface, producing an induced electric field of their own. That induced field points opposite to
+                the original field inside the metal. The redistribution continues until the two fields cancel there.
+            </p>
+
+            <div class="formula-box" style="border-left: 4px solid var(--success-color);">
+                $$ \vec{E}_{\text{total}}=\vec{E}_{\text{external}}+\vec{E}_{\text{induced}}=0
+                \quad \text{inside the conductor} $$
+            </div>
+
+            <p>
+                This final state is what "electrostatics" means here. The conductor is not merely called electrostatic;
+                it has reached a state where any remaining internal field would restart charge motion, so equilibrium
+                demands $\vec{E}=0$ throughout the conducting material.
+            </p>
+        </section>
+
+        <section>
+            <h2>2. What Follows from $\vec{E}=0$</h2>
+
+            <p>
+                Once the field inside the conductor is zero, Gauss's law immediately fixes the volume charge density:
+            </p>
+            <div class="formula-box">
+                $$ \nabla \cdot \vec{E}=\frac{\rho}{\epsilon_0}, \qquad \vec{E}=0
+                \implies \rho=0 $$
+            </div>
+            <p>
+                This does not say that the conductor contains no charge anywhere. It says there is no <em>net</em>
+                charge density in the interior. If the conductor carries excess charge, that excess must reside on the
+                surface.
+            </p>
+            <p>
+                The same zero-field condition makes the conductor an equipotential:
+            </p>
+            <div class="formula-box">
+                $$ V(b)-V(a)=-\int_a^b \vec{E}\cdot d\vec{l}=0 $$
+            </div>
+            <p>
+                Finally, just outside the conductor, the electric field cannot have a component tangent to the surface.
+                A tangential component would push surface charge sideways, so the charges would not be in electrostatic
+                equilibrium. The outside field must therefore be normal to the surface.
+            </p>
+        </section>
+
+        <section>
+            <h2>3. The Field Just Outside the Surface</h2>
+
+            <p>
+                A small Gaussian pillbox crossing the surface gives the magnitude of the normal field just outside the
+                conductor.
+            </p>
+
+            <div class="formula-box">
+                $$ \oint \vec{E} \cdot d\vec{a} = \frac{Q_{\text{enc}}}{\epsilon_0} $$
+            </div>
+
+            <p>
+                The bottom face lies inside the conductor, where $\vec{E}=0$. The side flux vanishes as the pillbox is
+                made very thin. Only the outside face contributes:
+            </p>
+            <div class="formula-box">
+                $$ E A = \frac{\sigma A}{\epsilon_0} \implies \vec{E}_{\text{outside}}
+                = \frac{\sigma}{\epsilon_0}\hat{n} $$
+            </div>
+            <p>
+                This result explains the jump in the electric field at a charged conductor surface. The separate
+                mechanical question of the force on that surface charge is handled in the electrostatic-pressure deep
+                dive.
+            </p>
+        </section>
+
+    </div>
+
+    <footer></footer>
+
+</body>
+
+</html>

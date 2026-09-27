@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charge Accumulation Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: #eee;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0ff;
+            padding: 20px;
+            width: min(320px, calc(100vw - 40px));
+            box-sizing: border-box;
+            box-shadow: 0 0 15px #0ff;
+            border-radius: 8px;
+            pointer-events: auto;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            color: #0ff;
+            font-size: 18px;
+            text-transform: uppercase;
+            text-shadow: 0 0 5px #0ff;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #f0f;
+            margin-bottom: 5px;
+            text-shadow: 0 0 2px #f0f;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            background: #222;
+            height: 6px;
+            -webkit-appearance: none;
+            outline: none;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #0f0;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px #0f0;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            font-size: 14px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .val {
+            font-weight: bold;
+            color: #0f0;
+        }
+
+        .description {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #888;
+            font-size: 12px;
+            max-width: calc(100vw - 40px);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="simCanvas"></canvas>
+    
+    <div id="controls">
+        <h2>Flux vs Accumulation</h2>
+        
+        <div class="control-group">
+            <label>
+                <span>Inflow Rate (I<sub>in</sub>)</span>
+                <span id="inflowVal">5</span>
+            </label>
+            <input type="range" id="inflowSlider" min="0" max="20" step="1" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span>Outflow Capacity (I<sub>out</sub>)</span>
+                <span id="outflowVal">5</span>
+            </label>
+            <input type="range" id="outflowSlider" min="0" max="20" step="1" value="5">
+        </div>
+
+        <div class="stats">
+            <div class="stat-row">
+                <span>Charge (Q):</span>
+                <span id="qVal" class="val">0</span>
+            </div>
+            <div class="stat-row">
+                <span>Change this step (ΔQ):</span>
+                <span id="dqVal" class="val">0</span>
+            </div>
+            <div class="stat-row" style="margin-top:10px; font-size: 11px; color: #ccc;">
+                <span>ΔQ = particles entered − particles exited</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="description">
+        Visualizing the continuity equation. 
+        <br>Green particles represent positive charge.
+        <br><strong>Cyan Box:</strong> The region of interest (Gaussian Surface).
+        <br><strong>Lime:</strong> Flowing Charge. <strong>Magenta:</strong> High Density.
+    </div>
+</div>
+
+<script>
+    // --- Configuration & State ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const ui = {
+        inflowSlider: document.getElementById('inflowSlider'),
+        outflowSlider: document.getElementById('outflowSlider'),
+        inflowVal: document.getElementById('inflowVal'),
+        outflowVal: document.getElementById('outflowVal'),
+        qVal: document.getElementById('qVal'),
+        dqVal: document.getElementById('dqVal')
+    };
+
+    let particles = [];
+    const PARTICLE_RADIUS = 3;
+    const MAX_PARTICLES = 1500; // Performance cap
+    
+    // Box Geometry (set in resize)
+    let box = { x: 0, y: 0, w: 0, h: 0 };
+    
+    // Physics Parameters
+    let inflowRate = 5;
+    let outflowCap = 5;
+    let spawnAccumulator = 0;
+    let outflowAccumulator = 0;
+    let previousCharge = 0;
+    
+    // History for Graph
+    let qHistory = [];
+    const MAX_HISTORY = 200;
+
+    // --- Resize Handling ---
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Define the "Box" in the center
+        const boxSize = Math.min(canvas.width, canvas.height) * 0.5;
+        box = {
+            x: (canvas.width - boxSize) / 2,
+            y: (canvas.height - boxSize/1.5) / 2,
+            w: boxSize,
+            h: boxSize / 1.5
+        };
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- Input Handling ---
+    ui.inflowSlider.addEventListener('input', (e) => {
+        inflowRate = parseInt(e.target.value);
+        ui.inflowVal.innerText = inflowRate;
+    });
+
+    ui.outflowSlider.addEventListener('input', (e) => {
+        outflowCap = parseInt(e.target.value);
+        ui.outflowVal.innerText = outflowCap;
+    });
+
+    // --- Particle Class ---
+    class Particle {
+        constructor() {
+            // Spawn at the left edge of the box
+            this.x = box.x;
+            this.y = box.y + Math.random() * box.h;
+            
+            // Initial velocity (flowing right)
+            this.vx = 2 + Math.random() * 2;
+            this.vy = (Math.random() - 0.5) * 1;
+            
+            this.active = true;
+            this.color = '#0f0'; // Lime
+        }
+
+        update() {
+            // Basic movement
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Box Top/Bottom Collision (Bounce)
+            if (this.y < box.y + PARTICLE_RADIUS) {
+                this.y = box.y + PARTICLE_RADIUS;
+                this.vy *= -1;
+            }
+            if (this.y > box.y + box.h - PARTICLE_RADIUS) {
+                this.y = box.y + box.h - PARTICLE_RADIUS;
+                this.vy *= -1;
+            }
+
+            // Right Wall Interaction (The "Outflow")
+            if (this.x > box.x + box.w - PARTICLE_RADIUS) {
+                // Attempt to exit
+                // Probability of exit depends on outflow capacity vs current density pressure
+                // Simplified: We regulate the NUMBER of particles leaving per frame
+                
+                // We handle the actual removal in the main loop to control the rate strictly.
+                // Here we just handle the "bounce" if they don't get removed.
+                
+                this.x = box.x + box.w - PARTICLE_RADIUS;
+                this.vx *= -0.5; // Lose energy, bounce back
+                this.vx -= 1; // Push back slightly
+            }
+
+            // Left Wall Interaction (Backflow prevention)
+            if (this.x < box.x + PARTICLE_RADIUS) {
+                this.x = box.x + PARTICLE_RADIUS;
+                this.vx = Math.abs(this.vx) + 0.5; // Push right
+            }
+
+            // Friction/Damping inside the box to simulate fluid resistance
+            this.vx *= 0.99;
+            this.vy *= 0.99;
+
+            // Minimum movement to prevent total stagnation
+            if(Math.abs(this.vx) < 0.5) this.vx += 0.1;
+
+            // Color based on density/speed
+            // If slow, turn Magenta (Accumulating)
+            const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+            if (speed < 1.0) {
+                this.color = '#f0f'; // Magenta
+            } else {
+                this.color = '#0f0'; // Lime
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, PARTICLE_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // --- Main Simulation Loop ---
+    function animate() {
+        // 1. Clear Screen
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 2. Draw The Box (Container)
+        ctx.strokeStyle = '#0ff'; // Cyan
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#0ff';
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.shadowBlur = 0;
+
+        // Label the box
+        ctx.fillStyle = '#0ff';
+        ctx.font = '16px Courier New';
+        ctx.fillText("VOLUME V", box.x + 10, box.y + 25);
+
+        // 3. Spawning (Inflow)
+        spawnAccumulator += inflowRate * 0.2; // Multiplier for visual pacing
+        while (spawnAccumulator >= 1) {
+            if (particles.length < MAX_PARTICLES) {
+                particles.push(new Particle());
+            }
+            spawnAccumulator--;
+        }
+
+        // 4. Update & Draw Particles
+        // We use spatial partitioning or simple N^2 repulsion for fluid feel?
+        // For performance in a single file without libs, let's skip complex physics
+        // and just use random jitter if density is high.
+        
+        let particlesExiting = 0;
+        outflowAccumulator += outflowCap * 0.2;
+        let allowedToExit = Math.floor(outflowAccumulator);
+        outflowAccumulator -= allowedToExit;
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.update();
+            p.draw();
+
+            // Simple repulsive jitter if too close to others (creates volume feel)
+            // Checking only a few neighbors for performance
+            /* 
+               (Optimization: In a real heavy sim we'd use a grid, 
+               but for <1500 particles, we rely on browser JS speed 
+               and ignore N^2 collision checks for this metaphor)
+            */
+
+            // Check Exit Condition
+            if (p.x >= box.x + box.w - PARTICLE_RADIUS - 2) {
+                // If particle is at the door
+                if (allowedToExit >= 1) {
+                    particles.splice(i, 1); // Remove particle
+                    allowedToExit--;
+                    particlesExiting++;
+                }
+            }
+        }
+
+        // 5. Visualize Vectors (Inflow / Outflow arrows)
+        drawArrow(box.x - 60, box.y + box.h/2, box.x - 10, box.y + box.h/2, inflowRate, '#0f0'); // In
+        drawArrow(box.x + box.w + 10, box.y + box.h/2, box.x + box.w + 60, box.y + box.h/2, outflowCap, '#f0f'); // Out
+
+        // 6. Update UI & Stats
+        let Q = particles.length;
+        ui.qVal.innerText = Q;
+        
+        const change = Q - previousCharge;
+        previousCharge = Q;
+        const sign = change > 0 ? "+" : "";
+        ui.dqVal.innerText = `${sign}${change}`;
+        ui.dqVal.style.color = change > 0 ? '#f0f' : (change < 0 ? '#0ff' : '#eee');
+
+        // 7. Draw Graph
+        drawGraph(Q);
+
+        requestAnimationFrame(animate);
+    }
+
+    // --- Helper Functions ---
+
+    function drawArrow(x1, y1, x2, y2, magnitude, color) {
+        if (magnitude === 0) return;
+        
+        // Scale thickness by magnitude
+        const thickness = Math.max(1, magnitude / 2);
+        
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = color;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Arrowhead
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headLen = 10 + magnitude; 
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // Label
+        ctx.fillStyle = '#eee';
+        ctx.font = '12px Courier New';
+        ctx.fillText(magnitude, (x1+x2)/2 - 5, y1 - 10);
+    }
+
+    function drawGraph(currentQ) {
+        // Update history
+        qHistory.push(currentQ);
+        if (qHistory.length > MAX_HISTORY) qHistory.shift();
+
+        // Graph area definition
+        const gW = 300;
+        const gH = 100;
+        const gX = canvas.width - gW - 20;
+        const gY = canvas.height - gH - 20;
+
+        // Background
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(gX, gY, gW, gH);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(gX, gY, gW, gH);
+
+        // Label
+        ctx.fillStyle = '#aaa';
+        ctx.fillText("Charge Q over Time", gX + 10, gY + 15);
+
+        // Plot Line
+        ctx.beginPath();
+        ctx.strokeStyle = '#0f0';
+        ctx.lineWidth = 2;
+        
+        const maxVal = Math.max(MAX_PARTICLES, ...qHistory);
+        
+        for (let i = 0; i < qHistory.length; i++) {
+            const val = qHistory[i];
+            const x = gX + (i / MAX_HISTORY) * gW;
+            const y = gY + gH - (val / maxVal) * (gH - 10) - 5;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+
+    // Start
+    animate();
+
+</script>
+</body>
+</html>

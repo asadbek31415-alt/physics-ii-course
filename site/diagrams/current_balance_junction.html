@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Balance at a Junction</title>
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <link rel="stylesheet" href="./current_balance_junction.css">
+    <script src="../vendor/katex/katex.min.js"></script>
+    <script type="importmap">
+        {"imports": {"three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/"}}
+    </script>
+</head>
+<body>
+    <aside id="ui-panel" aria-label="Junction controls">
+        <header><h1>Current Balance</h1><div class="playback">
+            <button id="pauseBtn" type="button" aria-label="Pause simulation">Pause</button>
+            <button id="resetBtn" type="button" title="Restart with the current settings">Reset</button>
+        </div></header>
+        <div class="mode-buttons" role="group" aria-label="Flow presets">
+            <button id="balancedBtn" class="active" type="button" aria-pressed="true">KCL holds</button>
+            <button id="pileBtn" type="button" aria-pressed="false">Accumulation</button>
+        </div>
+        <div class="currents">
+            <div class="control-group">
+                <label for="sourceSlider">Incoming <span data-tex="I_{\mathrm{in}}"></span><output id="sourceValue">4.0 A</output></label>
+                <input id="sourceSlider" type="range" min="0" max="7" value="4" step="0.1">
+            </div>
+            <div class="control-group">
+                <label for="topSlider">Outgoing <span data-tex="I_1"></span><output id="topValue">2.4 A</output></label>
+                <input id="topSlider" type="range" min="0" max="5" value="2.4" step="0.1">
+            </div>
+            <div class="control-group">
+                <label for="bottomSlider">Outgoing <span data-tex="I_2"></span><output id="bottomValue">1.6 A</output></label>
+                <input id="bottomSlider" type="range" min="0" max="5" value="1.6" step="0.1">
+            </div>
+        </div>
+        <div class="balance">
+            <div id="balanceEquation" aria-label="Charge conservation equation"></div>
+            <div class="readings"><span id="balanceValue"></span><span id="storedValue"></span></div>
+            <p id="statusText" role="status">No charge buildup</p>
+        </div>
+    </aside>
+    <main id="scene-container" aria-label="Charges flowing through a wire junction"></main>
+    <script src="./shared/circuit-lab.js"></script>
+    <script src="./shared/junction-transport.js"></script>
+    <script type="text/offline-module" src="./current_balance_junction.js"></script>
+<script defer data-offline-bundle src="current_balance_junction.0.offline.js"></script>
+
+
+</body>
+</html>

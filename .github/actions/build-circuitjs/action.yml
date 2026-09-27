@@ -1,0 +1,27 @@
+name: Build bundled CircuitJS
+description: Compile a pinned circuit engine and include its exact source archive.
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: pfalstad/circuitjs1
+        ref: 5a707168778216bb6ed01bfdd62e8bbf7ae0a032
+        path: .circuitjs-source
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.7'
+    - name: Compile engine and include corresponding source
+      shell: bash
+      run: |
+        cd .circuitjs-source
+        gradle makeSite --no-daemon --max-workers=2
+        target="$GITHUB_WORKSPACE/site/diagrams/vendor/circuitjs"
+        cp -R site/. "$target/"
+        git archive --format=tar.gz --prefix=circuitjs1/ HEAD > "$target/circuitjs-source.tar.gz"
+        cd "$target"
+        find circuitjs1 -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt

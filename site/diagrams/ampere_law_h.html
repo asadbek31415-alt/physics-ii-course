@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Ampere's Law for H</title>
+    <!-- Fonts and MathJax -->
+    
+    <script>
+        MathJax = { tex: { inlineMath: [['\\(', '\\)']] } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <!-- Three.js from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Inter', sans-serif; color: #e0e0e0; }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            z-index: 10;
+        }
+
+        .card {
+            background: rgba(28, 39, 52, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            backdrop-filter: blur(5px);
+            max-width: 350px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: auto; /* Re-enable clicks for this card */
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.2rem; color: #f1c40f; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+        .highlight { color: #f1c40f; font-weight: 600; }
+        .highlight-current { color: #e74c3c; font-weight: 600; }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 39, 52, 0.95);
+            padding: 15px 30px;
+            border-radius: 12px;
+            display: flex;
+            gap: 30px;
+            border: 1px solid #2c3e50;
+            z-index: 10;
+        }
+
+        .control-group { display: flex; flex-direction: column; align-items: center; min-width: 150px; }
+        label { margin-bottom: 8px; font-size: 0.9rem; color: #b0c4de; font-weight: 500; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #3498db; }
+        
+        .tooltip {
+            font-size: 0.85rem; color: #aaa; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; line-height: 1.4;
+        }
+
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; font-size: 1.5rem;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="loading">Loading 3D Engine...</div>
+
+    <!-- Info Panel -->
+    <div id="ui-container">
+        <div class="card">
+            <h2>The Auxiliary Field H</h2>
+            <div class="stat-row">
+                <span>Free Current (\(I_f\)):</span>
+                <span id="disp-current" class="highlight-current">2.0 A</span>
+            </div>
+            <div class="stat-row">
+                <span>Loop Integral (\(\oint \mathbf{H} \cdot d\mathbf{l}\)):</span>
+                <span id="disp-h" class="highlight">2.0 A</span>
+            </div>
+            <div class="tooltip">
+                <p>
+                    <strong>Concept:</strong> We can easily control the current in the wire (\(I_f\)).
+                </p>
+                <p>
+                    Even if the material (blue cylinder) creates complex internal magnetization, the integral of <strong>H</strong> depends <em>only</em> on the current in the wire.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="control-group">
+            <label>Free Current (\(I_f\))</label>
+            <input type="range" id="slider-current" min="-5" max="5" step="0.1" value="2">
+        </div>
+        <div class="control-group">
+            <label>Material Response (Magnetization)</label>
+            <input type="range" id="slider-mat" min="0" max="1" step="0.01" value="0.5">
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23);
+        // Add some fog for depth
+        scene.fog = new THREE.FogExp2(0x121a23, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(15, 15, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        document.getElementById('loading').style.display = 'none';
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- OBJECTS ---
+
+        // 1. The Wire (Infinite-ish Cylinder)
+        const wireGeo = new THREE.CylinderGeometry(0.2, 0.2, 40, 16);
+        const wireMat = new THREE.MeshStandardMaterial({ 
+            color: 0xe74c3c, 
+            emissive: 0x550000,
+            roughness: 0.4 
+        });
+        const wire = new THREE.Mesh(wireGeo, wireMat);
+        scene.add(wire);
+
+        // 2. The Magnetic Material (Thick Cylinder)
+        const matGeo = new THREE.CylinderGeometry(4, 4, 12, 32, 1, true); // Open ended
+        // Use side: DoubleSide so we see inside
+        const matMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x3498db,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide,
+            metalness: 0.1,
+            roughness: 0.1,
+            transmission: 0.2 // Glass-like
+        });
+        const magneticMaterial = new THREE.Mesh(matGeo, matMaterial);
+        scene.add(magneticMaterial);
+
+        // Internal "Bound Current" visualizer (Particle system or rings inside material)
+        // These represent the messy internal physics we want to ignore with H
+        const particleCount = 500;
+        const particleGeo = new THREE.BufferGeometry();
+        const positions = [];
+        for(let i=0; i<particleCount; i++) {
+            const r = 2 + Math.random() * 1.8; // Inside material radius (2 to 4)
+            const theta = Math.random() * Math.PI * 2;
+            const y = (Math.random() - 0.5) * 12;
+            positions.push(r * Math.cos(theta), y, r * Math.sin(theta));
+        }
+        particleGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const particleMat = new THREE.PointsMaterial({
+            color: 0xaaddff,
+            size: 0.15,
+            transparent: true,
+            opacity: 0
+        });
+        const internalDipoles = new THREE.Points(particleGeo, particleMat);
+        scene.add(internalDipoles);
+
+        // 3. The Amperian Loop (Thin Ring)
+        const loopRadius = 6;
+        const loopGeo = new THREE.TorusGeometry(loopRadius, 0.05, 16, 100);
+        const loopMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 });
+        const amperianLoop = new THREE.Mesh(loopGeo, loopMat);
+        amperianLoop.rotation.x = Math.PI / 2;
+        scene.add(amperianLoop);
+
+        // 4. H-Field Vectors (Arrows on the loop)
+        const numArrows = 12;
+        const arrows = [];
+        const arrowColor = 0xf1c40f; // Yellow
+
+        for (let i = 0; i < numArrows; i++) {
+            const theta = (i / numArrows) * Math.PI * 2;
+            const x = Math.cos(theta) * loopRadius;
+            const z = Math.sin(theta) * loopRadius;
+            
+            // Initial directions (will update in loop)
+            const dir = new THREE.Vector3(-z, 0, x).normalize(); 
+            const origin = new THREE.Vector3(x, 0, z);
+            
+            const arrowHelper = new THREE.ArrowHelper(dir, origin, 1, arrowColor, 0.5, 0.3);
+            scene.add(arrowHelper);
+            arrows.push({ mesh: arrowHelper, basePos: origin, theta: theta });
+        }
+
+        // Current Direction Indicator (Big Arrow in center)
+        const centerArrowDir = new THREE.Vector3(0, 1, 0);
+        const centerArrowOrigin = new THREE.Vector3(0, 7, 0); // Above material
+        const currentIndicator = new THREE.ArrowHelper(centerArrowDir, centerArrowOrigin, 3, 0xe74c3c, 1, 0.8);
+        scene.add(currentIndicator);
+
+
+        // --- LOGIC & ANIMATION ---
+        
+        const sliderCurrent = document.getElementById('slider-current');
+        const sliderMat = document.getElementById('slider-mat');
+        const dispCurrent = document.getElementById('disp-current');
+        const dispH = document.getElementById('disp-h');
+
+        function updatePhysics() {
+            const I = parseFloat(sliderCurrent.value);
+            const matResponse = parseFloat(sliderMat.value);
+
+            // Update Text
+            dispCurrent.innerText = I.toFixed(2) + " A";
+            dispH.innerText = Math.abs(I).toFixed(2) + " A"; // Integral H dl = I_f_enc
+
+            // Update Wire Visuals
+            currentIndicator.visible = (Math.abs(I) > 0.1);
+            if (I > 0) {
+                currentIndicator.setDirection(new THREE.Vector3(0, 1, 0));
+                currentIndicator.position.set(0, 7, 0);
+            } else {
+                currentIndicator.setDirection(new THREE.Vector3(0, -1, 0));
+                currentIndicator.position.set(0, -7, 0);
+            }
+
+            // Update H Vectors
+            // Magnitude of H = I / (2*pi*r). We scale for visual.
+            const vectorScale = Math.abs(I) * 0.8; 
+            
+            arrows.forEach(arrow => {
+                if (Math.abs(I) < 0.1) {
+                    arrow.mesh.visible = false;
+                } else {
+                    arrow.mesh.visible = true;
+                    // Direction depends on Right Hand Rule
+                    // Tangent vector (-sin, cos)
+                    let tx = -Math.sin(arrow.theta);
+                    let tz = Math.cos(arrow.theta);
+                    
+                    if (I < 0) {
+                        tx = -tx;
+                        tz = -tz;
+                    }
+                    
+                    const dir = new THREE.Vector3(tx, 0, tz).normalize();
+                    arrow.mesh.setDirection(dir);
+                    arrow.mesh.setLength(vectorScale, vectorScale * 0.3, vectorScale * 0.2);
+                }
+            });
+
+            // Update Material Visuals (The "Distraction")
+            // Changing this changes opacity and particle visibility
+            // But DOES NOT affect the H vectors above!
+            magneticMaterial.material.opacity = 0.1 + (matResponse * 0.5);
+            particleMat.opacity = matResponse * 0.8;
+            
+            // Rotate particles to simulate bound currents (Just for show)
+            internalDipoles.rotation.y += 0.005 * matResponse * (I > 0 ? 1 : -1);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updatePhysics();
+            renderer.render(scene, camera);
+        }
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ampere_law_h.0.offline.js"></script>
+
+
+
+</body>
+</html>

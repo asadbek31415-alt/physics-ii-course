@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lenz's Law Interactive</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-primary: #3b82f6;
+            /* Blue for B-field */
+            --accent-secondary: #ef4444;
+            /* Red for North Pole / Induced B */
+            --coil-color: #f59e0b;
+            /* Amber for copper coil */
+            --current-color: #10b981;
+            /* Emerald for current flow */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 80%;
+            max-width: 800px;
+            cursor: move;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px border rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+            width: 250px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .status-neutral {
+            background: #4b5563;
+            color: white;
+        }
+
+        .status-increasing {
+            background: #b91c1c;
+            color: white;
+        }
+
+        .status-decreasing {
+            background: #1d4ed8;
+            color: white;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.3;
+            }
+        }
+
+        .action-text {
+            font-weight: 600;
+            color: var(--current-color);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="canvas-container">
+        <canvas id="lenzCanvas"></canvas>
+        <div class="ui-panel" id="ui-panel">
+            <div id="status-tag" class="status-badge status-neutral">Stationary</div>
+            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 5px;" id="action-title">Lenz's Law Explorer
+            </div>
+            <div style="font-size: 0.85rem; line-height: 1.4; color: #aaa;" id="action-desc">
+                Drag the magnet to see how the loop reacts.
+            </div>
+        </div>
+        <div class="hint">Click and drag the bar magnet through the loop</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('lenzCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const statusTag = document.getElementById('status-tag');
+        const actionTitle = document.getElementById('action-title');
+        const actionDesc = document.getElementById('action-desc');
+
+        let width, height;
+        function resize() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Magnet State
+        const magnet = {
+            x: width * 0.2,
+            y: height * 0.5,
+            w: 120,
+            h: 40,
+            isDragging: false,
+            lastX: 0,
+            velocity: 0
+        };
+
+        // Loop State
+        const loop = {
+            x: width * 0.7,
+            y: height * 0.5,
+            radiusX: 30,
+            radiusY: 80,
+            inducedCurrent: 0 // 1 for clockwise, -1 for counter-clockwise
+        };
+
+        let dragging = false;
+        let lastTimestamp = 0;
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+            if (pos.x > magnet.x - magnet.w / 2 && pos.x < magnet.x + magnet.w / 2 &&
+                pos.y > magnet.y - magnet.h / 2 && pos.y < magnet.y + magnet.h / 2) {
+                dragging = true;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const pos = getMousePos(e);
+            const oldX = magnet.x;
+            magnet.x = Math.max(magnet.w / 2, Math.min(width - magnet.w / 2, pos.x));
+            magnet.velocity = (magnet.x - oldX);
+        });
+
+        window.addEventListener('mouseup', () => {
+            dragging = false;
+            magnet.velocity = 0;
+        });
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            const pos = getMousePos(e);
+            if (pos.x > magnet.x - magnet.w / 2 && pos.x < magnet.x + magnet.w / 2 &&
+                pos.y > magnet.y - magnet.h / 2 && pos.y < magnet.y + magnet.h / 2) {
+                dragging = true;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!dragging) return;
+            const pos = getMousePos(e);
+            const oldX = magnet.x;
+            magnet.x = Math.max(magnet.w / 2, Math.min(width - magnet.w / 2, pos.x));
+            magnet.velocity = (magnet.x - oldX);
+            e.preventDefault();
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            dragging = false;
+            magnet.velocity = 0;
+        });
+
+        function drawMagnet(x, y, w, h) {
+            // Shadow
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+
+            // South side (Blue)
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.roundRect(x - w / 2, y - h / 2, w / 2, h, [8, 0, 0, 8]);
+            ctx.fill();
+
+            // North side (Red)
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.roundRect(x, y - h / 2, w / 2, h, [0, 8, 8, 0]);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // Labels
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('S', x - w / 4, y + 6);
+            ctx.fillText('N', x + w / 4, y + 6);
+
+            // Texture
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(x - w / 2, y - h / 2, w, h / 4);
+        }
+
+        function drawLoop(x, y, rx, ry, current) {
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineCap = 'round';
+
+            // Draw back part of the loop
+            ctx.beginPath();
+            ctx.ellipse(x, y, rx, ry, 0, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.stroke();
+
+            // Magnet can go through - handled by draw order later if we wanted 3D, 
+            // but for simplicity we'll just draw the front part later.
+        }
+
+        function drawLoopFront(x, y, rx, ry, current) {
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#d97706'; // darker amber for front overlap
+            ctx.beginPath();
+            ctx.ellipse(x, y, rx, ry, 0, Math.PI * 1.5, Math.PI * 2.5);
+            ctx.stroke();
+
+            if (Math.abs(current) > 0.1) {
+                // Draw current arrows
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 4;
+                const time = Date.now() / 200;
+
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i * Math.PI / 2) + (current > 0 ? time : -time);
+                    const ax = x + Math.cos(angle) * (rx + 15);
+                    const ay = y + Math.sin(angle) * ry;
+
+                    // Simple arrow direction
+                    const dir = current > 0 ? angle + Math.PI / 2 : angle - Math.PI / 2;
+
+                    ctx.save();
+                    ctx.translate(ax, ay);
+                    ctx.rotate(dir);
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -5);
+                    ctx.lineTo(5, 0);
+                    ctx.lineTo(-5, 5);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }
+
+        function drawBField(magnetX, magnetY, magnetW) {
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+            ctx.lineWidth = 1;
+
+            // Field lines emanating from North (right side)
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                const startX = magnetX + magnetW / 2;
+                const startY = magnetY + i * 10;
+                ctx.moveTo(startX, startY);
+                ctx.bezierCurveTo(startX + 100, startY, startX + 150, startY + i * 50, startX + 200, startY + i * 100);
+                // Just aesthetic lines
+                ctx.stroke();
+            }
+        }
+
+        function animate(timestamp) {
+            ctx.clearRect(0, 0, width, height);
+
+            // Logic: Induced Current
+            // Magnetic-flux change is proportional to velocity and proximity
+            const dist = loop.x - (magnet.x + magnet.w / 2);
+            // Proximity weight (simple gaussian-ish)
+            const proximity = Math.exp(-(dist * dist) / 10000);
+
+            // Faraday's Law: EMF = -dPhi_B/dt
+            // If dragging towards loop (v > 0), dist decreases, flux increases.
+            // Induced current should oppose the INCREASE of North flux.
+            // So it creates a North pole facing the magnet.
+
+            let induced = 0;
+            if (Math.abs(magnet.velocity) > 0.1) {
+                induced = -magnet.velocity * proximity * 0.1;
+            }
+
+            loop.inducedCurrent = loop.inducedCurrent * 0.9 + induced * 0.1;
+
+            // Update UI
+            if (Math.abs(magnet.velocity) < 0.1) {
+                statusTag.innerHTML = "Stationary";
+                statusTag.className = "status-badge status-neutral";
+                actionTitle.innerHTML = "No Change";
+                actionDesc.innerHTML = "Magnetic flux is constant. No current is induced.";
+            } else if (dist > 0) { // Magnet is to the left of loop
+                if (magnet.velocity > 0) {
+                    statusTag.innerHTML = "Flux Increasing";
+                    statusTag.className = "status-badge status-increasing";
+                    actionTitle.innerHTML = "Creating Resistance";
+                    actionDesc.innerHTML = "Loop induces a field to <b>repel</b> the incoming magnet.";
+                } else {
+                    statusTag.innerHTML = "Flux Decreasing";
+                    statusTag.className = "status-badge status-decreasing";
+                    actionTitle.innerHTML = "Creating Attraction";
+                    actionDesc.innerHTML = "Loop induces a field to <b>pull back</b> the retreating magnet.";
+                }
+            } else {
+                statusTag.innerHTML = "Exiting";
+                statusTag.className = "status-badge status-neutral";
+                actionTitle.innerHTML = "Opposite Effect";
+                actionDesc.innerHTML = "The loop now tries to prevent the magnet from leaving!";
+            }
+
+            // Draw everything
+            drawLoop(loop.x, loop.y, loop.radiusX, loop.radiusY, loop.inducedCurrent);
+
+            // Draw induced B-field (opposition)
+            if (Math.abs(loop.inducedCurrent) > 0.01) {
+                ctx.save();
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = loop.inducedCurrent > 0 ? '#ef4444' : '#3b82f6';
+                ctx.globalAlpha = Math.min(1, Math.abs(loop.inducedCurrent) * 5);
+
+                // Represent induced field as an arrow
+                ctx.beginPath();
+                const arrowX = loop.x - 50;
+                ctx.moveTo(arrowX, loop.y);
+                ctx.lineTo(arrowX - 40 * (loop.inducedCurrent > 0 ? 1 : -1), loop.y);
+                ctx.stroke();
+
+                // Arrow head
+                ctx.beginPath();
+                const headDirection = loop.inducedCurrent > 0 ? -1 : 1;
+                ctx.moveTo(arrowX + 20 * headDirection, loop.y - 10);
+                ctx.lineTo(arrowX + 40 * headDirection, loop.y);
+                ctx.lineTo(arrowX + 20 * headDirection, loop.y + 10);
+                ctx.stroke();
+
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.font = 'bold 12px Inter';
+                ctx.fillText('Induced B', arrowX - 30 * (loop.inducedCurrent > 0 ? 1 : -1), loop.y - 20);
+                ctx.restore();
+            }
+
+            drawMagnet(magnet.x, magnet.y, magnet.w, magnet.h);
+            drawLoopFront(loop.x, loop.y, loop.radiusX, loop.radiusY, loop.inducedCurrent);
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+
+</html>

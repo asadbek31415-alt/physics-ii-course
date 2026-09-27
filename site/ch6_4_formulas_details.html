@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Key Formulas & Concepts</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false }
+                ]
+            });
+        });
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; <a
+                    href="ch6_4_review.html">Review</a> &gt; Formulas
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Key Formulas & Concepts</h1>
+
+        <section class="topic-section">
+            <h2>Wave Properties</h2>
+            <div class="equation-box">
+                $$ c = \frac{1}{\sqrt{\mu_0 \epsilon_0}} \approx 3.00 \times 10^8 \text{ m/s} $$
+                $$ \omega = 2\pi f, \quad k = \frac{2\pi}{\lambda}, \quad c = \frac{\omega}{k} $$
+                $$ \mathbf{E} \perp \mathbf{B} \perp \mathbf{k}, \quad E_0 = c B_0 $$
+            </div>
+        </section>
+
+        <section class="topic-section">
+            <h2>Energy and Momentum</h2>
+            <div class="equation-box">
+                $$ \mathbf{S} = \frac{1}{\mu_0} (\mathbf{E} \times \mathbf{B}) \quad \text{(Poynting Vector)} $$
+                $$ I = \langle S \rangle = \frac{1}{2} c \epsilon_0 E_0^2 \quad \text{(Intensity)} $$
+                $$ P = I/c \quad \text{(Pressure, Absorber)} $$
+            </div>
+        </section>
+
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

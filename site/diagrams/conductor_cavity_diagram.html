@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Conductor Cavity</title>
+    
+    
+    <!-- Three.js from CDN -->
+    <script async src="../vendor/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../vendor/three/build/three.module.js",
+          "three/addons/": "../vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23; /* Matches parent */
+            --accent: #3498db;
+            --text: #e0e0e0;
+        }
+        body { margin: 0; overflow: hidden; background: var(--bg-color); font-family: 'Inter', sans-serif; }
+        
+        #canvas-container { width: 100%; height: 100vh; position: relative; }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas */
+        }
+
+        .controls {
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        button:hover, button.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
+        }
+
+        /* 3D Labels */
+        .label {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+        }
+        .label.visible { opacity: 1; }
+        
+        .label-line {
+            position: absolute;
+            height: 1px;
+            background: white;
+            transform-origin: 0 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .definition-box {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            border-left: 4px solid #f1c40f;
+            padding: 15px 25px;
+            border-radius: 0 8px 8px 0;
+            color: #ccc;
+            max-width: 500px;
+            text-align: center;
+            pointer-events: none;
+        }
+        strong { color: white; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <div class="ui-layer">
+            <div class="controls">
+                <button id="btn-cut" class="active">View: Cutaway</button>
+                <button id="btn-full">View: Full Sphere</button>
+            </div>
+        </div>
+
+        <!-- Labels that will track 3D positions -->
+        <div id="lbl-cavity" class="label">Empty Space ("Cavity")</div>
+        <div id="lbl-metal" class="label">Solid Metal</div>
+        <div id="lbl-charge" class="label" style="color:#ff6b6b; font-weight:bold;">+q</div>
+
+        <div class="definition-box">
+            A <strong>Cavity</strong> is simply a hole inside a solid object. <br>
+            Notice how the charge sits in the empty space, not touching the metal.
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Setup Scene ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23); // Dark blue-grey
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 2, 8);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.localClippingEnabled = true; // Enable slicing
+        container.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+        mainLight.position.set(5, 5, 5);
+        scene.add(mainLight);
+
+        const backLight = new THREE.DirectionalLight(0x3498db, 0.5);
+        backLight.position.set(-5, -2, -5);
+        scene.add(backLight);
+
+        // --- Objects ---
+
+        // 1. Clipping Plane (The Slicer)
+        // Normal (1, 0, 0) means it slices along X axis. Constant determines position.
+        const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
+        
+        // 2. The Conductor (Metal Sphere)
+        const conductorGroup = new THREE.Group();
+        scene.add(conductorGroup);
+
+        // Material for Metal
+        const metalMaterial = new THREE.MeshStandardMaterial({
+            color: 0x576c85,
+            metalness: 0.6,
+            roughness: 0.2,
+            side: THREE.DoubleSide,
+            clippingPlanes: [clipPlane], // Apply slice
+            clipShadows: true
+        });
+
+        // Outer Shell Geometry
+        const outerGeo = new THREE.SphereGeometry(2.5, 64, 64);
+        const outerMesh = new THREE.Mesh(outerGeo, metalMaterial);
+        conductorGroup.add(outerMesh);
+
+        // Inner Shell Geometry (The Cavity Wall)
+        // We render a slightly smaller sphere with BackSide to create the "thickness" look
+        const innerGeo = new THREE.SphereGeometry(1.5, 64, 64);
+        const innerMat = new THREE.MeshStandardMaterial({
+            color: 0x4a5a6a,
+            metalness: 0.2,
+            roughness: 0.8,
+            side: THREE.BackSide, // Render inside face
+            clippingPlanes: [clipPlane]
+        });
+        const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+        conductorGroup.add(innerMesh);
+
+        // 3. The Charge (+q)
+        const chargeGeo = new THREE.SphereGeometry(0.3, 32, 32);
+        const chargeMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+        const chargeMesh = new THREE.Mesh(chargeGeo, chargeMat);
+        // Add a glow
+        const glowGeo = new THREE.SphereGeometry(0.6, 32, 32);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.2 });
+        const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+        chargeMesh.add(glowMesh);
+        
+        // Position charge slightly off center in the cavity
+        chargeMesh.position.set(0.5, 0.2, 0); 
+        scene.add(chargeMesh);
+
+        // 4. Induced Charges (Particles)
+        // Helper to create sprites
+        function createChargeSprite(type, position, parent) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.font = "bold 48px Arial";
+            ctx.fillStyle = type === '+' ? '#ff6b6b' : '#5dade2';
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(type, 32, 32);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.copy(position);
+            sprite.scale.set(0.5, 0.5, 0.5);
+            parent.add(sprite);
+        }
+
+        // Add - charges to inner wall
+        for(let i=0; i<15; i++) {
+            const vec = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(1.4);
+            // Only add if on the visible side of clip (roughly) or if we are in full view
+            createChargeSprite('-', vec, conductorGroup);
+        }
+
+        // Add + charges to outer wall
+        for(let i=0; i<20; i++) {
+            const vec = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(2.6);
+            createChargeSprite('+', vec, conductorGroup);
+        }
+
+
+        // --- Interaction Logic ---
+        let isCutaway = true;
+
+        document.getElementById('btn-cut').addEventListener('click', () => {
+            isCutaway = true;
+            updateButtons();
+            // Animate Clip Plane
+            renderer.localClippingEnabled = true;
+        });
+
+        document.getElementById('btn-full').addEventListener('click', () => {
+            isCutaway = false;
+            updateButtons();
+            renderer.localClippingEnabled = false;
+        });
+
+        function updateButtons() {
+            document.getElementById('btn-cut').className = isCutaway ? 'active' : '';
+            document.getElementById('btn-full').className = !isCutaway ? 'active' : '';
+        }
+
+        // --- Label Tracking ---
+        const lblCavity = document.getElementById('lbl-cavity');
+        const lblMetal = document.getElementById('lbl-metal');
+        const lblCharge = document.getElementById('lbl-charge');
+
+        // 3D positions to track
+        const posCavity = new THREE.Vector3(-0.5, 0, 0); // Empty space
+        const posMetal = new THREE.Vector3(2.0, 0, 0);   // Solid part
+        const posCharge = chargeMesh.position.clone();
+
+        function updateLabel(element, position3D) {
+            // Project 3D point to 2D screen
+            const vector = position3D.clone();
+            vector.project(camera);
+
+            // Hide if behind camera or clipped (simple check)
+            if (vector.z > 1) {
+                element.classList.remove('visible');
+                return;
+            }
+
+            // Convert to CSS coordinates
+            const x = (vector.x * .5 + .5) * container.clientWidth;
+            const y = (-(vector.y * .5) + .5) * container.clientHeight;
+
+            element.style.left = `${x}px`;
+            element.style.top = `${y}px`;
+            
+            // Only show labels in Cutaway mode (except charge)
+            if(isCutaway || element.id === 'lbl-charge') {
+                element.classList.add('visible');
+            } else {
+                element.classList.remove('visible');
+            }
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Bob the charge slightly
+            const time = Date.now() * 0.002;
+            chargeMesh.position.y = 0.2 + Math.sin(time) * 0.1;
+            posCharge.copy(chargeMesh.position);
+
+            // Update Labels
+            updateLabel(lblCavity, posCavity);
+            updateLabel(lblMetal, posMetal);
+            updateLabel(lblCharge, posCharge);
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="conductor_cavity_diagram.0.offline.js"></script>
+
+
+</body>
+</html>

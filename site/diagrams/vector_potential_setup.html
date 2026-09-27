@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integration Setup</title>
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$']] },
+          svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; }
+        
+        #legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(18, 26, 35, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            color: #ccc;
+            pointer-events: none;
+            user-select: none;
+        }
+        .item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 0.9rem; }
+        .line { width: 20px; height: 3px; border-radius: 2px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* Label styling for 3D overlay */
+        .label {
+            color: white;
+            font-family: sans-serif;
+            padding: 2px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div id="legend">
+        <div class="item">
+            <div class="line" style="background: #5dade2;"></div> $\mathbf{r}$ (Observer)
+        </div>
+        <div class="item">
+            <div class="line" style="background: #888;"></div> $\mathbf{r}'$ (Source)
+        </div>
+        <div class="item">
+            <div class="line" style="background: #e74c3c;"></div> $\boldsymbol{r} = \mathbf{r} - \mathbf{r}'$
+        </div>
+        <div class="item">
+            <div class="dot" style="background: rgba(46, 204, 113, 0.5); border: 1px solid #2ecc71;"></div> Material Volume
+        </div>
+        <div class="item">
+            <div class="line" style="background: #f1c40f;"></div> $\mathbf{M}$ (Dipole Moment)
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        let scene, camera, renderer, labelRenderer, controls;
+
+        function init() {
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(10, 6, 12);
+
+            // Renderers
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            document.body.appendChild(labelRenderer.domElement);
+
+            controls = new OrbitControls(camera, labelRenderer.domElement);
+            controls.enableDamping = true;
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // --- OBJECTS ---
+
+            // 1. Origin
+            const origin = new THREE.Vector3(0,0,0);
+            const axesHelper = new THREE.AxesHelper(1);
+            scene.add(axesHelper);
+            createLabel(new THREE.Vector3(0, -0.5, 0), "Origin");
+
+            // 2. The Material Blob (Source Volume)
+            const geo = new THREE.IcosahedronGeometry(2.5, 1);
+            // Distort it to look organic
+            const pos = geo.attributes.position;
+            for(let i=0; i<pos.count; i++){
+                pos.setY(i, pos.getY(i) * 0.7);
+                pos.setX(i, pos.getX(i) + Math.sin(pos.getY(i))*0.5);
+            }
+            geo.computeVertexNormals();
+            const mat = new THREE.MeshPhongMaterial({
+                color: 0x2ecc71,
+                transparent: true,
+                opacity: 0.2,
+                wireframe: false,
+                side: THREE.DoubleSide
+            });
+            const blob = new THREE.Mesh(geo, mat);
+            blob.position.set(0, 0, 0);
+            scene.add(blob);
+
+            // Wireframe overlay for volume effect
+            const wireGeo = new THREE.WireframeGeometry(geo);
+            const wireMat = new THREE.LineBasicMaterial({ color: 0x2ecc71, opacity: 0.1, transparent: true });
+            const wire = new THREE.LineSegments(wireGeo, wireMat);
+            blob.add(wire);
+
+            // 3. Vectors
+
+            // Source Point r' (inside blob)
+            const rPrimeVec = new THREE.Vector3(1.2, 0.5, 0.8);
+            drawArrow(origin, rPrimeVec, 0x888888, "r'");
+
+            // Volume Element dtau (Cube) at r'
+            const cubeGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const cubeMat = new THREE.MeshBasicMaterial({ color: 0x2ecc71, wireframe: true });
+            const dTau = new THREE.Mesh(cubeGeo, cubeMat);
+            dTau.position.copy(rPrimeVec);
+            scene.add(dTau);
+            createLabel(new THREE.Vector3(rPrimeVec.x, rPrimeVec.y - 0.5, rPrimeVec.z), "dτ'");
+
+            // Magnetization M at r'
+            const mVec = new THREE.Vector3(0, 1.5, 0);
+            drawArrow(rPrimeVec, rPrimeVec.clone().add(mVec), 0xf1c40f, "M");
+
+            // Observation Point r (far away)
+            const rVec = new THREE.Vector3(3, 4, 3);
+            drawArrow(origin, rVec, 0x5dade2, "r");
+            
+            // Dot at observation
+            const obsDot = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color: 0x5dade2}));
+            obsDot.position.copy(rVec);
+            scene.add(obsDot);
+
+            // Separation Vector script-r (r - r')
+            // From source to observer
+            drawArrow(rPrimeVec, rVec, 0xe74c3c, "r_sep"); // Label handled below manually for latex feel
+
+            // Separation Label
+            const midPoint = new THREE.Vector3().lerpVectors(rPrimeVec, rVec, 0.5);
+            createLabel(midPoint, "r (sep)");
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function drawArrow(from, to, color, labelText) {
+            const dir = new THREE.Vector3().subVectors(to, from);
+            const len = dir.length();
+            dir.normalize();
+            const arrow = new THREE.ArrowHelper(dir, from, len, color, 0.3, 0.2);
+            scene.add(arrow);
+            
+            if(labelText && labelText !== "r_sep") { // custom handling for sep
+                const mid = new THREE.Vector3().lerpVectors(from, to, 0.5);
+                // Offset label slightly
+                mid.y += 0.2;
+                createLabel(mid, labelText);
+            }
+        }
+
+        function createLabel(pos, text) {
+            const div = document.createElement('div');
+            div.className = 'label';
+            // Simple mapping for visual clarity
+            if(text === "r'") div.innerHTML = "<b>r'</b>";
+            else if(text === "r") div.innerHTML = "<b>r</b>";
+            else if(text === "M") div.innerHTML = "<b>M</b>";
+            else if(text === "dτ'") div.innerHTML = "dτ'";
+            else if(text === "r (sep)") div.innerHTML = "<span style='color:#ffaaaa'>r</span>";
+            else div.textContent = text;
+
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            scene.add(label);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script defer data-offline-bundle src="vector_potential_setup.0.offline.js"></script>
+
+
+</body>
+</html>

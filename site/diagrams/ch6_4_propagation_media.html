@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propagation in Linear Media</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #050a14;
+            --panel-bg: #0f172a;
+            --border: #1e293b;
+            --accent: #38bdf8;
+            --e-field: #f87171;
+            --b-field: #3b82f6;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: var(--bg-deep); 
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            height: 100vh;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            padding: 30px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        h1 { font-size: 1.5rem; color: var(--accent); margin: 0 0 20px 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        
+        .theory-section { font-size: 0.9rem; line-height: 1.6; color: var(--text-dim); margin-bottom: 25px; }
+        .equation-box { 
+            background: rgba(0,0,0,0.3); 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 15px 0; 
+            text-align: center;
+            border-left: 3px solid var(--accent);
+            font-size: 1.1rem;
+        }
+
+        .controls-card {
+            background: rgba(0,0,0,0.3);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .control-row { margin-bottom: 15px; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .label-text { font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: bold; letter-spacing: 0.05em; }
+        .label-value { color: var(--accent); font-weight: bold; font-size: 0.9rem; }
+
+        input[type="range"] { 
+            width: 100%; accent-color: var(--accent); cursor: pointer; height: 6px; 
+            appearance: none; background: #1e293b; border-radius: 3px; 
+        }
+
+        button { 
+            width: 100%; background: #1e293b; border: 1px solid var(--border); 
+            color: white; padding: 10px; border-radius: 6px; cursor: pointer; 
+            margin-top: 10px; transition: 0.2s; font-size: 0.85rem;
+        }
+        button:hover { background: #2d3e5a; }
+        button.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); color: var(--accent); }
+
+        /* Legend */
+        .legend { font-size: 0.9rem; display: flex; flex-direction: column; gap: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; color: var(--text-dim); }
+        .swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+        
+        /* Canvas Components */
+        #canvas-container { position: relative; width: 100%; height: 100%; }
+        .canvas-overlay {
+            position: absolute; top: 30px; left: 0; width: 100%;
+            display: flex; justify-content: space-around;
+            pointer-events: none; text-align: center;
+        }
+        .region-label {
+            font-weight: 600; font-size: 0.9rem; color: #94a3b8;
+            background: rgba(5, 10, 20, 0.6); padding: 5px 15px; border-radius: 4px;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <h1>1. Propagation in Media</h1>
+            
+            <div class="theory-section">
+                In a dielectric, constants $\epsilon_0$ and $\mu_0$ are replaced by the material's permittivity and permeability.
+                
+                <div class="equation-box">
+                    $v = \frac{1}{\sqrt{\epsilon\mu}} = \frac{c}{n}$
+                </div>
+
+                The <b>Index of Refraction ($n$)</b> determines how much the wave slows down. Since frequency $f$ is fixed:
+                <ul>
+                    <li>$\lambda_{medium} = \lambda_0 / n$</li>
+                    <li>$v_{medium} = c / n$</li>
+                </ul>
+            </div>
+
+            <div class="controls-card">
+                <div class="control-row">
+                    <div class="label-row">
+                        <span class="label-text">Index of Refraction ($n$)</span>
+                        <span id="val-n" class="label-value">1.50</span>
+                    </div>
+                    <input type="range" id="refIndex" min="1" max="2.5" step="0.01" value="1.5">
+                </div>
+                <button id="toggleGhost" onclick="toggleGhost()">Show Vacuum Reference</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item"><div class="swatch" style="background: var(--e-field)"></div> Electric Field ($\vec{E}$)</div>
+                <div class="legend-item"><div class="swatch" style="background: var(--b-field)"></div> Magnetic Field ($\vec{B}$)</div>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <div class="canvas-overlay" id="canvas-labels">
+                <div class="region-label">VACUUM ($n=1$)</div>
+                <div class="region-label">MEDIUM ($n > 1$)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Module Setup -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let eLine, bLine, ghostELine;
+        let showGhost = false;
+
+        const container = document.getElementById('canvas-container');
+        const nInput = document.getElementById('refIndex');
+
+        window.toggleGhost = () => {
+            showGhost = !showGhost;
+            document.getElementById('toggleGhost').classList.toggle('active');
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050a14);
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 15, 32);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Grid
+            const grid = new THREE.GridHelper(50, 50, 0x1e293b, 0x0f172a);
+            grid.position.y = -6.5;
+            scene.add(grid);
+
+            // Medium Visual (Translucent box for x > 0)
+            const boxGeom = new THREE.BoxGeometry(25, 13, 13);
+            const boxMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.08 });
+            const medium = new THREE.Mesh(boxGeom, boxMat);
+            medium.position.x = 12.5; 
+            scene.add(medium);
+
+            // Lines
+            eLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xf87171, linewidth: 2 }));
+            bLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 2 }));
+            ghostELine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }));
+            
+            scene.add(eLine, bLine, ghostELine);
+            animate();
+        }
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const n = parseFloat(nInput.value);
+            document.getElementById('val-n').innerText = n.toFixed(2);
+
+            time += 0.05;
+            const k0 = 0.8; 
+            const xPoints = 400;
+            const xSpan = 42;
+            const ePos = [], bPos = [], ghostPos = [];
+
+            for(let i=0; i<=xPoints; i++) {
+                const x = (i/xPoints) * xSpan - (xSpan/2);
+                
+                // Physics: n=1 for x<0, n=input for x>=0
+                let phase = (x < 0) ? (k0 * x - time) : (n * k0 * x - time);
+
+                const eVal = 4.5 * Math.sin(phase);
+                const bVal = 2.0 * Math.sin(phase);
+
+                ePos.push(x, eVal, 0);
+                bPos.push(x, 0, bVal);
+
+                if(showGhost) {
+                    const gPhase = k0 * x - time;
+                    ghostPos.push(x, 4.5 * Math.sin(gPhase), 0);
+                }
+            }
+
+            eLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(ePos, 3));
+            bLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(bPos, 3));
+            
+            if(showGhost) {
+                ghostELine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(ghostPos, 3));
+                ghostELine.visible = true;
+            } else {
+                ghostELine.visible = false;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            if (!camera || !renderer) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Render Math in all containers
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false}
+                ],
+                throwOnError : false
+            });
+            init();
+        });
+    </script>
+<script defer data-offline-bundle src="ch6_4_propagation_media.0.offline.js"></script>
+
+
+</body>
+</html>

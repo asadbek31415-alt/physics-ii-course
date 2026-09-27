@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Magnetic Dipole</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .comparison-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .col {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        .sim-container {
+            width: 100%;
+            height: 550px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: #0b1016;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> &gt;
+                Deep Dive: The Magnetic Dipole
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Deep Dive: The Magnetic Dipole</h1>
+        <p>
+            In electrostatics, you learned that a "Dipole" consists of two opposite charges ($+q$ and $-q$) separated by
+            a distance. In magnetostatics, we don't have magnetic monopoles (no isolated "North" charge). So, what is
+            the fundamental unit of magnetism?
+        </p>
+
+        <section>
+            <h2>1. Defining the Magnetic Dipole</h2>
+            <div class="concept-box">
+                <p>
+                    <strong>The Fundamental Unit:</strong> The simplest magnetic object is not a pole, but a
+                    <strong>current loop</strong>.
+                </p>
+            </div>
+
+            <p>
+                Any closed loop of current acts exactly like a tiny bar magnet. It has a "North" side (where field lines
+                exit) and a "South" side (where field lines enter). Because it has these two poles, we call it a
+                <strong>Magnetic Dipole</strong>.
+            </p>
+
+            <h3>The Definition ($\vec{m}$)</h3>
+            <p>
+                We define a vector $\vec{m}$, called the <strong>Magnetic Dipole Moment</strong>, to represent the
+                strength and orientation of this loop.
+            </p>
+            <div class="formula-box">
+                $$ \vec{m} = I \vec{A} $$
+            </div>
+            <ul>
+                <li><strong>$I$</strong>: The current flowing in the loop.</li>
+                <li><strong>$\vec{A}$</strong>: The area vector. Its magnitude is the area of the loop, and its
+                    direction is normal to the surface.</li>
+            </ul>
+            <p>
+                <strong>Direction (Right-Hand Rule):</strong> Curl your fingers in the direction of the current $I$.
+                Your thumb points in the direction of $\vec{m}$ (and the North pole).
+            </p>
+        </section>
+
+        <section>
+            <h2>2. Interactive Mechanics</h2>
+            <p>
+                Why does this definition matter? Because it allows us to calculate how magnetic fields interact with
+                loops using simple vector math. Explore the simulation below to see the forces and torques in action.
+            </p>
+
+            <div class="sim-container">
+                <!-- Points to the Three.js visualization created previously -->
+                <iframe src="diagrams/current_loop_mechanics.html" title="Current Loop Mechanics Diagram"></iframe>
+            </div>
+
+            <p style="text-align: center; font-size: 0.9em; color: var(--text-secondary);">
+                <em>Tip: Use the "Inspect: Right-Hand Rule" button to see the local vectors.</em>
+            </p>
+        </section>
+
+        <section>
+            <h2>3. Proof: Zero Net Force (Uniform Field)</h2>
+            <p>
+                You might expect a magnet to be pulled by a magnetic field. However, in a <strong>uniform</strong>
+                field, a pure dipole experiences <strong>no net force</strong>.
+            </p>
+            <p>The total force is the integral of the Lorentz force along the wire:</p>
+            <div class="formula-box">
+                $$ \vec{F} = \oint I (d\vec{l} \times \vec{B}) $$
+            </div>
+            <p>
+                If $\vec{B}$ is constant (uniform), we can factor it out of the integral:
+            </p>
+            <div class="formula-box">
+                $$ \vec{F} = I \left( \oint d\vec{l} \right) \times \vec{B} $$
+            </div>
+            <p>
+                The term $\oint d\vec{l}$ is the vector sum of all displacement steps around a closed loop. Since you
+                end where you started, this sum is exactly zero. Thus:
+            </p>
+            <div class="formula-box" style="border-left: 4px solid var(--success-color);">
+                $$ \vec{F}_{\text{net}} = 0 \quad (\text{Uniform } \vec{B}) $$
+            </div>
+            <p>
+                This is why a compass needle (a dipole) rotates to point North but doesn't fly out of your hand toward
+                the North Pole.
+            </p>
+        </section>
+
+        <section>
+            <h2>4. Torque and Alignment</h2>
+            <p>
+                Even though the net force is zero, the forces on opposite sides of the loop generally don't align. This
+                creates a <strong>Torque ($\vec{\tau}$)</strong>.
+            </p>
+            <p>
+                As seen in the simulation above, the forces try to twist the loop so that the Magnetic Moment $\vec{m}$
+                aligns with the B-field.
+            </p>
+            <div class="formula-box" style="border-left: 4px solid var(--warning-color);">
+                $$ \vec{\tau} = \vec{m} \times \vec{B} $$
+            </div>
+            <p>
+                This torque is the mechanism behind <strong>Paramagnetism</strong>. The external field exerts a torque
+                on atomic dipoles, trying to line them up, while thermal energy tries to randomize them.
+            </p>
+        </section>
+
+        <section>
+            <h2>5. Non-Uniform Fields (The Attraction)</h2>
+            <p>
+                If the field is <strong>not</strong> uniform (like near the pole of another magnet), the cancellation in
+                Section 3 fails. The side of the loop in the stronger field feels a larger force than the side in the
+                weaker field.
+            </p>
+            <div class="formula-box">
+                $$ \vec{F} = \nabla (\vec{m} \cdot \vec{B}) $$
+            </div>
+            <div class="concept-box">
+                <p>
+                    <strong>Physical Intuition:</strong> Dipoles are attracted to regions of stronger magnetic field (if
+                    aligned). This explains why a permanent magnet picks up paperclips. The magnet induces a dipole in
+                    the paperclip ($\vec{m}$), and the <strong>gradient</strong> of the magnet's field ($\nabla
+                    \vec{B}$) pulls that dipole in.
+                </p>
+            </div>
+        </section>
+
+    </div>
+
+    <footer></footer>
+
+</body>
+
+</html>

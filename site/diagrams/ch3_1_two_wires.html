@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Current-Carrying Wires</title>
+    
+    <style>
+        :root {
+            --bg: #000;
+            --panel-bg: #101015;
+            --panel-edge: #333;
+            --wire: #252a32;
+            --wire-core: #3a414c;
+            --electron: #3b82f6;
+            --force: #38bdf8;
+            --battery-red: #ff4444;
+            --battery-blue: #3b82f6;
+            --battery-yellow: #fbbf24;
+            --green: #4ade80;
+            --red: #ff5555;
+            --muted: #a7abb4;
+            --text: #eeeeee;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 300px) minmax(0, 1fr);
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+        }
+
+        #ui-panel {
+            min-width: 0;
+            height: 100%;
+            overflow-y: auto;
+            background: rgba(15, 15, 20, 0.96);
+            border-right: 1px solid var(--panel-edge);
+            box-shadow: 10px 0 40px rgba(0, 0, 0, 0.35);
+            z-index: 2;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid #24262d;
+        }
+
+        h2 {
+            margin: 0;
+            color: var(--battery-yellow);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .panel-content {
+            padding: 18px;
+        }
+
+        .status-title {
+            margin: 0 0 8px;
+            font-size: 1.28rem;
+            line-height: 1.15;
+            font-weight: 700;
+        }
+
+        .status-title.repel {
+            color: var(--red);
+        }
+
+        .status-title.attract {
+            color: var(--green);
+        }
+
+        .explain {
+            margin: 0 0 18px;
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+
+        .controls-box {
+            display: grid;
+            gap: 9px;
+        }
+
+        button {
+            min-width: 0;
+            min-height: 44px;
+            padding: 11px 12px;
+            border: 1px solid #30343d;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.035);
+            color: #d8dbe2;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            font: inherit;
+            text-align: left;
+            transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: #4b5563;
+        }
+
+        button.active {
+            border-color: var(--electron);
+            background: rgba(59, 130, 246, 0.18);
+            color: #fff;
+        }
+
+        #scene-container {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #ui-panel {
+                height: auto;
+                max-height: 44vh;
+                border-right: 0;
+                border-bottom: 1px solid var(--panel-edge);
+            }
+
+            .panel-content {
+                padding: 14px;
+            }
+
+            .status-title {
+                font-size: 1.05rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <aside id="ui-panel">
+        <div class="panel-header">
+            <h2>Two Wires</h2>
+        </div>
+        <div class="panel-content">
+            <div id="status-title" class="status-title repel" aria-live="polite">Opposite Directions Repel</div>
+            <p id="desc-text" class="explain">The battery drives one side upward and the other downward. The dashed lines show where the wires would stay without the magnetic force.</p>
+
+            <div class="controls-box">
+                <button id="btn-opposite" class="active" type="button" data-mode="opposite">
+                    <span>Opposite currents repel</span>
+                </button>
+                <button id="btn-same" type="button" data-mode="same">
+                    <span>Same currents attract</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <main id="scene-container">
+        <canvas id="sim-canvas" aria-label="Two current-carrying wires simulator"></canvas>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('sim-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('scene-container');
+        const buttons = {
+            opposite: document.getElementById('btn-opposite'),
+            same: document.getElementById('btn-same')
+        };
+        const statusTitle = document.getElementById('status-title');
+        const descText = document.getElementById('desc-text');
+
+        const WORLD_W = 34;
+        const WORLD_H = 27;
+        const NEUTRAL_GAP = 6.8;
+        const WIRE_BOTTOM = -5.5;
+        const WIRE_TOP = 5.8;
+        const BATTERY_Y = -10.35;
+        const POSITIVE_TERMINAL = { x: -2.12, y: BATTERY_Y };
+        const NEGATIVE_TERMINAL = { x: 2.12, y: BATTERY_Y };
+        const PARTICLE_COUNT = 130;
+        const COLORS = {
+            electron: '#3b82f6',
+            force: '#38bdf8',
+            batteryRed: '#ff4444',
+            batteryBlue: '#3b82f6',
+            batteryYellow: '#fbbf24'
+        };
+        const requestedMode = new URLSearchParams(window.location.search).get('mode');
+        const initialMode = requestedMode === 'same' ? 'same' : 'opposite';
+        const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+            t: i / PARTICLE_COUNT,
+            lane: (Math.random() - 0.5) * 0.18,
+            radius: 0.045 + Math.random() * 0.035,
+            speed: 0.048 + Math.random() * 0.03,
+            phase: Math.random() * Math.PI * 2
+        }));
+
+        let width = 1;
+        let height = 1;
+        let dpr = 1;
+        let scale = 1;
+        let originX = 0;
+        let originY = 0;
+        let mode = initialMode;
+        let animationStart = performance.now();
+        let lastTime = performance.now();
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            width = Math.max(1, Math.floor(rect.width));
+            height = Math.max(1, Math.floor(rect.height));
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            scale = Math.min(width / WORLD_W, height / WORLD_H) * 0.9;
+            originX = width / 2;
+            originY = height / 2;
+        }
+
+        function xw(x) {
+            return originX + x * scale;
+        }
+
+        function yw(y) {
+            return originY - y * scale;
+        }
+
+        function sw(value) {
+            return value * scale;
+        }
+
+        function pointToCanvas(point) {
+            return { x: xw(point.x), y: yw(point.y) };
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        function roundedRect(x, y, w, h, r) {
+            const radius = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.arcTo(x + w, y, x + w, y + h, radius);
+            ctx.arcTo(x + w, y + h, x, y + h, radius);
+            ctx.arcTo(x, y + h, x, y, radius);
+            ctx.arcTo(x, y, x + w, y, radius);
+            ctx.closePath();
+        }
+
+        function addLine(points, a, b, steps = 16) {
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                points.push({ x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) });
+            }
+        }
+
+        function addCubic(points, p0, p1, p2, p3, steps = 48) {
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const mt = 1 - t;
+                points.push({
+                    x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
+                    y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y
+                });
+            }
+        }
+
+        function centralPoint(side, y, deflection) {
+            const t = clamp((y - WIRE_BOTTOM) / (WIRE_TOP - WIRE_BOTTOM), 0, 1);
+            const bend = Math.pow(Math.sin(t * Math.PI), 1.12);
+            const direction = mode === 'opposite' ? 1 : -1;
+            const amount = mode === 'opposite' ? 1.15 : 1.38;
+            return {
+                x: side * NEUTRAL_GAP / 2 + side * direction * amount * deflection * bend,
+                y
+            };
+        }
+
+        function addCentralWire(points, side, y0, y1, deflection, steps = 72) {
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const y = lerp(y0, y1, t);
+                points.push(centralPoint(side, y, deflection));
+            }
+        }
+
+        function buildRoute(deflection) {
+            const leftBottom = centralPoint(-1, WIRE_BOTTOM, deflection);
+            const leftTop = centralPoint(-1, WIRE_TOP, deflection);
+            const rightBottom = centralPoint(1, WIRE_BOTTOM, deflection);
+            const rightTop = centralPoint(1, WIRE_TOP, deflection);
+            const points = [];
+
+            addCubic(points, POSITIVE_TERMINAL, { x: -3.7, y: -10.1 }, { x: -4.0, y: -6.9 }, leftBottom, 44);
+            points.pop();
+            addCentralWire(points, -1, WIRE_BOTTOM, WIRE_TOP, deflection, 80);
+            points.pop();
+
+            if (mode === 'opposite') {
+                addCubic(points, leftTop, { x: -1.9, y: 7.2 }, { x: 1.9, y: 7.2 }, rightTop, 34);
+                points.pop();
+                addCentralWire(points, 1, WIRE_TOP, WIRE_BOTTOM, deflection, 80);
+                points.pop();
+                addCubic(points, rightBottom, { x: 4.0, y: -6.9 }, { x: 3.7, y: -10.1 }, NEGATIVE_TERMINAL, 44);
+            } else {
+                addCubic(points, leftTop, { x: -2.6, y: 9.15 }, { x: 8.0, y: 9.05 }, { x: 9.9, y: 5.5 }, 58);
+                points.pop();
+                addCubic(points, { x: 9.9, y: 5.5 }, { x: 12.2, y: 0.8 }, { x: 9.0, y: -5.35 }, rightBottom, 70);
+                points.pop();
+                addCentralWire(points, 1, WIRE_BOTTOM, WIRE_TOP, deflection, 80);
+                points.pop();
+                addCubic(points, rightTop, { x: 4.9, y: 4.6 }, { x: 3.9, y: -9.7 }, NEGATIVE_TERMINAL, 62);
+            }
+
+            return withLengths(points);
+        }
+
+        function withLengths(points) {
+            const lengths = [0];
+            let total = 0;
+            for (let i = 1; i < points.length; i++) {
+                total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+                lengths.push(total);
+            }
+            return { points, lengths, total };
+        }
+
+        function pointAt(path, t) {
+            const target = ((t % 1) + 1) % 1 * path.total;
+            let index = 1;
+            while (index < path.lengths.length - 1 && path.lengths[index] < target) index++;
+            const prev = path.points[index - 1];
+            const next = path.points[index];
+            const span = Math.max(0.0001, path.lengths[index] - path.lengths[index - 1]);
+            const local = (target - path.lengths[index - 1]) / span;
+            const x = lerp(prev.x, next.x, local);
+            const y = lerp(prev.y, next.y, local);
+            return {
+                x,
+                y,
+                angle: Math.atan2(next.y - prev.y, next.x - prev.x)
+            };
+        }
+
+        function drawBackground() {
+            ctx.clearRect(0, 0, width, height);
+            const gradient = ctx.createRadialGradient(width * 0.57, height * 0.43, 0, width * 0.57, height * 0.43, Math.max(width, height) * 0.72);
+            gradient.addColorStop(0, '#050505');
+            gradient.addColorStop(1, '#000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function drawNeutralLines() {
+            ctx.save();
+            ctx.setLineDash([sw(0.18), sw(0.22)]);
+            ctx.lineWidth = Math.max(1, sw(0.035));
+            ctx.strokeStyle = 'rgba(170, 176, 188, 0.8)';
+            [-1, 1].forEach(side => {
+                const x = xw(side * NEUTRAL_GAP / 2);
+                ctx.beginPath();
+                ctx.moveTo(x, yw(WIRE_BOTTOM - 0.1));
+                ctx.lineTo(x, yw(WIRE_TOP + 0.1));
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+
+        function drawPath(path) {
+            const drawStroke = (lineWidth, strokeStyle, shadowBlur = 0, shadowColor = 'transparent') => {
+                ctx.save();
+                ctx.beginPath();
+                path.points.forEach((point, index) => {
+                    const p = pointToCanvas(point);
+                    if (index === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                });
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = sw(lineWidth);
+                ctx.strokeStyle = strokeStyle;
+                ctx.shadowBlur = sw(shadowBlur);
+                ctx.shadowColor = shadowColor;
+                ctx.stroke();
+                ctx.restore();
+            };
+
+            drawStroke(0.72, 'rgba(30, 36, 45, 0.95)', 0.14, 'rgba(80, 120, 190, 0.28)');
+            drawStroke(0.38, '#343b46');
+            drawStroke(0.10, 'rgba(255, 255, 255, 0.18)');
+        }
+
+        function drawBattery() {
+            const x = xw(0);
+            const y = yw(BATTERY_Y);
+            const bodyW = sw(3.65);
+            const bodyH = sw(1.35);
+            const capW = sw(0.34);
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(251, 191, 36, 0.28)';
+            ctx.shadowBlur = sw(0.45);
+            ctx.fillStyle = '#151515';
+            ctx.strokeStyle = '#3d3d3d';
+            ctx.lineWidth = Math.max(1, sw(0.06));
+            roundedRect(x - bodyW / 2, y - bodyH / 2, bodyW, bodyH, sw(0.17));
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = COLORS.batteryRed;
+            roundedRect(x - bodyW / 2 - capW, y - bodyH / 2, capW, bodyH, sw(0.08));
+            ctx.fill();
+            ctx.fillStyle = COLORS.batteryBlue;
+            roundedRect(x + bodyW / 2, y - bodyH / 2, capW, bodyH, sw(0.08));
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = COLORS.batteryYellow;
+            ctx.fillStyle = COLORS.batteryYellow;
+            ctx.lineWidth = Math.max(1, sw(0.05));
+            roundedRect(x - sw(0.82), y - sw(0.36), sw(1.64), sw(0.72), sw(0.11));
+            ctx.stroke();
+            ctx.font = `${Math.max(12, sw(0.40))}px 'Fira Code', monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('12 V', x, y);
+
+            ctx.fillStyle = '#d1d5db';
+            ctx.font = `${Math.max(10, sw(0.33))}px 'Inter', sans-serif`;
+            ctx.fillText('+', xw(POSITIVE_TERMINAL.x + 0.35), yw(POSITIVE_TERMINAL.y + 0.52));
+            ctx.fillText('-', xw(NEGATIVE_TERMINAL.x - 0.35), yw(NEGATIVE_TERMINAL.y + 0.52));
+            ctx.fillText('Battery', x, yw(BATTERY_Y - 1.18));
+            ctx.restore();
+        }
+
+        function drawParticles(path, dt) {
+            ctx.save();
+            ctx.fillStyle = COLORS.electron;
+            ctx.shadowColor = COLORS.electron;
+            ctx.shadowBlur = sw(0.18);
+            particles.forEach(particle => {
+                particle.t = (particle.t + particle.speed * dt * 0.001) % 1;
+                const point = pointAt(path, particle.t);
+                const normalAngle = point.angle + Math.PI / 2;
+                const wobble = Math.sin(performance.now() * 0.004 + particle.phase) * 0.035;
+                const x = point.x + Math.cos(normalAngle) * (particle.lane + wobble);
+                const y = point.y + Math.sin(normalAngle) * (particle.lane + wobble);
+                ctx.globalAlpha = 0.45 + 0.45 * Math.sin(particle.phase + performance.now() * 0.002) ** 2;
+                ctx.beginPath();
+                ctx.arc(xw(x), yw(y), sw(particle.radius), 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+
+        function drawCurrentArrow(from, to) {
+            drawArrow(from, to, COLORS.batteryYellow, 0.09, 0.32);
+        }
+
+        function drawCurrentArrows(deflection) {
+            const leftA = centralPoint(-1, -0.9, deflection);
+            const leftB = centralPoint(-1, 0.9, deflection);
+            drawCurrentArrow(leftA, leftB);
+
+            const rightA = mode === 'opposite' ? centralPoint(1, 0.9, deflection) : centralPoint(1, -0.9, deflection);
+            const rightB = mode === 'opposite' ? centralPoint(1, -0.9, deflection) : centralPoint(1, 0.9, deflection);
+            drawCurrentArrow(rightA, rightB);
+
+            if (mode === 'opposite') {
+                drawCurrentArrow({ x: -1.4, y: 6.9 }, { x: 1.4, y: 6.9 });
+            } else {
+                drawCurrentArrow({ x: 1.6, y: 8.9 }, { x: 3.7, y: 8.95 });
+                drawCurrentArrow({ x: 11.2, y: 2.1 }, { x: 10.85, y: 0.2 });
+                drawCurrentArrow({ x: 4.6, y: -3.4 }, { x: 4.15, y: -5.2 });
+            }
+        }
+
+        function drawForceArrows(deflection) {
+            const alpha = clamp(0.2 + deflection * 0.8, 0, 1);
+            const outward = mode === 'opposite';
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            if (outward) {
+                const y = (WIRE_BOTTOM + WIRE_TOP) / 2;
+                const left = centralPoint(-1, y, deflection);
+                const right = centralPoint(1, y, deflection);
+                const leftForceStart = { x: left.x - 0.22, y };
+                const leftForceEnd = { x: left.x - 2.62, y };
+                const rightForceStart = { x: right.x + 0.22, y };
+                const rightForceEnd = { x: right.x + 2.62, y };
+                drawArrow(leftForceStart, leftForceEnd, COLORS.force, 0.12, 0.38);
+                drawArrow(rightForceStart, rightForceEnd, COLORS.force, 0.12, 0.38);
+                const leftLabel = midpoint(leftForceStart, leftForceEnd);
+                const rightLabel = midpoint(rightForceStart, rightForceEnd);
+                drawLabel('F', leftLabel.x, leftLabel.y + 0.34, COLORS.force);
+                drawLabel('F', rightLabel.x, rightLabel.y + 0.34, COLORS.force);
+            } else {
+                const y = 1.35;
+                const left = centralPoint(-1, y, deflection);
+                const right = centralPoint(1, y, deflection);
+                const centerX = (left.x + right.x) / 2;
+                const leftForceStart = { x: left.x + 0.18, y };
+                const leftForceEnd = { x: centerX - 0.35, y };
+                const rightForceStart = { x: right.x - 0.18, y };
+                const rightForceEnd = { x: centerX + 0.35, y };
+                drawArrow(leftForceStart, leftForceEnd, COLORS.force, 0.12, 0.38);
+                drawArrow(rightForceStart, rightForceEnd, COLORS.force, 0.12, 0.38);
+                const leftLabel = midpoint(leftForceStart, leftForceEnd);
+                const rightLabel = midpoint(rightForceStart, rightForceEnd);
+                drawLabel('F', leftLabel.x, leftLabel.y + 0.34, COLORS.force);
+                drawLabel('F', rightLabel.x, rightLabel.y + 0.34, COLORS.force);
+            }
+            ctx.restore();
+        }
+
+        function midpoint(a, b) {
+            return {
+                x: (a.x + b.x) / 2,
+                y: (a.y + b.y) / 2
+            };
+        }
+
+        function drawArrow(from, to, color, widthWorld, headWorld) {
+            const a = pointToCanvas(from);
+            const b = pointToCanvas(to);
+            const angle = Math.atan2(b.y - a.y, b.x - a.x);
+            const head = sw(headWorld);
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = sw(widthWorld);
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y);
+            ctx.lineTo(b.x - head * Math.cos(angle - Math.PI / 6), b.y - head * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(b.x - head * Math.cos(angle + Math.PI / 6), b.y - head * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLabel(text, x, y, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.font = `${Math.max(11, sw(0.44))}px 'Fira Code', monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, xw(x), yw(y));
+            ctx.restore();
+        }
+
+        function drawTerminals(deflection) {
+            const points = [
+                centralPoint(-1, WIRE_BOTTOM, deflection),
+                centralPoint(-1, WIRE_TOP, deflection),
+                centralPoint(1, WIRE_BOTTOM, deflection),
+                centralPoint(1, WIRE_TOP, deflection),
+                POSITIVE_TERMINAL,
+                NEGATIVE_TERMINAL
+            ];
+
+            ctx.save();
+            ctx.fillStyle = '#cfd5df';
+            ctx.strokeStyle = '#050505';
+            ctx.lineWidth = Math.max(1, sw(0.04));
+            points.forEach(point => {
+                const p = pointToCanvas(point);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, sw(0.16), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+
+        function setMode(nextMode) {
+            if (nextMode !== 'same' && nextMode !== 'opposite') return;
+            mode = nextMode;
+            animationStart = performance.now();
+            Object.entries(buttons).forEach(([key, button]) => {
+                button.classList.toggle('active', key === mode);
+            });
+
+            if (mode === 'opposite') {
+                statusTitle.textContent = 'Opposite Directions Repel';
+                statusTitle.className = 'status-title repel';
+                descText.textContent = 'The battery drives one side upward and the other downward. The dashed lines show where the wires would stay without the magnetic force.';
+            } else {
+                statusTitle.textContent = 'Same Directions Attract';
+                statusTitle.className = 'status-title attract';
+                descText.textContent = 'With the folded wiring, both nearby straight sections carry current upward, so the magnetic force pulls them together.';
+            }
+        }
+
+        function draw() {
+            const now = performance.now();
+            const dt = Math.min(64, now - lastTime);
+            lastTime = now;
+            const deflection = easeOutCubic(clamp((now - animationStart) / 1400, 0, 1));
+            const path = buildRoute(deflection);
+
+            drawBackground();
+            drawNeutralLines();
+            drawPath(path);
+            drawBattery();
+            drawParticles(path, dt);
+            drawCurrentArrows(deflection);
+            drawForceArrows(deflection);
+            drawTerminals(deflection);
+
+            requestAnimationFrame(draw);
+        }
+
+        Object.entries(buttons).forEach(([key, button]) => {
+            button.addEventListener('click', () => setMode(key));
+        });
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', resize);
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(resize).observe(container);
+        }
+
+        setMode(initialMode);
+        resize();
+        draw();
+    </script>
+</body>
+</html>

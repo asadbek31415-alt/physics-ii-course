@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 7.3: Maxwell's Equations</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    pd: ["\\frac{\\partial #1}{\\partial #2}", 2],
+                    vec: ["\\mathbf{#1}", 1]
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > Maxwell's
+                Equations
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Maxwell's Equations</h1>
+        <p class="intro-text">
+            This section summarizes the complete set of four equations that govern classical electrodynamics, uniting
+            electricity, magnetism, and electromagnetic waves.
+        </p>
+
+        <!-- SECTION 0: THE COMPETE SET -->
+        <section data-concept-title="1. The Complete Set" id="concept-1-1-the-complete-set">
+            <h2>1. The Complete Set</h2>
+            <p>
+                Electrodynamics is governed by four partial differential equations (Maxwell's) and one force law
+                (Lorentz). Together, they describe everything from light waves to electric motors.
+            </p>
+
+            <div class="concept-card">
+                <h3>The Force Law</h3>
+                <p style="margin-bottom: 1rem; color: #aaa;">This tells us how fields <em>affect</em> charges:</p>
+                <div class="math-block">
+                    $$ \vec{F} = q(\vec{E} + \vec{v} \times \vec{B}) $$
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE DISPLACEMENT CURRENT -->
+        <section data-concept-title="2. The Ampère-Maxwell Correction" id="concept-2-2-the-amp-re-maxwell-correction">
+            <h2>2. The Ampère-Maxwell Correction</h2>
+            <p>
+                The <a href="ch5_1_electromotive_force.html#concept-0-from-fields-to-circuits">field-to-circuit bridge</a>
+                used charge conservation to explain currents at nodes and on capacitor plates. We now return to that
+                same charging process at the field level.
+            </p>
+            <p>
+                In steady circuits, current flows in a complete loop. But consider a <strong>charging
+                    capacitor</strong>: current flows into one plate and out of the other, but <em>nothing</em> (no
+                charges) physically crosses the gap.
+            </p>
+            <p>
+                This creates a paradox: if there is no current in the gap, Ampère's Law says there should be no magnetic
+                field there. But experiments show the field <strong>does</strong> exist. Maxwell realized that as the
+                plates charge, the <strong>Electric Field between them is changing</strong>, and this change acts
+                exactly like a current.
+            </p>
+
+            <div class="concept-card">
+                <h3>The Full Ampère-Maxwell Law</h3>
+                <p style="margin-bottom: 1rem; color: #aaa;">Maxwell's correction to Ampère's Law, incorporating the
+                    displacement current density ($J_d$):</p>
+                <div class="math-block">
+                    $$ \nabla \times \vec{B} = \mu_0 \vec{J} + \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t} $$
+                </div>
+                <p style="margin-top: 1rem; color: #aaa;">Where the term $\epsilon_0 \frac{\partial \vec{E}}{\partial
+                    t}$ is the <b>Displacement Current</b>.</p>
+            </div>
+
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch7_3_1_fixing_ampere.html?back=ch5_3_maxwells_equations.html%23concept-2-2-the-amp-re-maxwell-correction"><span aria-hidden="true">+</span> Deep Dive: How Maxwell Fixed Ampère's Law</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE EQUATIONS (VACUUM) -->
+        <section data-concept-title="3. The General Equations (Vacuum)" id="concept-3-3-the-general-equations-vacuum">
+            <h2>3. The General Equations (Vacuum)</h2>
+            <p>
+                In free space, these are the fundamental relationships.
+            </p>
+
+            <div class="concept-card">
+                <div class="math-block">
+                    $$
+                    \begin{align}
+                    \text{(i)} \quad & \nabla \cdot \vec{E} = \frac{\rho}{\epsilon_0} \\
+                    \text{(ii)} \quad & \nabla \cdot \vec{B} = 0 \\
+                    \text{(iii)} \quad & \nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t} \\
+                    \text{(iv)} \quad & \nabla \times \vec{B} = \mu_0 \vec{J} + \mu_0 \epsilon_0 \frac{\partial
+                    \vec{E}}{\partial t}
+                    \end{align}
+                    $$
+                </div>
+                <div class="def-list">
+                    <div class="def-item">
+                        <span class="def-symbol">(i)</span> <span class="def-text"><strong>Gauss's Law</strong>: Charges
+                            create divergence in E.</span>
+                    </div>
+                    <div class="def-item">
+                        <span class="def-symbol">(ii)</span> <span class="def-text"><strong>No Monopoles</strong>:
+                            Magnetic field lines are closed loops.</span>
+                    </div>
+                    <div class="def-item">
+                        <span class="def-symbol">(iii)</span> <span class="def-text"><strong>Faraday's Law</strong>:
+                            Changing B creates curling E.</span>
+                    </div>
+                    <div class="def-item">
+                        <span class="def-symbol">(iv)</span> <span class="def-text"><strong>Ampère-Maxwell</strong>:
+                            Currents (and changing E) create curling B.</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch7_3_2_symmetry.html?back=ch5_3_maxwells_equations.html%23concept-3-3-the-general-equations-vacuum"><span aria-hidden="true">+</span> Deep Dive: Magnetic Monopoles & Symmetry</a>
+            </div>
+        </section>
+
+        <!-- SECTION 4: THE EQUATIONS (MATTER) -->
+        <section data-concept-title="4. Maxwell's Equations in Matter" id="concept-4-4-maxwell-s-equations-in-matter">
+            <h2>4. Maxwell's Equations in Matter</h2>
+            <p>
+                In materials, we abstract away the trillions of bound charges and currents into auxiliary fields
+                $\vec{D}$ and $\vec{H}$.
+            </p>
+
+            <div class="concept-card">
+                <h3>Auxiliary Definitions</h3>
+                <div class="math-block">
+                    $$ \vec{D} \equiv \epsilon_0 \vec{E} + \vec{P}, \quad \vec{H} \equiv \frac{1}{\mu_0}\vec{B} -
+                    \vec{M} $$
+                </div>
+            </div>
+
+            <div class="concept-card">
+                <h3>Macroscopic Equations</h3>
+                <div class="math-block">
+                    $$
+                    \begin{align}
+                    \nabla \cdot \vec{D} &= \rho_f \\
+                    \nabla \cdot \vec{B} &= 0 \\
+                    \nabla \times \vec{E} &= -\frac{\partial \vec{B}}{\partial t} \\
+                    \nabla \times \vec{H} &= \vec{J}_f + \frac{\partial \vec{D}}{\partial t}
+                    \end{align}
+                    $$
+                </div>
+            </div>
+
+            <div class="concept-card">
+                <h3>Constitutive Relations (Linear Media)</h3>
+                <p style="margin-bottom: 1rem; color: #aaa;">To solve these, we need to know how the material responds
+                    to fields:</p>
+                <div class="math-block">
+                    $$ \vec{P} = \epsilon_0 \chi_e \vec{E}, \quad \vec{M} = \chi_m \vec{H} $$
+                </div>
+                <p style="text-align: center; margin-top: 0.5rem;">
+                    Or simply: $\vec{D} = \epsilon \vec{E}$ and $\vec{H} = \frac{1}{\mu} \vec{B}$.
+                </p>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch7_3_3_matter_details.html?back=ch5_3_maxwells_equations.html%23concept-4-4-maxwell-s-equations-in-matter"><span aria-hidden="true">+</span> Deep Dive: Maxwell's Equations in Matter</a>
+            </div>
+        </section>
+
+        <!-- SECTION 5: FROM MAXWELL FIELDS TO LUMPED CIRCUITS -->
+        <section data-concept-title="5. From Maxwell Fields to Lumped Circuits" id="concept-5-5-from-maxwell-fields-to-lumped-circuits">
+            <h2>5. From Maxwell Fields to Lumped Circuits</h2>
+            <p>
+                Maxwell's equations describe continuous electric and magnetic fields throughout space. Circuit theory
+                does not introduce separate fundamental objects; it compresses an appropriate field problem into a few
+                lumped quantities: voltage $V$, current $I$, resistance $R$, capacitance $C$, and inductance $L$.
+            </p>
+
+            <div class="concept-card">
+                <h3>When the Compression Works</h3>
+                <p>
+                    The lumped-element approximation is appropriate when the circuit dimensions are much smaller than
+                    the relevant electromagnetic wavelength. Equivalently, the propagation time across the circuit is
+                    much shorter than the timescale on which the signal changes. Then the different parts of a component
+                    respond essentially together, and its distributed fields can be represented by a small number of
+                    terminal quantities. This is a scale comparison, not a universal numerical cutoff.
+                </p>
+            </div>
+
+            <h3>Voltage, Current, and Resistance</h3>
+            <p>
+                In an electrostatic or sufficiently quasistatic region, the relevant electric field is approximately
+                conservative, so a single-valued scalar potential can describe the potential difference between two
+                points:
+            </p>
+            <div class="math-block">
+                $$ V_B-V_A=-\int_A^B \mathbf{E}\cdot d\mathbf{l}. $$
+            </div>
+            <p>
+                This is the field meaning of voltage. It is not the same as an <a
+                    href="ch5_1_electromotive_force.html#concept-2-2-electromotive-force-emf">EMF</a>, which is work
+                per unit charge supplied by non-electrostatic forces or by an induced field around a loop. For a
+                stationary loop linked by changing magnetic flux, Faraday's law gives
+                $\oint\mathbf{E}\cdot d\mathbf{l}=-d\Phi_B/dt$; then a simple electrostatic potential picture alone is
+                insufficient.
+            </p>
+            <p>
+                Circuit current is the current-density field integrated across a conductor cross-section:
+            </p>
+            <div class="math-block">
+                $$ I=\int_A \mathbf{J}\cdot d\mathbf{a}. $$
+            </div>
+            <p>
+                A material relation, not a Maxwell equation, supplies resistance. In an ohmic material,
+                $\mathbf{J}=\sigma\mathbf{E}$. With an approximately quasistatic field distribution and a specified
+                geometry, this local relation becomes the lumped relation $V=IR$. Thus $R$ summarizes conductivity,
+                shape, and the field pattern in that component; it is not a fundamental object of nature.
+            </p>
+
+            <h3>Field-Energy Elements: Capacitors and Inductors</h3>
+            <p>
+                A <a href="ch2_1_conductors.html#concept-5-5-capacitors">capacitor</a> begins with charge separation.
+                That charge produces an electric field; Gauss's law and the field integral determine the potential
+                difference; the geometry and material response are then summarized by $Q=CV$. For constant $C$,
+            </p>
+            <div class="math-block">
+                $$ I=\frac{dQ}{dt}=C\frac{dV}{dt}, \qquad u_E=\frac{1}{2}\epsilon E^2. $$
+            </div>
+            <p>
+                A capacitor is therefore an electric-field energy-storage system, not merely a symbol that obeys a
+                circuit rule. As it charges, $dQ/dt$ accompanies a changing electric field in the gap; the
+                Ampère-Maxwell correction is the field-level reason that this capacitor branch current is represented
+                consistently on either side of the gap.
+            </p>
+            <p>
+                An <a href="ch5_2_electromagnetic_induction.html#concept-2-2-inductance-from-geometry-to-inertia">inductor</a>
+                follows the complementary chain: current produces a magnetic field, the field produces linked magnetic
+                flux, and changing current changes that flux. Faraday's law then produces an induced EMF. For a fixed
+                geometry in the linear regime, the flux linkage $\lambda$ is proportional to current:
+            </p>
+            <div class="math-block">
+                $$ \lambda=LI, \qquad \mathcal{E}_{\mathrm{ind}}=-\frac{d\lambda}{dt}, \qquad
+                v_L=L\frac{dI}{dt}. $$
+            </div>
+            <p>
+                Here $\lambda$ is the total flux linkage (for one turn, it is the flux). The last relation uses the
+                passive sign convention: it is the terminal voltage drop, while the induced EMF has the opposite
+                reference direction and opposes the change. An inductor is a magnetic-field energy-storage system.
+            </p>
+
+            <h3>Why KCL and KVL Work</h3>
+            <p>
+                Kirchhoff's current law is rooted in charge conservation, not in an independent circuit principle:
+            </p>
+            <div class="math-block">
+                $$ \nabla\cdot\mathbf{J}=-\frac{\partial\rho}{\partial t}
+                \qquad\Longrightarrow\qquad
+                \sum I_{\mathrm{in}}-\sum I_{\mathrm{out}}=\frac{dQ_{\mathrm{node}}}{dt}. $$
+            </div>
+            <p>
+                Ordinary lumped KCL, $\sum I=0$, applies when a small node has no significant unresolved net charge
+                accumulation, or when every relevant branch current has been represented consistently. The familiar
+                current balance is therefore a compact consequence of the continuity equation.
+            </p>
+            <p>
+                Kirchhoff's voltage law starts from Faraday's law:
+            </p>
+            <div class="math-block">
+                $$ \oint \mathbf{E}\cdot d\mathbf{l}=-\frac{d\Phi_B}{dt}. $$
+            </div>
+            <p>
+                If changing magnetic flux linked with the circuit loop is negligible, the quasistatic electric-field
+                circulation is approximately zero, leading to the familiar sum of signed voltage rises and drops. If
+                significant linked flux is present, a naive sum of electrostatic voltage drops is incomplete. The induced
+                EMF can instead be represented explicitly as a source or element term, as in the
+                <a href="ch5_2_electromagnetic_induction.html#concept-1-1-the-general-law">induction lesson</a>, so
+                consistent circuit equations can still be written.
+            </p>
+
+            <h3>Where the Approximation Ends</h3>
+            <p>
+                As spatial or temporal field structure becomes important, a single current or voltage can no longer
+                represent an entire component. Propagation delay, transmission-line behavior, parasitic capacitance and
+                inductance, radiation from antennas, and skin-effect current crowding are common signs that a distributed
+                electromagnetic description is needed.
+            </p>
+
+            <h3>Summary Map</h3>
+            <div class="concept-card" style="overflow-x: auto; padding: 0;">
+                <table style="width: 100%; min-width: 720px; border-collapse: collapse; color: var(--text-secondary); line-height: 1.5;">
+                    <thead>
+                        <tr style="color: var(--text-primary); text-align: left; background: rgba(59, 130, 246, 0.08);">
+                            <th style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Circuit quantity/law</th>
+                            <th style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Field origin</th>
+                            <th style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Main approximation</th>
+                            <th style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Failure or extension</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);"><strong>$V$</strong></td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Line integral of $\mathbf{E}$</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Relevant $\mathbf{E}$ is approximately conservative</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Use EMF and the full field description for induced circulation</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);"><strong>$I$</strong></td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">$I=\int\mathbf{J}\cdot d\mathbf{a}$</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">One branch current represents the cross-section</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Track nonuniform or propagating current density</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);"><strong>$R$</strong></td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Local conduction $\mathbf{J}=\sigma\mathbf{E}$</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Linear material response and quasistatic field pattern</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Nonlinear, frequency-dependent, or skin-effect response</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);"><strong>$C$</strong></td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Charge, $\mathbf{E}$, Gauss's law, and field energy</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Fields are captured by one terminal-pair capacitance</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Parasitic or distributed capacitance</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);"><strong>$L$</strong></td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">$\mathbf{B}$, flux linkage, and Faraday's law</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Flux linkage is represented by one $L$</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Mutual, parasitic, radiating, or distributed inductance</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);"><strong>KCL</strong></td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Charge conservation and $\nabla\cdot\mathbf{J}=-\partial\rho/\partial t$</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Negligible unresolved node-charge accumulation</td>
+                            <td style="padding: 0.85rem; border-bottom: 1px solid var(--border-color);">Include charge accumulation and relevant capacitive/displacement effects</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.85rem;"><strong>KVL</strong></td>
+                            <td style="padding: 0.85rem;">Electric-field circulation and Faraday's law</td>
+                            <td style="padding: 0.85rem;">Negligible unrepresented changing linked magnetic flux</td>
+                            <td style="padding: 0.85rem;">Include induced EMF or use a distributed electromagnetic model</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>
+                Circuit theory is not a separate set of mysterious laws. It is a compact approximation to electromagnetic
+                field theory that becomes extremely powerful when the circuit is sufficiently lumped. When that condition
+                no longer holds, the next step is to return to the distributed fields that lead naturally to
+                <a href="ch6_0_maxwell_to_waves.html">electromagnetic waves</a>.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

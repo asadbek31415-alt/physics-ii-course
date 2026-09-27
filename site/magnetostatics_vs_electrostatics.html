@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Charge Conservation, Steady Current, and KCL</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+
+    <style>
+        .derivation-step {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .step-number {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a3a3a3;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .math-highlight {
+            font-size: 1.2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                Charge Conservation and KCL
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Charge Conservation, Steady Current, and KCL</h1>
+        
+        <p>
+            The <strong>continuity equation</strong> is the general mathematical statement of charge conservation.
+            The condition $\nabla\cdot\mathbf{J}=0$ follows only when the charge distribution is steady. The same
+            conservation law will later become Kirchhoff's current law (KCL) when we describe a junction as a circuit
+            node.
+        </p>
+
+        <section>
+            <div class="derivation-step">
+                <span class="step-number">Step 1: Global Conservation of Charge</span>
+                <p>
+                    Consider a volume $V$ enclosed by a surface $S$. The total charge $Q$ inside this volume is the integral of the charge density $\rho$:
+                </p>
+                $$ Q(t) = \int_V \rho(\mathbf{r}, t) \, d\tau $$
+                <p>
+                    Since charge is conserved, the only way the total charge inside $V$ can decrease is if charge flows <strong>out</strong> through the surface $S$. 
+                    Therefore, the current flowing out ($I_{out}$) must equal the rate of decrease of the enclosed charge:
+                </p>
+                <div class="math-highlight">
+                    $$ I_{out} = \oint_S \mathbf{J} \cdot d\mathbf{a} = - \frac{dq}{dt} $$
+                </div>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-number">Step 2: Applying the Divergence Theorem</span>
+                <p>
+                    We can rewrite the total current $I_{out}$ using the <strong>Divergence Theorem</strong> to convert the surface integral into a volume integral:
+                </p>
+                $$ \oint_S \mathbf{J} \cdot d\mathbf{a} = \int_V (\nabla \cdot \mathbf{J}) \, d\tau $$
+                <p>
+                    Simultaneously, we move the time derivative inside the charge integral (assuming the volume $V$ is fixed in space):
+                </p>
+                $$ - \frac{dq}{dt} = - \frac{d}{dt} \int_V \rho \, d\tau = - \int_V \frac{\partial \rho}{\partial t} \, d\tau $$
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-number">Step 3: The Continuity Equation</span>
+                <p>
+                    Equating the two volume integrals from Step 2:
+                </p>
+                $$ \int_V (\nabla \cdot \mathbf{J}) \, d\tau = - \int_V \frac{\partial \rho}{\partial t} \, d\tau $$
+                <p>
+                    Since this must hold true for <em>any</em> arbitrary volume $V$, the integrands themselves must be equal. This yields the <strong>Continuity Equation</strong>, which is the general law and applies whether or not the current is steady:
+                </p>
+                <div class="math-highlight">
+                    $$ \frac{\partial \rho}{\partial t} + \nabla \cdot \mathbf{J} = 0 $$
+                </div>
+                <p>
+                    <em>Translation: Current flows out of a point ($\nabla \cdot \mathbf{J}$) exactly as fast as the charge density there decreases ($-\partial \rho / \partial t$).</em>
+                </p>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-number">Step 4: The Steady Current Condition</span>
+                <p>
+                    A <strong>steady current</strong> is defined as a flow where the charge distribution does not change with time. 
+                    While charge is moving, it is not piling up anywhere.
+                </p>
+                $$ \text{Steady State} \implies \frac{\partial \rho}{\partial t} = 0 $$
+                <p>
+                    Substituting this into the continuity equation:
+                </p>
+                <div class="math-highlight">
+                    $$ \nabla \cdot \mathbf{J} = - (0) \implies \nabla \cdot \mathbf{J} = 0 $$
+                </div>
+            </div>
+        </section>
+
+        <section id="circuit-node-kcl">
+            <h2>From a Volume to a Circuit Node</h2>
+            <p>
+                Now surround a circuit junction with a small closed surface. The integral continuity equation says
+                that any imbalance between the currents entering and leaving that node must appear as stored charge:
+            </p>
+            <div class="math-highlight">
+                $$ \sum I_{\mathrm{in}}-\sum I_{\mathrm{out}}=\frac{dQ_{\mathrm{node}}}{dt} $$
+            </div>
+            <p>
+                In the lumped, steady-state circuit limit, the node does not accumulate appreciable charge. Setting
+                $dQ_{\mathrm{node}}/dt\approx0$ gives <strong>Kirchhoff's current law</strong>:
+            </p>
+            <div class="math-highlight">
+                $$ \sum I_{\mathrm{in}}=\sum I_{\mathrm{out}} $$
+            </div>
+            <p>
+                A charging capacitor plate shows why the general equation matters. Conduction current reaches the
+                plate, but charge cannot cross the dielectric, so the plate charge changes and
+                $dQ/dt\neq0$. This does not violate charge conservation; it is precisely the term that a careless
+                steady-state KCL argument would omit. In a circuit model we define the capacitor current by
+                $I_C=dQ/dt$, so the stored charge is kept in the bookkeeping rather than ignored.
+            </p>
+        </section>
+
+        <section>
+            <h2>Visualizing the Concept</h2>
+            <p>
+                The simulation below demonstrates this relationship. In <strong>Steady State</strong>, the inflow equals the outflow, so the density $\rho$ remains constant ($\nabla \cdot \mathbf{J} = 0$). In <strong>Accumulation</strong> mode, the outflow is restricted, causing $\rho$ to rise over time ($\nabla \cdot \mathbf{J} < 0$).
+            </p>
+            <!-- Reusing the simulation that specifically visualizes this concept -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_2_biot_savart_c0.html" title="Continuity Equation Simulation"></iframe>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError : false
+            });
+        });
+    </script>
+</body>
+</html>

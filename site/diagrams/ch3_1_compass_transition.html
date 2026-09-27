@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Current Interaction</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        html,
+        body {
+            min-width: 0;
+            min-height: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0d1117;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            display: grid;
+            grid-template-columns: clamp(240px, 30vw, 320px) minmax(0, 1fr);
+        }
+
+        #canvas-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* HTML Labels */
+        #labels-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .math-label {
+            position: absolute;
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            font-weight: bold;
+            font-size: 26px;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+            will-change: top, left;
+        }
+
+        .ui-panel {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            background: rgba(13, 17, 23, 0.98);
+            border-right: 1px solid #30363d;
+            box-sizing: border-box;
+        }
+
+        .panel {
+            color: #c9d1d9;
+            padding: 16px;
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            border-left: 0;
+            border-right: 0;
+            border-radius: 0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin: 0 0 12px;
+            color: #58a6ff;
+            font-size: 1rem;
+            line-height: 1.2;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 10px;
+        }
+
+        .sim-note {
+            margin: 0;
+            color: #8b949e;
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        .control-group {
+            display: grid;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .legend-panel {
+            display: grid;
+            gap: 10px;
+            color: #8b949e;
+            font-size: 0.83rem;
+        }
+
+        .vector-legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            line-height: 1.25;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            flex: 0 0 10px;
+            border-radius: 999px;
+            box-shadow: 0 0 7px currentColor;
+        }
+
+        .math-token {
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .checkbox-wrapper:hover {
+            color: #fff;
+        }
+
+        input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background-color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            border: 1px solid #555;
+            transition: all 0.2s;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: #3fa9f5; /* Blue accent */
+            border-color: #3fa9f5;
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            width: 5px;
+            height: 9px;
+            border: solid #111;
+            border-width: 0 2px 2px 0;
+            left: 6px;
+            top: 2px;
+            transform: rotate(45deg);
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .ui-panel {
+                grid-column: 1;
+                grid-row: 2;
+                border-right: 0;
+                border-top: 1px solid #333;
+                height: auto;
+                max-height: 44vh;
+            }
+
+            .panel {
+                padding: 10px 12px;
+            }
+
+            .sim-note {
+                display: none;
+            }
+
+            .control-group {
+                gap: 8px;
+                margin-top: 10px;
+            }
+        }
+    </style>
+    <!-- Three.js CDN -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <aside class="ui-panel">
+        <div class="panel">
+            <h2>Parallel Currents</h2>
+            <p class="sim-note">
+                Field circles from the left wire set the magnetic force on the right wire.
+            </p>
+
+            <div class="control-group" aria-label="Display options">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="chkFields" checked onchange="app.toggleLayer('fields', this.checked)">
+                    <span>Show field lines</span>
+                </label>
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="chkVectors" checked onchange="app.toggleLayer('vectors', this.checked)">
+                    <span>Show force vectors</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="panel legend-panel">
+            <div class="vector-legend"><div class="dot" style="background: #f1c40f; color: #f1c40f;"></div>Current velocity <span class="math-token">(v)</span></div>
+            <div class="vector-legend"><div class="dot" style="background: #3fa9f5; color: #3fa9f5;"></div>Magnetic field <span class="math-token">(B)</span></div>
+            <div class="vector-legend"><div class="dot" style="background: #e74c3c; color: #e74c3c;"></div>Magnetic force <span class="math-token">(F)</span></div>
+        </div>
+    </aside>
+
+    <div id="canvas-container">
+        <div id="labels-container"></div>
+    </div>
+
+<script>
+class PhysicsApp {
+    constructor() {
+        this.container = document.getElementById('canvas-container');
+        this.labelsContainer = document.getElementById('labels-container');
+        
+        // --- Colors ---
+        this.colors = {
+            bg: 0x05070a,
+            glassWire: 0x526982,
+            particles: 0xfbbf24,
+            fieldLine: 0x2f80ff,
+            fieldArrow: 0x9ca3af,
+            v: 0xf1c40f,          // Yellow Velocity
+            B: 0x3fa9f5,          // Blue Field
+            F: 0xe74c3c           // Red Force
+        };
+        // CSS versions for labels
+        this.colorsCSS = {
+            v: '#f1c40f',
+            B: '#3fa9f5',
+            F: '#e74c3c'
+        };
+
+        this.initThreeJS();
+        this.createSceneContent();
+        this.animate();
+
+        window.addEventListener('resize', () => this.onResize());
+    }
+
+        initThreeJS() {
+        const size = this.getCanvasSize();
+        // Scene & Camera
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(this.colors.bg);
+        this.scene.fog = new THREE.FogExp2(this.colors.bg, 0.0012); // Depth cue
+
+        this.camera = new THREE.PerspectiveCamera(40, size.width / size.height, 1, 3000);
+        this.camera.position.set(0, 180, 500); 
+        this.camera.lookAt(0, -50, 0);
+
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        this.renderer.setSize(size.width, size.height);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Perf limit
+        this.container.appendChild(this.renderer.domElement);
+
+        // Lighting (Essential for Glass Wire visibility)
+        const amb = new THREE.AmbientLight(0xffffff, 0.4);
+        this.scene.add(amb);
+
+        const pointL = new THREE.PointLight(0xffffff, 1, 800);
+        pointL.position.set(200, 200, 200);
+        this.scene.add(pointL);
+        
+        const dirL = new THREE.DirectionalLight(0xaaccff, 0.5);
+        dirL.position.set(-200, 100, 50);
+        this.scene.add(dirL);
+
+        // Animation Stores
+        this.animatedCones = []; // To update field arrow positions
+        this.particleSystems = []; // To update current flow
+        this.vectorTips = {}; // To update labels
+    }
+
+    createSceneContent() {
+        const spacing = 100; // Separation X
+        
+        // 1. Create Two Wires
+        const wire1 = this.buildWire();
+        wire1.position.x = -spacing; // Left
+        this.scene.add(wire1);
+
+        const wire2 = this.buildWire();
+        wire2.position.x = spacing;  // Right
+        this.scene.add(wire2);
+
+        // 2. Create Field Lines (Centered on Left Wire, radius expanding to hit Right Wire)
+        // Physics: Wire 1 creates B. Wire 2 feels B.
+        // We position the FieldGroup at the center of Wire 1.
+        this.fieldGroup = this.buildMagneticField();
+        this.fieldGroup.position.x = -spacing;
+        this.scene.add(this.fieldGroup);
+
+        // 3. Create Interaction Vectors (On Wire 2)
+        this.vectorGroup = new THREE.Group();
+        this.vectorGroup.position.x = spacing; // On Wire 2
+        this.scene.add(this.vectorGroup);
+        this.buildVectors();
+    }
+
+    buildWire() {
+        const group = new THREE.Group();
+
+        // A. The Glass Tube
+        const geo = new THREE.CylinderGeometry(5, 5, 1200, 24);
+        const mat = new THREE.MeshPhysicalMaterial({
+            color: this.colors.glassWire,
+            transparent: true,
+            opacity: 0.15,
+            roughness: 0.1,
+            metalness: 0.1,
+            clearcoat: 1.0,
+            side: THREE.FrontSide
+        });
+        const tube = new THREE.Mesh(geo, mat);
+        tube.renderOrder = 10; // Draw transparent surface last
+        group.add(tube);
+
+        // A separate offset arrow keeps the current direction readable beside the wire.
+        const currentGuide = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 1, 0),
+            new THREE.Vector3(9, -250, 0.4),
+            150,
+            this.colors.v,
+            32,
+            18
+        );
+        currentGuide.name = 'current_direction_guide';
+        group.add(currentGuide);
+
+        // B. The Flowing Current (Particles)
+        // Custom texture for glow dot
+        const canvas = document.createElement('canvas');
+        canvas.width = 32; canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createRadialGradient(16,16,0, 16,16,16);
+        grad.addColorStop(0, 'rgba(0,255,255,1)');
+        grad.addColorStop(0.4, 'rgba(0,255,255,0.4)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,32,32);
+        const texture = new THREE.CanvasTexture(canvas);
+
+        const count = 100; // Dense enough to see "flow"
+        const pGeo = new THREE.BufferGeometry();
+        const positions = [];
+        
+        for(let i=0; i<count; i++) {
+            // Distribute along Y, small variance in X/Z to fill tube
+            positions.push((Math.random()-0.5)*3, (i - count/2) * 20, (Math.random()-0.5)*3);
+        }
+        
+        pGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const pMat = new THREE.PointsMaterial({
+            color: this.colors.particles,
+            size: 10,
+            map: texture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const points = new THREE.Points(pGeo, pMat);
+        group.add(points);
+        this.particleSystems.push(points); // Add to animator
+
+        return group;
+    }
+
+    buildMagneticField() {
+        const group = new THREE.Group();
+        const numRings = 15;
+        const ringSpacing = 28;
+
+        for (let i = 1; i <= numRings; i++) {
+            const radius = i * ringSpacing;
+            
+            // 1. Line Loop
+            const shape = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI);
+            const pts = shape.getPoints(64);
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+            lineGeo.rotateX(Math.PI / 2); // Orient horizontal
+            
+            const lineMat = new THREE.LineBasicMaterial({
+                color: this.colors.fieldLine,
+                transparent: true,
+                opacity: 0.58
+            });
+            const line = new THREE.LineLoop(lineGeo, lineMat);
+            group.add(line);
+
+            // 2. Animated Cones on this line
+            const conesPerLine = 4;
+            for(let j=0; j<conesPerLine; j++) {
+                // ConeGeometry points along local +Y; animate() rotates that axis to the field-line tangent.
+                const cGeo = new THREE.ConeGeometry(2.5, 6, 8);
+
+                const cMat = new THREE.MeshBasicMaterial({ color: this.colors.fieldArrow });
+                const cone = new THREE.Mesh(cGeo, cMat);
+
+                // Initial phase angle
+                const angle = (j / conesPerLine) * Math.PI * 2;
+                
+                // Store simulation data
+                cone.userData = {
+                    angle: angle,
+                    radius: radius,
+                    angularSpeed: 2 / radius // constant linear speed effect
+                };
+
+                group.add(cone);
+                this.animatedCones.push(cone);
+            }
+        }
+        return group;
+    }
+
+    buildVectors() {
+        const origin = new THREE.Vector3(0,0,0);
+        
+        // 1. Current Velocity v (Up)
+        this.addVector(
+            new THREE.Vector3(0, 1, 0), 
+            origin, 
+            65, 
+            this.colors.v, 
+            'v', 
+            {x: 8, y: -5}
+        );
+
+        // 2. Magnetic Field B (Into Screen / Z- due to left wire field)
+        // Wire 1 (left) creates field. Right hand rule (Thumb up) -> CCW.
+        // At the right wire's position, field is pointing -Z.
+        this.addVector(
+            new THREE.Vector3(0, 0, -1),
+            origin,
+            65,
+            this.colors.B,
+            'B',
+            {x: 0, y: 15}
+        );
+
+        // 3. Force F (Left)
+        // F = v x B = y x (-z) = -x. Attractive Force.
+        this.addVector(
+            new THREE.Vector3(-1, 0, 0),
+            origin,
+            80,
+            this.colors.F,
+            'F',
+            {x: -15, y: -10}
+        );
+    }
+
+    addVector(dir, origin, length, colorHex, labelText, labelOffset) {
+        // Arrow Helper
+        const arrow = new THREE.ArrowHelper(dir, origin, length, colorHex, 15, 12);
+        this.vectorGroup.add(arrow);
+
+        // Save reference for HTML Overlay Update
+        // Calculate the local tip position relative to vectorGroup
+        const localTip = dir.clone().multiplyScalar(length);
+        
+        this.vectorTips[labelText] = {
+            arrowMesh: arrow,
+            localTip: localTip,
+            cssColor: this.colorsCSS[labelText],
+            offset: labelOffset
+        };
+    }
+
+    toggleLayer(name, visible) {
+        if(name === 'fields') {
+            this.fieldGroup.visible = visible;
+        } 
+        else if (name === 'vectors') {
+            this.vectorGroup.visible = visible;
+            // Also toggle HTML labels display
+            document.getElementById('labels-container').style.display = visible ? 'block' : 'none';
+        }
+    }
+
+    onResize() {
+        const size = this.getCanvasSize();
+        this.camera.aspect = size.width / size.height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(size.width, size.height);
+    }
+
+    getCanvasSize() {
+        return {
+            width: Math.max(1, this.container.clientWidth),
+            height: Math.max(1, this.container.clientHeight)
+        };
+    }
+
+    // --- ANIMATION LOOP ---
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        const timeDelta = 1; // Simplified delta
+
+        // 1. Move Particles (Current)
+        const flowSpeed = 2.0;
+        const totalHeight = 1000; // Match loop logic
+        
+        this.particleSystems.forEach(pts => {
+            const positions = pts.geometry.attributes.position.array;
+            for(let i=0; i < positions.length; i+=3) {
+                // Index+1 is Y
+                positions[i+1] += flowSpeed;
+                // Wrap around cylinder
+                if(positions[i+1] > 600) {
+                    positions[i+1] -= 1200;
+                }
+            }
+            pts.geometry.attributes.position.needsUpdate = true;
+        });
+
+
+        // 2. Animate Field Cones
+        // Logic: Circular motion on XZ plane.
+        // x = r * cos(theta), z = -r * sin(theta) (Top view CCW map, usually Z is down in 2D map, but in 3D:
+        // +Y is Up. Field curls CCW around Y axis.
+        // 0 angle (right): +X direction. Tangent -> -Z (Into screen). Correct.
+        this.animatedCones.forEach(cone => {
+            const ud = cone.userData;
+            ud.angle += 0.02; // Global spin speed
+            
+            // Calculate Position
+            const r = ud.radius;
+            const x = r * Math.cos(ud.angle);
+            const z = -r * Math.sin(ud.angle); // CCW from Top
+
+            cone.position.set(x, 0, z);
+
+            // Match the arrowhead to the local tangent of x = r cos(theta), z = -r sin(theta).
+            const tangent = new THREE.Vector3(-Math.sin(ud.angle), 0, -Math.cos(ud.angle)).normalize();
+            cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+        });
+
+
+        // 3. Update 2D Labels
+        if(this.vectorGroup.visible) {
+            this.updateLabels();
+        }
+
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    updateLabels() {
+        // Parent World Position (The Right Wire Location)
+        const parentPos = new THREE.Vector3();
+        this.vectorGroup.getWorldPosition(parentPos); // Likely (100, 0, 0)
+
+        // Camera Project Setup
+        const tempV = new THREE.Vector3();
+
+        for (const [key, data] of Object.entries(this.vectorTips)) {
+            let el = document.getElementById(`label-${key}`);
+            if(!el) {
+                el = document.createElement('div');
+                el.id = `label-${key}`;
+                el.className = 'math-label';
+                el.textContent = key;
+                el.style.color = data.cssColor;
+                this.labelsContainer.appendChild(el);
+            }
+
+            // Calculate world tip position
+            tempV.copy(data.localTip).add(parentPos);
+            
+            // Project to Screen
+            tempV.project(this.camera);
+
+            // Convert NDC to Pixels
+            const size = this.getCanvasSize();
+            const x = (tempV.x * 0.5 + 0.5) * size.width;
+            const y = (-(tempV.y * 0.5) + 0.5) * size.height;
+
+            el.style.left = `${x + data.offset.x}px`;
+            el.style.top = `${y + data.offset.y}px`;
+        }
+    }
+}
+
+// Start
+const app = new PhysicsApp();
+
+</script>
+</body>
+</html>

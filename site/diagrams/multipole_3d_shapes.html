@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multipole Expansion</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\vec{l}",
+              dtau: "d\\tau"
+              /* 'hat' macro removed to fix recursion error */
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 3rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        h3 { color: var(--text-primary); font-weight: 600; margin-top: 2rem; font-size: 1.4rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Hierarchy Cards */
+        .hierarchy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 2rem 0;
+        }
+        .hierarchy-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .hierarchy-card:hover { transform: translateY(-5px); border-color: var(--accent-color); }
+        .card-header { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 10px; display: block; }
+        .card-sub { color: var(--warning-color); font-family: 'Times New Roman', serif; font-size: 1.1rem; display: block; margin-bottom: 10px; }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper { display: flex; justify-content: center; margin: 3rem auto; }
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="../index.html">Home</a> > <a href="../electrostatics_index.html">Electrostatics</a> > Multipole Expansion
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Multipole Expansion</h1>
+        
+        <p>
+            When you look at a complex blob of charge from very far away, you don't see the details. You see a simplified version. The <strong>Multipole Expansion</strong> is the mathematical tool we use to organize these simplifications into a hierarchy of shapes.
+        </p>
+
+        <!-- SECTION 1: WHAT ARE MULTIPOLES? -->
+        <section>
+            <h2>1. The Hierarchy of Shapes</h2>
+            <p>
+                What exactly <em>is</em> a "Dipole" or a "Quadrupole"? They are specific arrangements of charge that result in different levels of cancellation.
+            </p>
+
+            <div class="iframe-container">
+                <!-- 
+                    INSTRUCTION: This iframe should load a 3D visualizer showing:
+                    1. A single sphere (Monopole).
+                    2. Two spheres, Red/Blue (Dipole).
+                    3. Four spheres in a square (Quadrupole).
+                    Allow user to switch between them to see the geometry.
+                -->
+                <iframe src="multipole_visualizer.html" title="3D Multipole Shapes"></iframe>
+            </div>
+
+            <div class="hierarchy-grid">
+                <div class="hierarchy-card">
+                    <span class="card-header">1. Monopole (n=0)</span>
+                    <span class="card-sub">Total Charge \(Q \neq 0\)</span>
+                    <p>
+                        The simplest object. It is just a net amount of charge. It looks like a single point.
+                        <br><em>Example: A proton.</em>
+                    </p>
+                </div>
+
+                <div class="hierarchy-card">
+                    <span class="card-header">2. Dipole (n=1)</span>
+                    <span class="card-sub">\(Q=0\), but separated</span>
+                    <p>
+                        If you take a (+) and a (-) and pull them apart, the net charge is zero, but they don't perfectly cancel. This separation creates a "Dipole Moment" \(\vec{p}\).
+                        <br><em>Example: A water molecule.</em>
+                    </p>
+                </div>
+
+                <div class="hierarchy-card">
+                    <span class="card-header">3. Quadrupole (n=2)</span>
+                    <span class="card-sub">\(Q=0, \vec{p}=0\)</span>
+                    <p>
+                        If you take two opposing dipoles and push them together, even the dipole moment cancels. What's left is a "Quadrupole" (four poles).
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: WHY DO WE NEED THEM? -->
+        <section>
+            <h2>2. Why do we need this?</h2>
+            <p>
+                Calculating the exact potential of a messy object involves a difficult integral. However, if we are far away (\(r \gg \text{size of object}\)), we can approximate the potential as a sum of these poles.
+            </p>
+            <p>
+                Because higher poles involve more cancellation (positive charges screening negative charges), their fields die off much faster.
+            </p>
+
+            <div class="math-block">
+                $$ V(\vec{r}) \approx \frac{1}{4\pi\epsilon_0} \left( \frac{Q}{r} + \frac{\vec{p} \cdot \hat{r}}{r^2} + \frac{1}{r^3}(\dots) \right) $$
+            </div>
+
+            <ul>
+                <li><strong>Monopole Term (\(1/r\)):</strong> Dominates if the object has a net charge.</li>
+                <li><strong>Dipole Term (\(1/r^2\)):</strong> Dominates if the object is neutral (like an atom).</li>
+                <li><strong>Quadrupole Term (\(1/r^3\)):</strong> Dominates if the object is neutral and symmetric.</li>
+            </ul>
+        </section>
+
+        <!-- SECTION 3: DIPOLE FIELD -->
+        <section>
+            <h2>3. The Electric Field of a Dipole</h2>
+            <p>
+                Since the potential \(V\) of a dipole falls off as \(1/r^2\), the Electric Field (\(\vec{E} = -\nabla V\)) falls off as \(1/r^3\). This is a very short-range field compared to a point charge.
+            </p>
+
+            <h3>Spherical Coordinates</h3>
+            <p>
+                If we align the dipole \(\vec{p}\) with the z-axis, the field is:
+            </p>
+            <div class="math-block">
+                $$ \vec{E}_{\text{dip}}(r, \theta) = \frac{p}{4\pi\epsilon_0 r^3} (2\cos\theta \hat{r} + \sin\theta \hat{\theta}) $$
+            </div>
+            
+            <p>Notice the structure:</p>
+            <ul style="color: var(--text-secondary); margin-bottom: 2rem;">
+                <li>Along the axis (\(\theta=0\)), the field points along \(\hat{r}\) (parallel to \(\vec{p}\)).</li>
+                <li>At the equator (\(\theta=90^\circ\)), the field points along \(-\hat{\theta}\) (anti-parallel to \(\vec{p}\)).</li>
+            </ul>
+
+            <div class="dive-wrapper">
+                <a href="../ch1_5_dipole_details.html" class="dive-btn">
+                    <span>📐</span> Deeper Dive: Derivation of the Dipole Potential
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>Physics II Reference • Electrostatics</p>
+        <a href="../electrostatics_index.html" style="color: var(--accent-color); text-decoration: none;">← Back to Electrostatics</a>
+    </footer>
+
+</body>
+</html>

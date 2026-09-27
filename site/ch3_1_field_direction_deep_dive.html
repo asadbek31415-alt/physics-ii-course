@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Field's Direction</title>
+
+    <!-- CSS and Fonts -->
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="magnetostatics_index.html">Magnetostatics</a> >
+                <a href="ch3_1_lorentz_force.html">The Lorentz Force Law</a> >
+                Deep Dive: The Field's Direction
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: The Field's Direction</h1>
+
+        <p>
+            A straight current does not make a magnetic field that points toward or away from the wire. It makes a
+            field that wraps around the wire. This page is about turning that fact into a usable direction rule, not
+            just memorizing a picture.
+        </p>
+        <p>
+            The reason is the Lorentz force: $\vec{F} = q\vec{v}\times\vec{B}$. To find the magnetic force on moving
+            charge, you need both the charge velocity $\vec{v}$ and the local magnetic field $\vec{B}$. When
+            $\vec{B}$ circles around the source wire, the force on a nearby current-carrying wire points sideways,
+            not along the current.
+        </p>
+
+        <p class="highlight-box">
+            Use the right-hand rule as a direction tool: point your thumb along the current, and your fingers curl in
+            the direction of $\vec{B}$. The field direction is tangent to the circular path at each point.
+        </p>
+
+        <div class="iframe-container">
+            <iframe src="diagrams/ch3_1_right_hand_rule.html" title="Right-hand rule for a current-carrying wire"></iframe>
+        </div>
+
+        <h2>Compass Check</h2>
+        <p>
+            A compass near a current-carrying wire turns until its needle lies tangent to the local magnetic-field
+            path. As you move around the wire, the compass direction changes because the tangent direction changes.
+            In the simulator below, the gray arrowheads follow those circular paths, and the vectors at the right wire
+            show the local $\vec{v}$, $\vec{B}$, and resulting $\vec{F}$.
+        </p>
+
+        <div class="iframe-container">
+            <iframe src="diagrams/ch3_1_compass_transition.html" title="Compass response around current-carrying wires"></iframe>
+        </div>
+
+        <h2>The Paradox of Attraction</h2>
+        <p>
+            The two-wire result can feel surprising: if the magnetic field circles around a wire, how can two straight
+            wires attract or repel each other?
+        </p>
+        <p>
+            Focus on one wire as the source. It creates a circular $\vec{B}$ field. At the position of the second wire,
+            the second wire samples just the local value of that circular field: into the screen on one side, out of
+            the screen on the other.
+        </p>
+        <p>
+            Now apply $\vec{F} = q\vec{v}\times\vec{B}$ to the moving charges in the second wire. The velocity is along
+            the wire, while $\vec{B}$ points into or out of the screen, so the force is sideways. For same-direction
+            currents, that sideways force points inward, so the wires attract. Reverse one current, and the cross
+            product reverses, so the wires repel.
+        </p>
+        <p class="highlight-box" style="background: rgba(52, 152, 219, 0.1); border-left: 4px solid #3498db;">
+            <strong>Direction chain:</strong>
+            source current $\rightarrow$ circular $\vec{B}$ direction; moving charges in the second wire
+            $\rightarrow$ $\vec{v}$; cross product $\vec{v}\times\vec{B}$ $\rightarrow$ sideways force.
+        </p>
+
+
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

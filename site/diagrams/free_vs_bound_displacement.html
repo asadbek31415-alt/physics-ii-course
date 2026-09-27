@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free and Bound Charge in a Dielectric</title>
+    <style>
+        :root {
+            --bg-color: #06080c;
+            --panel-bg: #111820;
+            --panel-border: #2b4054;
+            --text-primary: #f0f6ff;
+            --text-secondary: #b4c8dc;
+            --accent-color: #3498db;
+            --free-charge: #31d982;
+            --bound-charge: #ff514f;
+            --e-field: #ffd21f;
+            --p-field: #b468e6;
+            --d-field: #3aa8ff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .sim-shell {
+            display: grid;
+            grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+            width: 100%;
+            height: 100%;
+            background: #05070a;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-width: 0;
+            padding: 18px;
+            background: linear-gradient(180deg, rgba(19, 29, 39, 0.98), rgba(15, 21, 28, 0.98));
+            border-right: 1px solid var(--panel-border);
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--accent-color);
+            font-size: 1.15rem;
+            line-height: 1.2;
+        }
+
+        .formula {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            max-width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.035);
+            font: 700 1.05rem/1.2 Georgia, "Times New Roman", serif;
+            white-space: nowrap;
+        }
+
+        .explain {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        .control {
+            display: grid;
+            gap: 8px;
+        }
+
+        .control-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+        }
+
+        .value {
+            color: var(--accent-color);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        button {
+            min-height: 34px;
+            border: 1px solid #40556c;
+            border-radius: 7px;
+            background: #182230;
+            color: var(--text-primary);
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover,
+        button.active {
+            border-color: var(--accent-color);
+            background: rgba(52, 152, 219, 0.24);
+        }
+
+        .legend {
+            display: grid;
+            gap: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(180, 200, 220, 0.22);
+            color: var(--text-secondary);
+            font-size: 0.83rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            flex: 0 0 10px;
+            border-radius: 999px;
+        }
+
+        .line {
+            width: 22px;
+            height: 3px;
+            flex: 0 0 22px;
+            border-radius: 999px;
+        }
+
+        .scene-wrap {
+            min-width: 0;
+            min-height: 0;
+            background:
+                radial-gradient(circle at 50% 45%, rgba(52, 152, 219, 0.12), transparent 36%),
+                #020305;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 760px) {
+            .sim-shell {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(300px, 1fr) auto;
+            }
+
+            .scene-wrap {
+                min-height: 300px;
+                order: 1;
+            }
+
+            .panel {
+                order: 2;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px 14px;
+                padding: 12px;
+                border-right: 0;
+                border-top: 1px solid var(--panel-border);
+            }
+
+            h1,
+            .formula,
+            .explain,
+            .preset-grid,
+            .legend {
+                grid-column: 1 / -1;
+            }
+
+            .formula {
+                padding: 7px 10px;
+                font-size: 0.96rem;
+            }
+
+            .explain {
+                font-size: 0.84rem;
+            }
+
+            .legend {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                font-size: 0.78rem;
+            }
+
+            .control-header {
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 460px) {
+            .panel {
+                grid-template-columns: 1fr;
+            }
+
+            .legend {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div class="sim-shell">
+        <aside class="panel">
+            <h1>Free vs Bound Charge</h1>
+            <div class="formula">
+                <span style="color: var(--d-field)">D</span>
+                <span>&nbsp;=&nbsp;&epsilon;<sub>0</sub></span>
+                <span style="color: var(--e-field)">E</span>
+                <span>&nbsp;+&nbsp;</span>
+                <span style="color: var(--p-field)">P</span>
+            </div>
+            <p class="explain">
+                Free charges sit on the plates. If a dielectric is present, it polarizes and creates bound surface
+                charge. Set susceptibility to zero to remove the material and return to vacuum.
+            </p>
+
+            <div class="control">
+                <div class="control-header">
+                    <span>Free surface charge σ<sub>f</sub></span>
+                    <span class="value" id="sigmaFValue">50</span>
+                </div>
+                <input type="range" id="sigmaFSlider" min="0" max="100" value="50">
+            </div>
+
+            <div class="control">
+                <div class="control-header">
+                    <span>Susceptibility χ<sub>e</sub></span>
+                    <span class="value" id="chiValue">2.0</span>
+                </div>
+                <input type="range" id="chiSlider" min="0" max="100" value="50">
+            </div>
+
+            <div class="preset-grid" aria-label="Example setups">
+                <button type="button" data-preset="vacuum">Vacuum</button>
+                <button type="button" class="active" data-preset="medium">Dielectric</button>
+                <button type="button" data-preset="strong">Strong response</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="dot" style="background: var(--free-charge);"></span>
+                    <span>free charge on plates</span>
+                </div>
+                <div class="legend-item">
+                    <span class="dot" style="background: var(--bound-charge);"></span>
+                    <span>bound charge on dielectric</span>
+                </div>
+                <div class="legend-item">
+                    <span class="line" style="background: var(--d-field);"></span>
+                    <span>D: free charge only</span>
+                </div>
+                <div class="legend-item">
+                    <span class="line" style="background: var(--e-field);"></span>
+                    <span>E: total field</span>
+                </div>
+                <div class="legend-item">
+                    <span class="line" style="background: var(--p-field);"></span>
+                    <span>P: polarization</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="scene-wrap">
+            <canvas id="canvas" aria-label="2D diagram of free charge, bound charge, and D, E, P fields"></canvas>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const sigmaFSlider = document.getElementById('sigmaFSlider');
+        const chiSlider = document.getElementById('chiSlider');
+        const sigmaFValue = document.getElementById('sigmaFValue');
+        const chiValue = document.getElementById('chiValue');
+        const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+
+        let width = 0;
+        let height = 0;
+        let dpr = 1;
+
+        function css(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            draw();
+        }
+
+        function drawRoundRect(x, y, w, h, r) {
+            const radius = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.arcTo(x + w, y, x + w, y + h, radius);
+            ctx.arcTo(x + w, y + h, x, y + h, radius);
+            ctx.arcTo(x, y + h, x, y, radius);
+            ctx.arcTo(x, y, x + w, y, radius);
+            ctx.closePath();
+        }
+
+        function drawArrow(x1, y1, x2, y2, color, label, lineWidth = 4) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.hypot(dx, dy);
+            if (len < 4) return;
+            const angle = Math.atan2(dy, dx);
+            const head = Math.min(16, Math.max(9, len * 0.16));
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - head * Math.cos(angle - Math.PI / 6), y2 - head * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - head * Math.cos(angle + Math.PI / 6), y2 - head * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.font = '700 18px Inter, Arial, sans-serif';
+            ctx.fillText(label, x2 + 10, y2 - 5);
+            ctx.restore();
+        }
+
+        function drawChargeMark(text, x, y, color, size = 18) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.font = `700 ${size}px Inter, Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function draw() {
+            if (!width || !height) return;
+
+            const sigmaF = Number(sigmaFSlider.value);
+            const chi = Number((Number(chiSlider.value) / 25).toFixed(1));
+            const hasMaterial = chi > 0.01;
+            const sigmaB = hasMaterial ? sigmaF * (chi / (1 + chi)) : 0;
+            const eFraction = sigmaF === 0 ? 0 : (sigmaF - sigmaB) / sigmaF;
+
+            sigmaFValue.textContent = sigmaF.toFixed(0);
+            chiValue.textContent = chi.toFixed(1);
+
+            ctx.clearRect(0, 0, width, height);
+
+            const narrowCanvas = width < 520;
+            const cx = width * 0.48;
+            const cy = height * (narrowCanvas ? 0.48 : 0.52);
+            const slabW = Math.min(width * 0.42, 330);
+            const slabH = Math.min(height * (narrowCanvas ? 0.30 : 0.38), 210);
+            const plateW = slabW + 70;
+            const plateH = Math.max(9, height * 0.018);
+            const gap = Math.min(height * (narrowCanvas ? 0.11 : 0.16), 70);
+            const topPlateY = cy - slabH / 2 - gap;
+            const bottomPlateY = cy + slabH / 2 + gap;
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(52, 152, 219, 0.12)';
+            ctx.lineWidth = 1;
+            const gridStep = Math.max(28, Math.min(44, width / 18));
+            for (let x = cx - plateW / 2 - 100; x <= cx + plateW / 2 + 150; x += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(x, cy - slabH / 2 - gap - 80);
+                ctx.lineTo(x, cy + slabH / 2 + gap + 80);
+                ctx.stroke();
+            }
+            for (let y = cy - slabH / 2 - gap - 80; y <= cy + slabH / 2 + gap + 80; y += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(cx - plateW / 2 - 100, y);
+                ctx.lineTo(cx + plateW / 2 + 150, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.save();
+            const plateGradient = ctx.createLinearGradient(cx - plateW / 2, 0, cx + plateW / 2, 0);
+            plateGradient.addColorStop(0, 'rgba(49, 217, 130, 0.12)');
+            plateGradient.addColorStop(0.5, 'rgba(49, 217, 130, 0.48)');
+            plateGradient.addColorStop(1, 'rgba(49, 217, 130, 0.12)');
+            ctx.fillStyle = plateGradient;
+            ctx.fillRect(cx - plateW / 2, topPlateY, plateW, plateH);
+            ctx.fillRect(cx - plateW / 2, bottomPlateY, plateW, plateH);
+            ctx.restore();
+
+            if (hasMaterial) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.15)';
+                ctx.strokeStyle = 'rgba(93, 169, 233, 0.75)';
+                ctx.lineWidth = 2;
+                drawRoundRect(cx - slabW / 2, cy - slabH / 2, slabW, slabH, 8);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            const count = Math.max(0, Math.round(3 + sigmaF / 12));
+            const startX = cx - plateW * 0.38;
+            const endX = cx + plateW * 0.38;
+            for (let i = 0; i < count; i++) {
+                const t = count === 1 ? 0.5 : i / (count - 1);
+                const x = startX + (endX - startX) * t;
+                drawChargeMark('+', x, topPlateY - 15, css('--free-charge'), 18);
+                drawChargeMark('-', x, bottomPlateY + plateH + 16, css('--free-charge'), 18);
+
+                if (hasMaterial && sigmaB > 4) {
+                    drawChargeMark('-', x, cy - slabH / 2 + 18, css('--bound-charge'), 15);
+                    drawChargeMark('+', x, cy + slabH / 2 - 16, css('--bound-charge'), 15);
+                }
+            }
+
+            ctx.save();
+            const leftLabelX = narrowCanvas ? 14 : cx - plateW / 2 - 10;
+            ctx.textAlign = narrowCanvas ? 'left' : 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = '700 14px Inter, Arial, sans-serif';
+            ctx.fillStyle = css('--free-charge');
+            ctx.fillText('free +σf', leftLabelX, topPlateY + plateH / 2);
+            ctx.fillText('free -σf', leftLabelX, bottomPlateY + plateH / 2);
+            if (hasMaterial && sigmaB > 4) {
+                ctx.fillStyle = css('--bound-charge');
+                ctx.fillText('bound -σb', leftLabelX, cy - slabH / 2 + 18);
+                ctx.fillText('bound +σb', leftLabelX, cy + slabH / 2 - 16);
+            }
+            ctx.restore();
+
+            const fx = Math.min(width - 130, cx + slabW / 2 + 72);
+            const arrowTop = cy - Math.min(110, height * 0.24);
+            const baseLen = Math.min(150, height * 0.34);
+            const dLen = baseLen * sigmaF / 100;
+            const eLen = dLen * eFraction;
+            const pLen = baseLen * sigmaB / 100;
+
+            drawArrow(fx, arrowTop, fx, arrowTop + dLen, css('--d-field'), 'D', 4);
+            drawArrow(fx + 44, arrowTop, fx + 44, arrowTop + eLen, css('--e-field'), 'E', 4);
+            if (hasMaterial) {
+                drawArrow(fx + 88, arrowTop, fx + 88, arrowTop + pLen, css('--p-field'), 'P', 4);
+            }
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.font = '700 15px Inter, Arial, sans-serif';
+            ctx.fillStyle = hasMaterial ? css('--text-secondary') : css('--accent-color');
+            const statusY = hasMaterial ? Math.min(bottomPlateY - 16, cy + slabH / 2 + 28) : cy;
+            ctx.fillText(hasMaterial ? 'dielectric material polarizes' : 'vacuum: no material, no bound charge', cx, statusY);
+            ctx.restore();
+        }
+
+        function setPreset(name) {
+            const values = {
+                vacuum: [50, 0],
+                medium: [50, 50],
+                strong: [70, 88]
+            }[name];
+            sigmaFSlider.value = values[0];
+            chiSlider.value = values[1];
+            presetButtons.forEach(button => button.classList.toggle('active', button.dataset.preset === name));
+            draw();
+        }
+
+        [sigmaFSlider, chiSlider].forEach(input => {
+            input.addEventListener('input', () => {
+                presetButtons.forEach(button => button.classList.remove('active'));
+                draw();
+            });
+        });
+        presetButtons.forEach(button => button.addEventListener('click', () => setPreset(button.dataset.preset)));
+
+        new ResizeObserver(resize).observe(canvas);
+        window.addEventListener('resize', resize);
+        setPreset('medium');
+    </script>
+</body>
+
+</html>

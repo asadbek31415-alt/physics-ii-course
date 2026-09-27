@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutual Inductance Geometry</title>
+    <style>
+        body { margin: 0; background: #0b0e14; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        
+        #legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #eee;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00aaff;
+            pointer-events: none;
+            font-size: 14px;
+        }
+
+        .item { display: flex; align-items: center; margin-bottom: 8px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; display: inline-block; }
+        .line { width: 20px; height: 2px; margin-right: 10px; display: inline-block; }
+        
+        .c-blue { background: #00aaff; }
+        .c-gold { background: #ffcc00; }
+        .c-white { background: #ffffff; }
+        .c-line { background: #666; border-top: 2px dashed #888; height: 0; }
+
+        .math { font-family: 'Times New Roman', serif; font-style: italic; font-size: 1.1em; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="legend">
+        <div style="margin-bottom:10px; font-weight:bold; border-bottom:1px solid #444; padding-bottom:5px;">Geometry of Mutual Inductance</div>
+        <div class="item"><span class="dot c-blue"></span> Loop 1 (Source <span class="math">I₁</span>)</div>
+        <div class="item"><span class="dot c-white"></span> Loop 2 (Target)</div>
+        <div class="item"><span class="line c-gold"></span> Field Lines (<span class="math">B₁</span>)</div>
+        <div class="item"><span class="line c-line"></span> Distance Vector (<span class="math">r</span>)</div>
+        <div style="margin-top:10px; font-size: 0.9em; color:#aaa;">
+            Shows the interaction between<br>differential elements <span class="math">dl₁</span> and <span class="math">dl₂</span>.
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0e14);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 4, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- LIGHTS ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // --- HELPER FUNCTIONS ---
+
+        // Create an arbitrary "blob" loop using CatmullRomCurve
+        function createBlobLoop(yPos, scale, color) {
+            const points = [];
+            const segments = 10;
+            for (let i = 0; i < segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                // Add some randomness to radius to make it "arbitrary"
+                const r = scale + Math.sin(theta * 3) * 0.3 + Math.cos(theta * 2) * 0.2;
+                const x = r * Math.cos(theta);
+                const z = r * Math.sin(theta);
+                // Add slight waviness in Y
+                const y = yPos + Math.sin(theta * 2) * 0.2;
+                points.push(new THREE.Vector3(x, y, z));
+            }
+            const curve = new THREE.CatmullRomCurve3(points, true); // True = closed
+            
+            // Create Tube
+            const geo = new THREE.TubeGeometry(curve, 64, 0.08, 8, true);
+            const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.5 });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            return { mesh, curve };
+        }
+
+        // --- OBJECTS ---
+
+        // 1. Loop 1 (Bottom, Source) - Blue
+        const loop1Obj = createBlobLoop(-1.5, 2.5, 0x00aaff);
+        scene.add(loop1Obj.mesh);
+
+        // 2. Loop 2 (Top, Target) - White
+        const loop2Obj = createBlobLoop(1.5, 2.0, 0xffffff);
+        scene.add(loop2Obj.mesh);
+
+        // 3. Field Lines (B1)
+        // Curves starting from Loop 1 area and passing through Loop 2
+        const fieldGroup = new THREE.Group();
+        const fieldCurves = []; // Store for animation
+        
+        for(let i=0; i<8; i++) {
+            // Start points inside Loop 1
+            const theta = (i/8) * Math.PI * 2;
+            const start = new THREE.Vector3(Math.cos(theta)*1.5, -2, Math.sin(theta)*1.5);
+            const mid = new THREE.Vector3(Math.cos(theta)*0.5, 0, Math.sin(theta)*0.5); // Pinch in middle
+            const end = new THREE.Vector3(Math.cos(theta)*3.0, 4, Math.sin(theta)*3.0); // Fan out
+
+            const curve = new THREE.CatmullRomCurve3([start, mid, end]);
+            fieldCurves.push(curve);
+
+            const points = curve.getPoints(50);
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.3 });
+            const line = new THREE.Line(lineGeo, lineMat);
+            
+            // Add Arrow tip to indicate direction
+            const tipPos = curve.getPoint(0.8); // 80% up
+            const tipDir = curve.getTangent(0.8);
+            const arrow = new THREE.ArrowHelper(tipDir, tipPos, 0.5, 0xffcc00, 0.3, 0.2);
+            
+            fieldGroup.add(line);
+            fieldGroup.add(arrow);
+        }
+        scene.add(fieldGroup);
+
+        // 4. The Neumann Geometry Elements (dl1, dl2, r)
+        
+        // Dot 1 on Loop 1
+        const dot1 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15), 
+            new THREE.MeshBasicMaterial({ color: 0x00aaff })
+        );
+        scene.add(dot1);
+
+        // Dot 2 on Loop 2
+        const dot2 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15), 
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        scene.add(dot2);
+
+        // The Vector 'r' connecting them
+        const rLineMat = new THREE.LineDashedMaterial({ 
+            color: 0x888888, 
+            dashSize: 0.2, 
+            gapSize: 0.1, 
+            linewidth: 2 
+        });
+        const rLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)]);
+        const rLine = new THREE.Line(rLineGeo, rLineMat);
+        rLine.computeLineDistances(); // Needed for dashed lines
+        scene.add(rLine);
+
+        // Label for 'r'
+        // (Simple HTML overlay would be better, but doing quick billboard here if needed, skipping for simplicity as per prompt)
+
+        // --- ANIMATION ---
+        let time = 0;
+        
+        // Animation positions along curves (0 to 1)
+        let t1 = 0;
+        let t2 = 0.5; // Offset start
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Move Dot 1 (dl1)
+            t1 = (time * 0.1) % 1; 
+            const pos1 = loop1Obj.curve.getPointAt(t1);
+            dot1.position.copy(pos1);
+
+            // Move Dot 2 (dl2) - Move slightly slower to show independence
+            t2 = (time * 0.08 + 0.5) % 1;
+            const pos2 = loop2Obj.curve.getPointAt(t2);
+            dot2.position.copy(pos2);
+
+            // Update Connection Line (r)
+            const positions = rLine.geometry.attributes.position.array;
+            positions[0] = pos1.x; positions[1] = pos1.y; positions[2] = pos1.z;
+            positions[3] = pos2.x; positions[4] = pos2.y; positions[5] = pos2.z;
+            rLine.geometry.attributes.position.needsUpdate = true;
+            rLine.computeLineDistances(); // Re-calc dashes
+
+            // Subtle rotation of the whole system
+            scene.rotation.y = Math.sin(time * 0.2) * 0.1;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+<script defer data-offline-bundle src="ch5_2_mutual_loops.0.offline.js"></script>
+
+
+</body>
+</html>

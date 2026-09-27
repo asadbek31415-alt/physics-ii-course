@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search - Physics II Reference</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <main class="container">
+        <h1>Search the Course</h1>
+        <p>Use the search bar in the top navigation to find lessons, concepts, deep dives, and notation.</p>
+        <button class="primary-btn" type="button" onclick="window.CourseSearch && window.CourseSearch.open()">Focus Search</button>
+    </main>
+    <footer></footer>
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            var query = new URLSearchParams(location.search).get('q') || '';
+            if (window.CourseSearch) window.CourseSearch.open(query);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 6.4: Waves in Matter</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ]
+            });
+        });
+    </script>
+    <style>
+        .def-item {
+            grid-template-columns: 130px 1fr !important;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Waves in Matter
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Electromagnetic Waves in Matter</h1>
+
+        <p class="intro-text">
+            When EM waves enter matter, they interact with the atoms and molecules. This changes their propagation speed
+            and leads to phenomena like reflection and transmission at boundaries.
+        </p>
+
+        <!-- SECTION 1: PROPAGATION IN DIELECTRICS -->
+        <section data-concept-title="1. Propagation in Linear Media" id="concept-1-1-propagation-in-linear-media">
+            <h2>1. Propagation in Linear Media</h2>
+            <p>
+                In a linear, homogeneous dielectric material, the wave equation still holds, but the constants
+                $\epsilon_0$ and $\mu_0$ are replaced by the permittivity $\epsilon$ and permeability $\mu$ of the
+                material.
+            </p>
+            <div class="math-block">
+                $$ v = \frac{1}{\sqrt{\epsilon\mu}} = \frac{c}{n} $$
+            </div>
+            <p>
+                Where $n = \sqrt{\frac{\epsilon\mu}{\epsilon_0\mu_0}}$ is the <strong>Index of Refraction</strong>.
+                Since most materials
+                are nearly non-magnetic ($\mu \approx \mu_0$), we often use $n \approx \sqrt{\epsilon_r}$.
+            </p>
+
+            <h3 class="diagram-title">Interactive: Propagation in Media</h3>
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ch6_4_propagation_media.html" title="Propagation in Media"
+                    scrolling="no"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 2: REFLECTION AND TRANSMISSION -->
+        <section data-concept-title="2. Boundary Conditions (Normal Incidence)" id="concept-2-2-boundary-conditions-normal-incidence">
+            <h2>2. Boundary Conditions (Normal Incidence)</h2>
+            <p>
+                When a wave hits an interface between two different media, some of it is reflected and some is
+                transmitted.
+                For <strong>normal incidence</strong> (hitting the surface straight on), the boundary conditions
+                require:
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">Continuity</span>
+                    <span class="def-text">The tangential components of \(\vec{E}\) and \(\vec{H}\) must be continuous
+                        across the boundary.</span>
+                </div>
+            </div>
+            <p>
+                This leads to the <strong>Fresnel Equations</strong> for the reflection ($R$) and transmission ($T$)
+                coefficients
+                (for normal incidence):
+            </p>
+            <div class="math-block">
+                $$ E_{0R} = \frac{n_1 - n_2}{n_1 + n_2} E_{0I}, \quad E_{0T} = \frac{2n_1}{n_1 + n_2} E_{0I} $$
+            </div>
+            <p>
+                Note: If $n_2 > n_1$ (e.g., light entering glass), the reflected wave undergoes a $180^\circ$ phase
+                shift.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_3_reflection_details.html?back=ch6_4_matter_waves.html%23concept-2-2-boundary-conditions-normal-incidence"><span aria-hidden="true">+</span> Deep Dive: Boundary Conditions & Reflection</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

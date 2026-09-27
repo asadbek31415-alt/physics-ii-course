@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Mechanics Simulator V3</title>
+    <script src="../vendor/three/build/three.min.js"></script>
+    
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --panel: #161b22;
+            --text: #e6edf3;
+            --blue: #2f81f7;
+            --pink: #db61a2;
+            --gold: #d29922;
+            --green: #3fb950;
+            --border: #30363d;
+        }
+
+        body {
+            margin: 0;
+            padding: 12px;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* --- CONTROLS --- */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            background: var(--panel);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .control-group { display: flex; flex-direction: column; gap: 6px; }
+        .label-row { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; color: var(--gold); }
+        input[type=range] { cursor: pointer; accent-color: var(--blue); width: 100%; }
+        .val { font-family: 'Fira Code', monospace; color: var(--text); font-size: 0.85rem; }
+
+        /* --- GRAPHS --- */
+        .graphs-container { flex-grow: 1; display: flex; flex-direction: column; gap: 12px; }
+        .graph-wrapper {
+            position: relative;
+            flex: 1;
+            background: #0d1117;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        /* UI Overlay labels */
+        .graph-title {
+            position: absolute;
+            top: 12px;
+            left: 80px; /* Pushed right to avoid Y-axis label */
+            font-size: 0.85rem;
+            font-weight: 700;
+            z-index: 10;
+            letter-spacing: 0.5px;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .axis-label { font-size: 11px; fill: #8b949e; font-weight: 600; }
+        .y-axis-title { font-size: 10px; fill: #8b949e; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="controls">
+        <div class="control-group">
+            <div class="label-row"><span>Amplitude (A)</span> <span class="val" id="v-amp">0.60</span></div>
+            <input type="range" id="i-amp" min="0.1" max="1.2" step="0.05" value="0.6">
+        </div>
+        <div class="control-group">
+            <div class="label-row"><span>Wavelength (λ)</span> <span class="val" id="v-wave">4.00 m</span></div>
+            <input type="range" id="i-wave" min="1.5" max="8" step="0.1" value="4">
+        </div>
+        <div class="control-group">
+            <div class="label-row"><span>Period (T)</span> <span id="v-period" class="val">3.00 s</span></div>
+            <input type="range" id="i-period" min="1" max="8" step="0.1" value="3">
+        </div>
+    </div>
+
+    <div class="graphs-container">
+        <div class="graph-wrapper" id="spatial-container">
+            <div class="graph-title" style="color: var(--blue);">1. Spatial Snapshot (Fixed Time t=0)</div>
+            <svg class="overlay" id="spatial-overlay"></svg>
+        </div>
+
+        <div class="graph-wrapper" id="temporal-container">
+            <div class="graph-title" style="color: var(--pink);">2. Temporal History (Fixed Position x=0)</div>
+            <svg class="overlay" id="temporal-overlay"></svg>
+        </div>
+    </div>
+
+<script>
+    const state = { A: 0.6, L: 4.0, T: 3.0 };
+    
+    // Padding logic to ensure nothing is cut off
+    // Units are mathematical (0 to 10)
+    const MATH_X_MIN = -1.5; 
+    const MATH_X_MAX = 10;
+    const MATH_Y_RANGE = 4; // -2 to 2
+
+    function createScene(containerId, color) {
+        const container = document.getElementById(containerId);
+        const scene = new THREE.Scene();
+        
+        // Use a consistent coordinate system for both graphs
+        const camera = new THREE.OrthographicCamera(MATH_X_MIN, MATH_X_MAX, 2, -2, 0.1, 10);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        const material = new THREE.LineBasicMaterial({ color: color, linewidth: 3 });
+        const geometry = new THREE.BufferGeometry();
+        const line = new THREE.Line(geometry, material);
+        scene.add(line);
+
+        return { scene, camera, renderer, line, geometry, container };
+    }
+
+    const spatial = createScene('spatial-container', 0x2f81f7);
+    const temporal = createScene('temporal-container', 0xdb61a2);
+
+    function getPixels(val, totalSize, min, max) {
+        return ((val - min) / (max - min)) * totalSize;
+    }
+
+    function drawCurlyBrace(x1, x2, y, label, svg) {
+        const h = 10; // brace depth
+        const mid = (x1 + x2) / 2;
+        
+        // Mathematical curly brace path
+        const d = `M ${x1},${y} 
+                   Q ${x1},${y-h} ${x1+h},${y-h} 
+                   L ${mid-h},${y-h} 
+                   Q ${mid},${y-h} ${mid},${y-2*h} 
+                   Q ${mid},${y-h} ${mid+h},${y-h} 
+                   L ${x2-h},${y-h} 
+                   Q ${x2},${y-h} ${x2},${y}`;
+
+        return `
+            <path d="${d}" fill="none" stroke="var(--green)" stroke-width="1.5" />
+            <text x="${mid}" y="${y - 2*h - 8}" fill="var(--green)" font-weight="bold" font-size="12" text-anchor="middle">${label}</text>
+        `;
+    }
+
+    function updateOverlay(svgId, isSpatial, param) {
+        const svg = document.getElementById(svgId);
+        svg.innerHTML = '';
+        const w = svg.clientWidth;
+        const h = svg.clientHeight;
+
+        // Convert mathematical units to pixel coordinates
+        const pixelX0 = getPixels(0, w, MATH_X_MIN, MATH_X_MAX);
+        const pixelXEnd = getPixels(9.5, w, MATH_X_MIN, MATH_X_MAX);
+        const pixelYMid = h / 2;
+        
+        // 1. Draw Axes
+        svg.innerHTML += `
+            <!-- Horizontal Axis -->
+            <line x1="${pixelX0 - 20}" y1="${pixelYMid}" x2="${w - 20}" y2="${pixelYMid}" stroke="#30363d" stroke-width="1.5" />
+            <!-- Vertical Axis -->
+            <line x1="${pixelX0}" y1="${pixelYMid - h/3}" x2="${pixelX0}" y2="${pixelYMid + h/3}" stroke="#30363d" stroke-width="1.5" />
+            
+            <!-- Axis Labels -->
+            <text x="${w - 30}" y="${pixelYMid + 20}" class="axis-label" text-anchor="end">${isSpatial ? 'z (Distance)' : 't (Time)'}</text>
+            <text x="${pixelX0 - 45}" y="${pixelYMid}" class="y-axis-title" transform="rotate(-90, ${pixelX0 - 45}, ${pixelYMid})" text-anchor="middle">Displacement Ψ</text>
+        `;
+
+        // 2. Draw Brace accurately aligned with mathematical peaks
+        // Peak 1 is at 0, Peak 2 is at 'param'
+        const braceX1 = pixelX0;
+        const braceX2 = getPixels(param, w, MATH_X_MIN, MATH_X_MAX);
+        
+        // Brace Y should be slightly above the peak amplitude
+        const peakYMath = state.A;
+        const peakYPixel = pixelYMid - (peakYMath * (h/4)); // h/4 because vertical range is -2 to 2 (total 4 units)
+        const braceY = peakYPixel - 15;
+
+        const labelStr = isSpatial ? `Wavelength λ = ${param.toFixed(1)}m` : `Period T = ${param.toFixed(1)}s`;
+        svg.innerHTML += drawCurlyBrace(braceX1, braceX2, braceY, labelStr, svg);
+    }
+
+    function update() {
+        // UI Text
+        document.getElementById('v-amp').innerText = state.A.toFixed(2);
+        document.getElementById('v-wave').innerText = state.L.toFixed(2) + " m";
+        document.getElementById('v-period').innerText = state.T.toFixed(2) + " s";
+
+        // Generate points for waves starting exactly at 0
+        const pointsCount = 300;
+        
+        // Spatial
+        const sPts = [];
+        for (let i = 0; i <= pointsCount; i++) {
+            const x = (i / pointsCount) * 10; 
+            const y = state.A * Math.cos((2 * Math.PI * x) / state.L);
+            sPts.push(new THREE.Vector3(x, y, 0));
+        }
+        spatial.geometry.setFromPoints(sPts);
+
+        // Temporal
+        const tPts = [];
+        for (let i = 0; i <= pointsCount; i++) {
+            const t = (i / pointsCount) * 10;
+            const y = state.A * Math.cos((2 * Math.PI * t) / state.T);
+            tPts.push(new THREE.Vector3(t, y, 0));
+        }
+        temporal.geometry.setFromPoints(tPts);
+
+        // Overlays
+        updateOverlay('spatial-overlay', true, state.L);
+        updateOverlay('temporal-overlay', false, state.T);
+
+        spatial.renderer.render(spatial.scene, spatial.camera);
+        temporal.renderer.render(temporal.scene, temporal.camera);
+    }
+
+    // Event Listeners
+    document.getElementById('i-amp').addEventListener('input', (e) => { state.A = parseFloat(e.target.value); update(); });
+    document.getElementById('i-wave').addEventListener('input', (e) => { state.L = parseFloat(e.target.value); update(); });
+    document.getElementById('i-period').addEventListener('input', (e) => { state.T = parseFloat(e.target.value); update(); });
+
+    window.addEventListener('resize', () => {
+        [spatial, temporal].forEach(obj => {
+            obj.renderer.setSize(obj.container.clientWidth, obj.container.clientHeight);
+        });
+        update();
+    });
+
+    // Init
+    update();
+</script>
+</body>
+</html>

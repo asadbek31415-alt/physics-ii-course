@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Field of a Magnetized Object</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            displayMath: [['$$', '$$']],
+            macros: {
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\mathbf{l}",
+              tau: "d\\tau",
+              bfJ: "\\mathbf{J}",
+              bfK: "\\mathbf{K}",
+              bfM: "\\mathbf{M}",
+              bfP: "\\mathbf{P}",
+              bfA: "\\mathbf{A}",
+              bfB: "\\mathbf{B}",
+              rhat: "\\mathbf{\\hat{r}}"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 3rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); font-weight: 600; }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* Comparison Box */
+        .comparison-box {
+            background-color: rgba(155, 89, 182, 0.1);
+            border: 1px solid var(--purple-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        .comparison-title {
+            color: var(--purple-color);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper { display: flex; justify-content: center; margin: 3rem auto; }
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> > 
+                Field of a Magnetized Object
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>The Field of a Magnetized Object</h1>
+        
+        <p>
+            In the previous section, we defined magnetization \(\mathbf{M}\) as the magnetic dipole moment per unit volume. But how do we actually calculate the magnetic field \(\mathbf{B}\) produced by an object with a given magnetization?
+        </p>
+        <p>
+            Just as polarization \(\mathbf{P}\) effectively accumulates charge, magnetization \(\mathbf{M}\) effectively creates currents. We call these <strong>Bound Currents</strong>.
+        </p>
+
+        <!-- SECTION 1: BOUND CURRENTS -->
+        <section data-concept-title="1. Bound Currents" id="concept-1-1-bound-currents">
+            <h2>1. Bound Currents</h2>
+            <p>
+                Suppose we have a chunk of magnetized material. The total vector potential \(\mathbf{A}\) at an observation point is the sum of the potentials produced by all the infinitesimal dipoles in the volume.
+            </p>
+            <p>
+                Through mathematical transformation (integration by parts), we discover that the potential produced by magnetization is exactly the same as the potential produced by a specific volume current density \(\mathbf{J}_b\) and a surface current density \(\mathbf{K}_b\).
+            </p>
+            
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \mathbf{J}_b = \nabla \times \mathbf{M} $$
+                $$ \mathbf{K}_b = \mathbf{M} \times \mathbf{\hat{n}} $$
+            </div>
+
+            <p>
+                Here, \(\mathbf{J}_b\) acts throughout the body of the material, while \(\mathbf{K}_b\) flows along the surface (where \(\mathbf{\hat{n}}\) is the surface normal).
+            </p>
+
+            <div class="comparison-box">
+                <div class="comparison-title">⚡ Electrostatic Analogy</div>
+                <p>
+                    Recall that for a polarized object, we defined <strong>Bound Charges</strong>:
+                    $$ \rho_b = -\nabla \cdot \mathbf{P} \quad \text{and} \quad \sigma_b = \mathbf{P} \cdot \mathbf{\hat{n}} $$
+                    Electric polarization acts like a pile-up of charge (divergence), whereas magnetization acts like a circulation of current (curl).
+                </p>
+            </div>
+
+            <!-- SIMULATOR: BOUND CURRENTS -->
+            <div class="iframe-container">
+                <iframe src="diagrams/bound_currents_math.html" title="Bound Currents Visualization"></iframe>
+            </div>
+            
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_2_derivation_details.html?back=ch4_2_field_object.html%23concept-1-1-bound-currents"><span aria-hidden="true">+</span> Deep Dive: Derivation & Example</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: PHYSICAL INTERPRETATION -->
+        <section data-concept-title="2. Physical Interpretation" id="concept-2-2-physical-interpretation">
+            <h2>2. Physical Interpretation</h2>
+            <p>
+                Are these "bound currents" real? Yes. They represent the cumulative effect of the microscopic atomic current loops.
+            </p>
+            <p>
+                Imagine a uniform grid of tiny current loops. Inside the material, the "up" current of one loop is canceled by the "down" current of its neighbor. There is no net current flow in the bulk.
+            </p>
+            <p>
+                However, at the very edge of the material, there is no neighbor to cancel the current. This results in a net current flowing around the perimeter—this is the <strong>Surface Current \(\mathbf{K}_b\)</strong>.
+            </p>
+
+            <div class="math-block">
+                $$ \text{Internal Cancellation} \rightarrow \mathbf{J}_b = 0 $$
+                $$ \text{Uncancelled Edge} \rightarrow \mathbf{K}_b \neq 0 $$
+            </div>
+
+            <p>
+                If the magnetization is <em>non-uniform</em> (stronger in one region than another), the internal cancellation is incomplete, resulting in a net <strong>Volume Current \(\mathbf{J}_b\)</strong>.
+            </p>
+
+            <!-- SIMULATOR: CANCELLATION EFFECT -->
+            <div class="iframe-container">
+                <iframe src="diagrams/cancellation_loops.html" title="Current Loop Cancellation"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_2_interpretation_details.html?back=ch4_2_field_object.html%23concept-2-2-physical-interpretation"><span aria-hidden="true">+</span> Deep Dive: Physical Interpretation</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE FIELD INSIDE MATTER -->
+        <section data-concept-title="3. The Magnetic Field Inside Matter" id="concept-3-3-the-magnetic-field-inside-matter">
+            <h2>3. The Magnetic Field Inside Matter</h2>
+            <p>
+                Once we determine the bound currents \(\mathbf{J}_b\) and \(\mathbf{K}_b\), the problem reduces to a standard magnetostatics problem. We can calculate the field \(\mathbf{B}\) using Biot-Savart or Ampere’s Law, treating the bound currents exactly like "free" currents running through a wire.
+            </p>
+            <p>
+                The <strong>macroscopic field</strong> inside the material is the average field over a region large enough to smooth out the atomic variations but small enough to preserve the material's geometry.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \text{Treat } \mathbf{J}_b, \mathbf{K}_b \text{ as sources for } \mathbf{B} $$
+            </div>
+
+            <p>
+                For example, a uniformly magnetized sphere produces a field identical to a rotating charged shell (a surface current). Inside the sphere, the field is perfectly uniform!
+            </p>
+
+            <div class="comparison-box">
+                <div class="comparison-title">⚡ Electrostatic Analogy</div>
+                <p>
+                    <strong>Electric:</strong> A uniformly polarized sphere produces a uniform electric field inside, opposing \(\mathbf{P}\).<br>
+                    <strong>Magnetic:</strong> A uniformly magnetized sphere produces a uniform magnetic field inside, parallel to \(\mathbf{M}\).
+                </p>
+            </div>
+
+            <!-- SIMULATOR: SPHERE FIELD -->
+            <div class="iframe-container">
+                <iframe src="diagrams/magnetized_sphere_field.html" title="Field of Magnetized Sphere"></iframe>
+            </div>
+</section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

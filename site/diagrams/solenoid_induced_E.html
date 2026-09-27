@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solenoid Induced E-Field</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --panel-bg: rgba(20, 20, 20, 0.8);
+            --accent-blue: #3b82f6;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --text-color: #e0e0e0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        #ui-sidebar {
+            width: 280px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.4;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #888;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .checkbox-item input {
+            cursor: pointer;
+        }
+
+        .legend {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .label-3d {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            white-space: nowrap;
+            display: none;
+        }
+    </style>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "../vendor/three/build/three.module.js",
+            "three/addons/": "../vendor/three/examples/jsm/"
+          }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="canvas-container">
+        <!-- Labels will be injected here -->
+    </div>
+
+    <aside id="ui-sidebar">
+        <div>
+            <h2>Solenoid Physics</h2>
+            <p>Visualize the induced electric field created by a time-varying magnetic flux.</p>
+        </div>
+
+        <div class="control-group">
+            <label>Field Rate of Change ($dB/dt$)</label>
+            <input type="range" id="dbdt-slider" min="-2" max="2" step="0.1" value="1">
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #666;">
+                <span>Decreasing</span>
+                <span>Increasing</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Visibility Toggles</label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="toggle-b" checked> Magnetic Field ($\vec{B}$)
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="toggle-e" checked> Induced Electric Field ($\vec{E}$)
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="toggle-solenoid" checked> Solenoid Coils
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="toggle-labels" checked> 3D Labels
+            </label>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot" style="background: var(--accent-red);"></div> Magnetic Field Vector
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: var(--accent-blue);"></div> Induced Electric Field
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #f59e0b;"></div> Copper Wire
+            </div>
+        </div>
+    </aside>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const container = document.getElementById('canvas-container');
+        const dbdtSlider = document.getElementById('dbdt-slider');
+        const toggleB = document.getElementById('toggle-b');
+        const toggleE = document.getElementById('toggle-e');
+        const toggleSolenoid = document.getElementById('toggle-solenoid');
+        const toggleLabels = document.getElementById('toggle-labels');
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(10, 8, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Physics Constants
+        let dbdt = parseFloat(dbdtSlider.value);
+        const R = 3; // Solenoid radius
+        const length = 10;
+        const turns = 20;
+
+        // Visual Elements groups
+        const solenoidGroup = new THREE.Group();
+        const fieldGroupB = new THREE.Group();
+        const fieldGroupE = new THREE.Group();
+        const labelsGroup = [];
+        scene.add(solenoidGroup, fieldGroupB, fieldGroupE);
+
+        // 1. Create Solenoid Helix
+        const points = [];
+        for (let i = 0; i <= turns * 100; i++) {
+            const t = i / 100;
+            const angle = t * Math.PI * 2;
+            const y = (t / turns) * length - length / 2;
+            points.push(new THREE.Vector3(Math.cos(angle) * R, y, Math.sin(angle) * R));
+        }
+        const curve = new THREE.CatmullRomCurve3(points);
+        const geometry = new THREE.TubeGeometry(curve, 400, 0.1, 8, false);
+        const material = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8, roughness: 0.2 });
+        const solenoid = new THREE.Mesh(geometry, material);
+        solenoidGroup.add(solenoid);
+
+        // 2. Create B-Field Vectors (Arrows pointing along Y axis)
+        const bArrows = [];
+        for (let x = -2; x <= 2; x += 1.5) {
+            for (let z = -2; z <= 2; z += 1.5) {
+                if (Math.sqrt(x * x + z * z) < R) {
+                    const dir = new THREE.Vector3(0, 1, 0);
+                    const origin = new THREE.Vector3(x, -length / 4, z);
+                    const arrow = new THREE.ArrowHelper(dir, origin, 0, 0xef4444, 0.4, 0.2);
+                    fieldGroupB.add(arrow);
+                    bArrows.push(arrow);
+                }
+            }
+        }
+
+        // 3. Create E-Field Loops
+        const eLoops = [];
+        const ringRadii = [1, 2, 4];
+        const loopHeights = [-2, 0, 2];
+
+        ringRadii.forEach(radius => {
+            loopHeights.forEach(h => {
+                const ringGeo = new THREE.TorusGeometry(radius, 0.05, 16, 64);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.6 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = h;
+                fieldGroupE.add(ring);
+
+                // Add small arrows along the ring
+                const arrowsInLoop = [];
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i / 4) * Math.PI * 2;
+                    const aOrigin = new THREE.Vector3(Math.cos(angle) * radius, h, Math.sin(angle) * radius);
+                    const aDir = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+                    const a = new THREE.ArrowHelper(aDir, aOrigin, 0.8, 0x3b82f6, 0.3, 0.2);
+                    fieldGroupE.add(a);
+                    arrowsInLoop.push({ arrow: a, angle: angle, r: radius, y: h });
+                }
+                eLoops.push({ mesh: ring, radius, arrows: arrowsInLoop });
+            });
+        });
+
+        // 3D Labels (HTML elements)
+        function createLabel(text, color, target) {
+            const div = document.createElement('div');
+            div.className = 'label-3d';
+            div.textContent = text;
+            div.style.color = color;
+            container.appendChild(div);
+            return { element: div, target };
+        }
+
+        const labels = [
+            createLabel('B-Field (Magnetic)', '#ef4444', new THREE.Vector3(0, 4, 0)),
+            createLabel('E-Field (Induced)', '#3b82f6', new THREE.Vector3(4, 0, 0)),
+            createLabel('r', '#ffffff', new THREE.Vector3(1.5, 0.3, 0)),
+            createLabel('phi', '#ffffff', new THREE.Vector3(2.8, 0, 1))
+        ];
+
+        // Update function
+        function updateLabels() {
+            if (!toggleLabels.checked) {
+                labels.forEach(l => l.element.style.display = 'none');
+                return;
+            }
+
+            labels.forEach(l => {
+                const vector = l.target.clone();
+                vector.project(camera);
+
+                const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
+                const y = (vector.y * -0.5 + 0.5) * container.clientHeight;
+
+                if (vector.z < 1) {
+                    l.element.style.display = 'block';
+                    l.element.style.left = `${x}px`;
+                    l.element.style.top = `${y}px`;
+                } else {
+                    l.element.style.display = 'none';
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            dbdt = parseFloat(dbdtSlider.value);
+
+            // Update Groups Visibility
+            fieldGroupB.visible = toggleB.checked;
+            fieldGroupE.visible = toggleE.checked;
+            solenoidGroup.visible = toggleSolenoid.checked;
+
+            // Update B Arrows length
+            bArrows.forEach(a => {
+                const lengthScale = Math.abs(dbdt) * 2;
+                a.setLength(lengthScale, lengthScale * 0.2, lengthScale * 0.1);
+                a.setDirection(new THREE.Vector3(0, dbdt >= 0 ? 1 : -1, 0));
+            });
+
+            // Update E loops direction and opacity
+            eLoops.forEach(l => {
+                const eMagnitude = (dbdt * l.radius) / 2;
+                l.mesh.material.opacity = Math.min(0.8, Math.abs(eMagnitude) * 0.5);
+
+                l.arrows.forEach(aData => {
+                    const arrow = aData.arrow;
+                    // Faraday's Law: E-field wraps in direction that opposes change
+                    // For dB/dt > 0 (up), induced B must be down, so E wraps clockwise seen from top.
+                    const direction = dbdt > 0 ? -1 : 1;
+                    const aDir = new THREE.Vector3(-Math.sin(aData.angle), 0, Math.cos(aData.angle)).multiplyScalar(direction);
+                    arrow.setDirection(aDir);
+                    arrow.setLength(Math.abs(eMagnitude) * 1.5, 0.3, 0.2);
+                    arrow.visible = Math.abs(dbdt) > 0.05;
+                });
+            });
+
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="solenoid_induced_E.0.offline.js"></script>
+
+
+</body>
+
+</html>

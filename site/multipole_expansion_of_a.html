@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Multipole Expansion of A</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-mml-chtml.js">
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                <a href="ch3_4_vector_potential.html">Vector Potential</a> >
+                Multipole Expansion
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Multipole Expansion of A</h1>
+        
+        <section>
+            <p>
+                When dealing with a localized current distribution (like a loop of wire or a spinning charged sphere), calculating the exact vector potential $\mathbf{A}$ at every point in space can be incredibly difficult.
+            </p>
+            <p>
+                However, if we are observing the system from a distance $r$ that is much larger than the size of the current loop ($r \gg r'$), we can approximate the potential using a series expansion known as the <strong>Multipole Expansion</strong>.
+            </p>
+        </section>
+
+        <section>
+            <h2>The Expansion</h2>
+            <p>
+                We start with the exact integral solution for the vector potential:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}(\mathbf{r}) = \frac{\mu_0}{4\pi} \oint \frac{\mathbf{J}(\mathbf{r}')}{|\mathbf{r} - \mathbf{r}'|} d\tau' \]
+            </div>
+            <p>
+                Using the law of cosines and the Taylor expansion for $1/|\mathbf{r} - \mathbf{r}'|$ in powers of $(r'/r)$, we can write $\mathbf{A}$ as a sum of terms:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}(\mathbf{r}) = \mathbf{A}_{\text{mon}}(\mathbf{r}) + \mathbf{A}_{\text{dip}}(\mathbf{r}) + \dots \]
+            </div>
+        </section>
+
+        <section>
+            <h2>1. The Monopole Term ($n=0$)</h2>
+            <p>
+                The first term in the expansion corresponds to the magnetic monopole:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}_{\text{mon}} = \frac{\mu_0}{4\pi r} \oint \mathbf{J}(\mathbf{r}') d\tau' \]
+            </div>
+            <p>
+                For any steady current confined to a closed loop, the total integral of the current density vector $\oint \mathbf{J} d\tau'$ is always zero. (Think of it as the sum of current vectors going around a circle; they all cancel out).
+            </p>
+            <p class="callout">
+                <strong>Result:</strong> The magnetic monopole term is always <strong>zero</strong>. This confirms physically that magnetic monopoles do not exist in classical magnetostatics.
+            </p>
+        </section>
+
+        <section>
+            <h2>2. The Dipole Term ($n=1$)</h2>
+            <p>
+                Since the monopole term vanishes, the dominant contribution at large distances usually comes from the second term: the <strong>Magnetic Dipole</strong>.
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}_{\text{dip}}(\mathbf{r}) = \frac{\mu_0}{4\pi r^2} \oint r' \cos\theta' \mathbf{J}(\mathbf{r}') d\tau' \]
+            </div>
+            <p>
+                Through vector calculus identities, this integral can be rewritten in a much more elegant form using the <strong>Magnetic Dipole Moment</strong>, $\mathbf{m}$:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{m} \equiv \frac{1}{2} \oint (\mathbf{r}' \times \mathbf{J}) d\tau' \]
+            </div>
+            <p>
+                Substituting this back gives the standard formula for the dipole vector potential:
+            </p>
+            <div class="math-block">
+                \[ \mathbf{A}_{\text{dip}}(\mathbf{r}) = \frac{\mu_0}{4\pi} \frac{\mathbf{m} \times \hat{\mathbf{r}}}{r^2} \]
+            </div>
+        </section>
+
+        <section>
+            <h2>Visualizing the Dipole Field</h2>
+            <p>
+                The equation $\mathbf{A} \propto \mathbf{m} \times \hat{\mathbf{r}}$ tells us the geometry of the potential:
+            </p>
+            <ul>
+                <li>$\mathbf{m}$ points along the axis of the current loop (Right Hand Rule).</li>
+                <li>$\mathbf{A}$ is perpendicular to both $\mathbf{m}$ and the position vector $\mathbf{r}$.</li>
+                <li>This results in $\mathbf{A}$ "swirling" around the dipole moment axis, decaying as $1/r^2$.</li>
+            </ul>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_4_multipole_c0.html" title="Dipole Geometry Visualization" loading="lazy"></iframe>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <a href="ch3_4_vector_potential.html" class="dive-btn" style="display: inline-block;">
+                ← Back to Vector Potential
+            </a>
+        </div>
+    </main>
+</body>
+</html>

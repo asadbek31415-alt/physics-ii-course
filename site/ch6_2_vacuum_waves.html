@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 6.2: EM Waves in Vacuum</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Waves in
+                Vacuum
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Electromagnetic Waves in Vacuum</h1>
+
+        <p class="intro-text">
+            Maxwell's greatest discovery was that the curl equations couple a time-varying electric field to a
+            circulating magnetic field, and a time-varying magnetic field to a circulating electric field.
+            In empty space, these fields sustain each other in a self-propagating loop: an <strong>Electromagnetic
+                Wave</strong>.
+        </p>
+
+        <!-- SECTION 1: FROM MAXWELL TO THE WAVE EQUATION -->
+        <section data-concept-title="1. Waves as a Consequence" id="concept-1-1-waves-as-a-consequence">
+            <h2>1. Waves as a Consequence</h2>
+            <p>
+                In regions far from charges ($\rho=0$) and currents ($\vec{J}=0$), Maxwell's equations take a symmetric,
+                source-free form:
+            </p>
+            <div class="math-block">
+                $$ \nabla \cdot \vec{E} = 0, \quad \nabla \cdot \vec{B} = 0 $$
+                $$ \nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t}, \quad \nabla \times \vec{B} = \mu_0
+                \epsilon_0 \frac{\partial \vec{E}}{\partial t} $$
+            </div>
+            <p>
+                The coupling between the third and fourth equations is the key. A spatial circulation of $\vec{E}$ is
+                tied by Faraday's law to a temporal change in $\vec{B}$, while a spatial circulation of $\vec{B}$ is tied
+                by the Ampère-Maxwell law to a temporal change in $\vec{E}$. As those coupled changes repeat through
+                space, the fields sustain the cycle. By applying the curl operator again, we
+                decouple them into independent <strong>wave equations</strong>:
+            </p>
+            <div class="math-block" style="border-left: 4px solid var(--accent-color); padding-left: 1rem;">
+                $$ \nabla^2 \vec{E} = \frac{1}{c^2} \frac{\partial^2 \vec{E}}{\partial t^2}, \quad \nabla^2 \vec{B} =
+                \frac{1}{c^2} \frac{\partial^2 \vec{B}}{\partial t^2} $$
+            </div>
+            <p>
+                The predicted speed $c$ is exactly the speed of light, revealing that light itself is an electromagnetic
+                phenomenon.
+            </p>
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_1_wave_eq_details.html?back=ch6_2_vacuum_waves.html%23concept-1-1-waves-as-a-consequence"><span aria-hidden="true">+</span> Deep Dive: The Wave Equation</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: PROPERTIES OF PLANE WAVES -->
+        <section data-concept-title="2. Properties of Plane Waves" id="concept-2-2-properties-of-plane-waves">
+            <h2>2. Properties of Plane Waves</h2>
+            <p>
+                The simplest solution to the wave equation is the <strong>monochromatic plane wave</strong>. These
+                waves have several rigid properties that are not merely empirical, but are strictly required by
+                Maxwell's equations:
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">\( \perp \hat{k} \)</span>
+                    <span class="def-text"><strong>Transverse Nature</strong>. Both \(\vec{E}\) and \(\vec{B}\) are
+                        perpendicular to the direction of propagation. This is a direct consequence of
+                        \(\nabla \cdot \vec{E} = 0\) and \(\nabla \cdot \vec{B} = 0\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\( \vec{E} \perp \vec{B} \)</span>
+                    <span class="def-text"><strong>Mutual Perpendicularity</strong>. The fields are orthogonal to each
+                        other:
+                        \(\vec{B} = \frac{1}{c} (\hat{k} \times \vec{E})\). They form a right-handed triplet with the
+                        propagation vector.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\( \Delta \phi = 0 \)</span>
+                    <span class="def-text"><strong>In Phase</strong>. \(\vec{E}\) and \(\vec{B}\) reach their peaks and
+                        zeros at the exact same time and location. There is no lag between them in vacuum.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\( E_0/B_0 \)</span>
+                    <span class="def-text"><strong>Fixed Ratio</strong>. The magnitudes are locked by the speed of
+                        light:
+                        \(E_0 = c B_0\). Note that \(E\) is much larger in standard units, but they carry equal
+                        energy.</span>
+                </div>
+            </div>
+
+            <h3 class="diagram-title">Interactive: EM Wave Configuration</h3>
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ch6_2_wave_config.html" title="EM Wave Configuration"
+                    scrolling="no"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 3: POLARIZATION -->
+        <section data-concept-title="3. Polarization" id="concept-3-3-polarization">
+            <h2>3. Polarization</h2>
+            <p>
+                Since EM waves are transverse, the electric field vector \(\vec{E}\) must live in the plane
+                perpendicular to the direction of travel. <strong>Polarization</strong> refers to the path the
+                tip of the \(\vec{E}\) vector traces over time.
+            </p>
+            <p>
+                By the <strong>Principle of Superposition</strong>, any state of polarization can be described
+                as the sum of two orthogonal linear waves (e.g., one in \(x\) and one in \(y\)). Depending on the
+                <strong>relative phase</strong> between these two components, we get:
+            </p>
+            <ul style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 2rem;">
+                <li><strong>Linear:</strong> Components are in-phase (\(0\) or \(180^\circ\)).</li>
+                <li><strong>Circular:</strong> Components have equal magnitude and a \(90^\circ\) phase shift.</li>
+                <li><strong>Elliptical:</strong> The general case with unequal magnitudes or arbitrary phase.</li>
+            </ul>
+            <h3 class="diagram-title">Interactive: Polarization Visualization</h3>
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ch6_2_polarization.html" title="Polarization Visualization"
+                    scrolling="no"></iframe>
+            </div>
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_1_polarization_details.html?back=ch6_2_vacuum_waves.html%23concept-3-3-polarization"><span aria-hidden="true">+</span> Deep Dive: Polarization</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

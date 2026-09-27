@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Batteries & Sources</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_1_electromotive_force.html">Electromotive Force</a> > Batteries & EMF
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Batteries & Sources</h1>
+
+        <p class="intro-text">
+            An electromotive force ($\mathcal{E}$) is not actually a "force" but an energy per unit charge. It is the
+            work done by non-electrostatic forces to move charge against the electric field within a source.
+        </p>
+
+        <section>
+            <h2>The Nature of Source Force</h2>
+            <p>
+                Inside a battery, chemical forces drive positive charges from the negative terminal to the positive
+                terminal, opposing the electric field $\vec{E}$ that points from (+) to (-).
+            </p>
+            <p>
+                If $\vec{f}_s$ is the force per unit charge due to chemical reactions, the total force is $\vec{f} =
+                \vec{f}_s + \vec{E}$. In an open circuit, the current is zero, so the net force is zero ($\vec{E} =
+                -\vec{f}_s$). The potential difference across the terminals is:
+            </p>
+            <div class="math-block">
+                $$ V = - \int_{a}^{b} \vec{E} \cdot d\vec{l} = \int_{a}^{b} \vec{f}_s \cdot d\vec{l} \equiv \mathcal{E}
+                $$
+            </div>
+            <p>
+                So for an ideal source with no current, the voltage equals the emf.
+            </p>
+        </section>
+
+        <section>
+            <h2>Ideal vs. Real Batteries</h2>
+            <p>
+                Real batteries have resistance to the flow of ions internally. We model this as an ideal emf
+                $\mathcal{E}$ in series with an <strong>internal resistance</strong> $r$.
+            </p>
+            <div style="text-align: center; margin: 2rem 0;">
+                <!-- Simple CSS Schematic -->
+                <svg width="300" height="150" viewBox="0 0 300 150">
+                    <!-- Battery Box -->
+                    <rect x="50" y="25" width="200" height="100" fill="none" stroke="#555" stroke-dasharray="5,5"
+                        rx="10" />
+                    <text x="60" y="45" fill="#888" font-size="12">Real Battery</text>
+
+                    <!-- Terminals -->
+                    <circle cx="50" cy="75" r="4" fill="#fff" stroke="#3498db" />
+                    <text x="35" y="80" fill="#fff">-</text>
+                    <circle cx="250" cy="75" r="4" fill="#fff" stroke="#3498db" />
+                    <text x="260" y="80" fill="#fff">+</text>
+
+                    <!-- Ideal Source -->
+                    <line x1="50" y1="75" x2="100" y2="75" stroke="#fff" stroke-width="2" />
+                    <line x1="100" y1="65" x2="100" y2="85" stroke="#fff" stroke-width="2" /> <!-- small bar -->
+                    <line x1="110" y1="55" x2="110" y2="95" stroke="#fff" stroke-width="2" /> <!-- big bar -->
+                    <line x1="110" y1="75" x2="150" y2="75" stroke="#fff" stroke-width="2" />
+                    <text x="100" y="115" fill="#3498db" font-size="16" font-style="italic">ε</text>
+
+                    <!-- Resistor -->
+                    <polyline points="150,75 155,70 165,80 175,70 185,80 195,70 200,75" fill="none" stroke="#fff"
+                        stroke-width="2" />
+                    <line x1="200" y1="75" x2="250" y2="75" stroke="#fff" stroke-width="2" />
+                    <text x="170" y="115" fill="#e74c3c" font-size="16" font-style="italic">r</text>
+                </svg>
+            </div>
+            <p>
+                When a current $I$ flows, the terminal voltage $V$ decreases due to the internal potential drop:
+            </p>
+            <div class="math-block">
+                $$ V_{term} = \mathcal{E} - I r $$
+            </div>
+            <p>
+                This explains why a battery's output voltage decreases when connected to a "heavy" load: as you draw
+                more current, more of the battery's energy is "wasted" internally just to get the charges through its
+                own internal resistance ($r$).
+            </p>
+        </section>
+
+        <section>
+            <h2>Maximum Power Transfer Theorem</h2>
+            <p>
+                A fundamental question in circuit design is: what load resistance $R$ will draw the <strong>most
+                    power</strong> from a real source?
+            </p>
+            <p>
+                Using the real battery model, the current in the circuit is $I = \mathcal{E} / (R + r)$. The power
+                delivered to the load is:
+            </p>
+            <div class="math-block">
+                $$ P = I^2 R = \left( \frac{\mathcal{E}}{R + r} \right)^2 R $$
+            </div>
+            <p>
+                To find the maximum, we take the derivative with respect to $R$ and set it to zero:
+            </p>
+            <div class="math-block">
+                $$ \frac{dP}{dR} = \mathcal{E}^2 \left[ \frac{(R+r)^2 - 2R(R+r)}{(R+r)^4} \right] = 0 \implies (R+r) -
+                2R = 0 $$
+            </div>
+            <p>
+                This results in the <strong>Matching Condition</strong>:
+            </p>
+            <div class="highlight-box" style="text-align: center;">
+                <p style="margin: 0; color: #fff;">The maximum power is delivered to the load when:</p>
+                <div class="math-block" style="font-size: 1.5rem; margin: 10px 0;">$$ R = r $$</div>
+            </div>
+
+            <h3>Efficiency vs. Power</h3>
+            <p>
+                It is vital to distinguish between <em>maximum power</em> and <em>maximum efficiency</em>. The
+                efficiency $\eta$ is the ratio of power delivered to the load vs. total power produced:
+            </p>
+            <div class="math-block">
+                $$ \eta = \frac{P_{load}}{P_{total}} = \frac{I^2 R}{I^2 (R + r)} = \frac{R}{R + r} $$
+            </div>
+            <ul class="key-points">
+                <li><strong>At $R = r$ (Max Power):</strong> Efficiency is only <strong>50%</strong>. Half the energy is
+                    lost as heat inside the battery.</li>
+                <li><strong>As $R \to \infty$ (Max Efficiency):</strong> Efficiency approaches 100%, but the actual
+                    power delivered drops to zero because the current vanishes.</li>
+            </ul>
+            <p>
+                In power grids, we prioritize efficiency ($R \gg r$), but in communications and audio (impedance
+                matching), we prioritize maximum power transfer ($R = r$).
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

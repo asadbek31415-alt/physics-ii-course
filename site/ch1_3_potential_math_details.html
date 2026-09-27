@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Mathematical Details</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              hat: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\vec{l}",
+              dtau: "d\\tau",
+              enc: "\\text{enc}"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        h3 { color: var(--text-primary); font-weight: 600; margin-top: 2rem; font-size: 1.3rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Simulator Frame */
+        .iframe-container {
+            width: 100%;
+            height: 550px;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Back Button */
+        .back-btn-wrapper { margin-top: 4rem; text-align: center; }
+        .back-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { background-color: var(--card-bg); color: white; border-color: var(--accent-color); }
+
+        footer { text-align: center; padding: 3rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 4rem; }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="electrostatics_index.html">Electrostatics</a> > 
+                <a href="ch1_3_electric_potential.html">Electric Potential</a> > 
+                Math Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Mathematical Details</h1>
+        <p>
+            This section explores the rigorous derivation of the electric potential, why the curl of \(\vec{E}\) vanishes, and how boundary conditions are derived.
+        </p>
+
+        <!-- SECTION 1: CURL AND PATH INDEPENDENCE -->
+        <section>
+            <h2>1. Why is the Curl Zero?</h2>
+            <p>
+                The definition of potential hinges on the fact that \(\nabla \times \vec{E} = 0\). Let's prove this for a single point charge \(q\) at the origin. The field is:
+            </p>
+            <div class="math-block">
+                $$ \vec{E} = \frac{1}{4\pi\epsilon_0} \frac{q}{r^2} \hat{r} $$
+            </div>
+            <p>
+                If we calculate the line integral \(\int_a^b \vec{E} \cdot d\vec{l}\) in spherical coordinates, where \(d\vec{l} = dr\hat{r} + r d\theta\hat{\theta} + r\sin\theta d\phi\hat{\phi}\), the dot product picks out only the radial component:
+            </p>
+            <div class="math-block">
+                $$ \vec{E} \cdot d\vec{l} = \frac{1}{4\pi\epsilon_0} \frac{q}{r^2} dr $$
+            </div>
+            <p>
+                Integrating this from point \(a\) to point \(b\):
+            </p>
+            <div class="math-block">
+                $$ \int_a^b \vec{E} \cdot d\vec{l} = \frac{q}{4\pi\epsilon_0} \int_{r_a}^{r_b} \frac{1}{r^2} dr = \frac{q}{4\pi\epsilon_0} \left[ \frac{1}{r_a} - \frac{1}{r_b} \right] $$
+            </div>
+            <p>
+                <strong>Crucial Result:</strong> The integral depends <em>only</em> on the distances \(r_a\) and \(r_b\), not on the path taken. If the path is a closed loop (where \(r_a = r_b\)), the integral is zero.
+            </p>
+            <p>
+                By Stokes' Theorem, if the line integral around <em>any</em> closed loop is zero, the curl must be zero everywhere:
+            </p>
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \oint \vec{E} \cdot d\vec{l} = 0 \iff \nabla \times \vec{E} = 0 $$
+            </div>
+
+            <h3>Visualizing Curl</h3>
+            <p>
+                Use the simulator below to visualize vector fields with and without curl. A field with zero curl (like the electrostatic field) has no "swirl" or intrinsic rotation.
+            </p>
+            
+            <div class="iframe-container">
+                <iframe src="simulators/curl_visualizer.html" title="Curl Visualizer"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 2: LOCALIZED CHARGE -->
+        <section id="localized">
+            <h2>2. Deriving the Integral for Localized Charge</h2>
+            <p>
+                We know the potential of a single point charge \(q\) (setting the reference at infinity) is:
+            </p>
+            <div class="math-block">
+                $$ V = \frac{1}{4\pi\epsilon_0} \frac{q}{r} $$
+            </div>
+            <p>
+                By the <strong>Principle of Superposition</strong>, the potential of a collection of charges is simply the sum of their individual potentials. For a continuous distribution, we chop the charge into infinitesimal chunks \(dq = \rho(\vec{r}') d\tau'\).
+            </p>
+            <p>
+                Integrating over the entire volume of the charge distribution:
+            </p>
+            <div class="math-block">
+                $$ V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \int \frac{dq}{|\vec{r} - \vec{r}'|} = \frac{1}{4\pi\epsilon_0} \int_{\mathcal{V}} \frac{\rho(\vec{r}')}{|\vec{r} - \vec{r}'|} d\tau' $$
+            </div>
+            <p>
+                Where:
+                <ul>
+                    <li>\(\vec{r}\) is the observation point.</li>
+                    <li>\(\vec{r}'\) is the location of the charge element.</li>
+                    <li>\(|\vec{r} - \vec{r}'|\) is the distance between them (often denoted as script-r, \(\rcurs\)).</li>
+                </ul>
+            </p>
+        </section>
+
+        <!-- SECTION 3: BOUNDARY CONDITIONS -->
+        <section id="boundary">
+            <h2>3. Deriving Boundary Conditions</h2>
+            <p>
+                What happens to \(V\) at a surface with charge density \(\sigma\)?
+            </p>
+
+            <h3>Continuity of V</h3>
+            <p>
+                The potential difference between two points \(a\) (just below) and \(b\) (just above) is:
+            </p>
+            <div class="math-block">
+                $$ V_b - V_a = - \int_a^b \vec{E} \cdot d\vec{l} $$
+            </div>
+            <p>
+                As the path length shrinks to zero (\(a \to b\)), the integral vanishes (unless \(\vec{E}\) is infinite, which it is not for surface charges). Therefore:
+            </p>
+            <div class="math-block">
+                $$ V_{\text{above}} = V_{\text{below}} $$
+            </div>
+
+            <h3>Discontinuity of the Gradient</h3>
+            <p>
+                While \(V\) is continuous, \(\vec{E}\) is not. From Gauss's Law applied to a thin pillbox straddling the surface, we know the normal component of the field jumps:
+            </p>
+            <div class="math-block">
+                $$ E^{\perp}_{\text{above}} - E^{\perp}_{\text{below}} = \frac{\sigma}{\epsilon_0} $$
+            </div>
+            <p>
+                Since \(\vec{E} = -\nabla V\), the normal component is the derivative with respect to the normal direction \(n\). Substituting this in:
+            </p>
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \frac{\partial V_{\text{above}}}{\partial n} - \frac{\partial V_{\text{below}}}{\partial n} = -\frac{\sigma}{\epsilon_0} $$
+            </div>
+            <p>
+                This equation tells us that the "kink" in the potential graph is directly proportional to the surface charge density.
+            </p>
+        </section>
+
+        <div class="back-btn-wrapper">
+            <a href="ch1_3_electric_potential.html" class="back-btn">← Return to Electric Potential</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

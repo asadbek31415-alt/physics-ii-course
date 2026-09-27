@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4.1 Polarization</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              p: "\\mathbf{p}",
+              E: "\\mathbf{E}",
+              N: "\\mathbf{N}",
+              kb: "k_B"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 0.5rem; color: white; }
+        .subtitle { color: var(--text-secondary); margin-bottom: 3rem; font-size: 1.1rem; }
+
+        h2 { 
+            color: var(--accent-color); 
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 0.5rem; 
+            margin-top: 4rem; 
+            font-size: 1.5rem;
+        }
+        
+        h3 { color: var(--text-primary); font-weight: 600; margin-top: 2rem; font-size: 1.2rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); font-weight: 600; }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Iframe Containers for Future Diagrams */
+        .iframe-container {
+            width: 100%;
+            margin: 2rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 400px; /* Standard height */
+            position: relative;
+        }
+        
+        .iframe-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #555;
+            font-style: italic;
+            background: #0a0e14;
+        }
+
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Key Concept Box */
+        .concept-box {
+            background: rgba(231, 76, 60, 0.1);
+            border-left: 4px solid var(--danger-color);
+            padding: 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 2rem 0;
+        }
+        .concept-box h4 { margin-top: 0; color: var(--danger-color); font-size: 1.1rem; }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 5rem; }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > Polarization
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Polarization</h1>
+        <div class="subtitle">Electric response of matter</div>
+        
+        <p>
+            Matter is not passive. When you place a piece of matter in an electric field, the material responds. This response is called <strong>Polarization</strong>. We distinguish between two main mechanisms:
+        </p>
+        <ul>
+            <li><strong>Induced Dipoles:</strong> Neutral atoms stretching (electron cloud shifts relative to nucleus).</li>
+            <li><strong>Alignment of Polar Molecules:</strong> Pre-existing dipoles rotating to line up with the field.</li>
+        </ul>
+
+        <!-- 4.1.3 Alignment of Polar Molecules -->
+        <section>
+            <h2>4.1.3 Alignment of Polar Molecules</h2>
+            <p>
+                Some molecules, like water, have permanent dipole moments built into their structure due to electronegativity differences. In the absence of an external field, these dipoles point in random directions.
+            </p>
+            <p>
+                When exposed to a uniform electric field \(\vec{E}\), the field exerts a <strong>torque</strong> on the dipole:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{N} = \vec{p} \times \vec{E} $$
+            </div>
+
+            <p>
+                This torque tries to line the dipole up parallel to the field. If there were no other forces, every single molecule would align perfectly.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/dipole_torque.html" title="Torque on a Dipole"></iframe>
+            </div>
+        </section>
+
+        <!-- Thermal Agitation -->
+        <section>
+            <h2>Thermal Agitation vs. Alignment</h2>
+            <p>
+                In reality, we never see perfect alignment. Why? Because the molecules are constantly jostling around due to thermal energy. The universe is a battleground between two competing forces:
+            </p>
+            <ol>
+                <li><strong>Electric Force:</strong> Tries to order the system (minimize potential energy).</li>
+                <li><strong>Thermal Collisions:</strong> Tries to disorder the system (maximize entropy).</li>
+            </ol>
+
+            <div class="concept-box">
+                <h4>The Energy Ratio</h4>
+                <p>
+                    The degree of alignment depends crucially on the ratio of the potential energy gained by alignment to the thermal energy available to disrupt it.
+                </p>
+                <div style="text-align: center; font-size: 1.4rem; margin: 20px 0;">
+                    $$ \text{Ratio} \approx \frac{pE}{k_B T} $$
+                </div>
+                <p style="font-size: 0.9rem;">
+                    Where \(p\) is the dipole moment, \(E\) is the field strength, \(k_B\) is the Boltzmann constant, and \(T\) is temperature.
+                </p>
+            </div>
+
+            <p>
+                The potential energy of a dipole in a field is \( U = -\vec{p} \cdot \vec{E} = -pE \cos\theta \). The probability of finding a dipole at angle \(\theta\) follows the Boltzmann distribution \(\exp(-U/k_B T)\).
+            </p>
+            <p>
+                For standard temperatures and fields, the thermal energy \(k_B T\) is usually much larger than the electric dipole energy scale \(pE\). This means the alignment is actually quite weak—only a small fraction of molecules effectively line up.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="simulators/polar_molecule_alignment.html" title="Thermal motion and electric dipole alignment"></iframe>
+            </div>
+
+            <p>
+                This statistical average leads to the <strong>Langevin Formula</strong>. For moderate fields (\(pE \ll k_B T\)), the average dipole moment points along \(\vec{E}\) and is proportional to \(1/T\):
+            </p>
+            <div class="math-block">
+                $$ \langle \vec{p} \rangle \approx \frac{p^2}{3 k_B T}\vec{E} $$
+            </div>
+            <p>
+                This explains <strong>Curie's Law</strong> (typically applied to magnetism, but the math is identical for electric dipoles): Polarization decreases as things get hotter.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

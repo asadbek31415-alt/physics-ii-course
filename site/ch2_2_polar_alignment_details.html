@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Alignment of Polar Molecules</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    // FIX: Changed from \\mathbf to \\boldsymbol to support Greek letters like Tau
+                    vec: "\\boldsymbol",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 2rem;
+            font-size: 1.3rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Warning Block */
+        .warning-block {
+            background-color: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .warning-title {
+            color: var(--danger-color);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Back Button Wrapper */
+        .back-wrapper {
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+
+        .back-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> >
+                <a href="ch2_2_polarization.html">Polarization</a> >
+                Alignment Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Alignment of Polar Molecules</h1>
+
+        <p>
+            Unlike neutral atoms which must be stretched to create a dipole, <strong>polar molecules</strong> (like
+            water) have a permanent built-in dipole moment \(\vec{p}\). When placed in an electric field, the physics is
+            governed by <strong>Torque</strong> and <strong>Temperature</strong>.
+        </p>
+
+        <!-- SECTION 1: TORQUE -->
+        <section>
+            <h2>1. Torque on a Dipole</h2>
+            <p>
+                Consider a dipole consisting of a charge \(+q\) and \(-q\) separated by a vector \(\vec{d}\). In a
+                uniform electric field \(\vec{E}\):
+            </p>
+            <ul>
+                <li>The force on \(+q\) is \(\vec{F}_+ = q\vec{E}\).</li>
+                <li>The force on \(-q\) is \(\vec{F}_- = -q\vec{E}\).</li>
+            </ul>
+            <p>
+                The net force is zero, so the molecule doesn't accelerate linearly. However, because the forces act at
+                different points, they create a <strong>Torque</strong> or <strong>Mechanical Moment</strong>
+                (\(\mathbf{M}\)) that rotates the molecule.
+            </p>
+
+            <div class="math-block">
+                $$ \mathbf{M} = (\vec{r}_+ \times \vec{F}_+) + (\vec{r}_- \times \vec{F}_-) = \vec{p} \times \vec{E} $$
+            </div>
+
+            <p>
+                This torque acts to align the dipole moment \(\vec{p}\) parallel to the field \(\vec{E}\).
+            </p>
+        </section>
+
+        <!-- SECTION 2: POTENTIAL ENERGY -->
+        <section>
+            <h2>2. Potential Energy</h2>
+            <p>
+                Rotation requires work. The work done to rotate the dipole against the electric field is stored as
+                potential energy \(U\).
+            </p>
+            <div class="math-block">
+                $$ U = - \vec{p} \cdot \vec{E} = -pE \cos \theta $$
+            </div>
+            <p>
+                where \(\theta\) is the angle between \(\vec{p}\) and \(\vec{E}\).
+            </p>
+            <ul>
+                <li><strong>Minimum Energy (\(\theta = 0\)):</strong> Aligned with field. Stable equilibrium.</li>
+                <li><strong>Maximum Energy (\(\theta = \pi\)):</strong> Anti-aligned. Unstable equilibrium.</li>
+            </ul>
+        </section>
+
+        <!-- SECTION 3: THERMAL AGITATION -->
+        <section>
+            <h2>3. The Battle: Field vs. Heat</h2>
+            <p>
+                If torque were the only factor, every molecule in a dielectric would line up perfectly with the field,
+                creating massive polarization. In reality, this doesn't happen. Why?
+            </p>
+            <p>
+                <strong>Thermal Agitation.</strong>
+            </p>
+            <p>
+                At any temperature \(T > 0\), molecules are randomly colliding and rotating. This thermal energy (\(k_B
+                T\)) tends to randomize the orientation of the dipoles.
+            </p>
+
+            <div class="warning-block">
+                <span class="warning-title">The Balance</span>
+                <p style="margin: 0; color: var(--text-primary);">
+                    The degree of alignment depends on the ratio of electric potential energy to thermal energy:
+                    $$ \frac{pE}{k_B T} $$
+                    At room temperature, for typical fields, this ratio is very small (\(\ll 1\)). This means the
+                    alignment is actually very slight—only a small fraction of molecules succeed in pointing along the
+                    field at any moment.
+                </p>
+            </div>
+
+            <p>
+                However, because there are Avogadro's number of molecules, even a tiny fractional alignment results in a
+                significant macroscopic Polarization \(\vec{P}\).
+            </p>
+
+            <!-- SIMULATOR PLACEHOLDER -->
+            <div class="iframe-container">
+                <iframe src="simulators/polar_molecule_alignment.html" title="Polar Molecule Alignment"></iframe>
+            </div>
+            <p style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+                <em>Interactive: Increase Temperature to see how heat destroys alignment. Increase Field to overpower
+                    the heat.</em>
+            </p>
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch2_2_polarization.html" class="back-btn">← Return to Polarization</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Review</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="course-map.js"></script>
+    <script src="feedback-config.js"></script>
+    <script src="feedback.js"></script>
+    <script src="global.js"></script>
+    <style>
+        .review-shell { max-width: 760px; margin: 2rem auto; }
+        .review-shell h1 { margin-top: 0; }
+        .review-intro, .review-note { color: var(--text-secondary); }
+        .review-home { margin-top: 1rem; }
+        .review-form { display: grid; gap: 1.15rem; margin-top: 1.5rem; }
+        .question-block { display: grid; gap: 0.55rem; margin: 0; padding: 0; border: 0; }
+        .question-label, .question-block legend { color: var(--text-primary); font-weight: 700; }
+        .star-rating { --rating: 0; display: flex; gap: 0.15rem; align-items: center; }
+        .star-unit { position: relative; width: 2.35rem; height: 2.7rem; }
+        .star-base, .star-fill {
+            position: absolute; inset: 0; display: grid; place-items: center;
+            font-size: 2.25rem; line-height: 1; pointer-events: none;
+        }
+        .star-base { color: rgba(255, 193, 7, 0.25); }
+        .star-fill { width: 100%; clip-path: inset(0 100% 0 0); color: #ffc107; }
+        .star-half, .star-full {
+            position: absolute; top: 0; bottom: 0; z-index: 2; cursor: pointer;
+        }
+        .star-half { left: 0; width: 50%; }
+        .star-full { right: 0; width: 50%; }
+        .star-half input, .star-full input { position: absolute; opacity: 0; pointer-events: none; }
+        .rating-value { min-width: 3.5rem; color: var(--text-secondary); }
+        .choice-row { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+        .choice-row label {
+            display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 38px;
+            gap: 0.35rem; padding: 0.45rem 0.65rem; background: rgba(18, 26, 35, 0.8);
+            border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-secondary);
+        }
+        .choice-row label { min-width: 90px; }
+        .review-form textarea {
+            width: 100%; box-sizing: border-box; min-height: 84px; padding: 0.75rem;
+            border: 1px solid var(--border-color); border-radius: 8px; background: rgba(18, 26, 35, 0.9);
+            color: var(--text-primary); font: inherit; resize: vertical;
+        }
+        .review-submit {
+            justify-self: start; min-height: 42px; padding: 0.65rem 1rem; border: 1px solid var(--accent-color);
+            border-radius: 8px; background: rgba(52, 152, 219, 0.14); color: var(--text-primary);
+            font: inherit; font-weight: 700; cursor: pointer;
+        }
+        .review-status { min-height: 1.4em; margin: 0; color: var(--accent-color); }
+        @media (max-width: 560px) {
+            .review-shell { margin: 1rem auto; }
+            .score-row label { min-width: 38px; }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <section class="review-shell" aria-labelledby="review-title">
+            <h1 id="review-title">Review the whole course</h1>
+            <p class="review-intro">A few short questions about the complete Physics II course. Please skip anything you do not want to answer.</p>
+
+            <form class="review-form">
+                <fieldset class="question-block">
+                    <legend>Overall course rating</legend>
+                    <div class="star-rating" aria-label="Rate the course from 1 to 5 stars, including half stars">
+                        <span class="star-unit"><span class="star-base" aria-hidden="true">★</span><span class="star-fill" aria-hidden="true">★</span><label class="star-half" title="0.5 stars"><input type="radio" name="score" value="0.5" required aria-label="0.5 stars"></label><label class="star-full" title="1 star"><input type="radio" name="score" value="1" aria-label="1 star"></label></span>
+                        <span class="star-unit"><span class="star-base" aria-hidden="true">★</span><span class="star-fill" aria-hidden="true">★</span><label class="star-half" title="1.5 stars"><input type="radio" name="score" value="1.5" aria-label="1.5 stars"></label><label class="star-full" title="2 stars"><input type="radio" name="score" value="2" aria-label="2 stars"></label></span>
+                        <span class="star-unit"><span class="star-base" aria-hidden="true">★</span><span class="star-fill" aria-hidden="true">★</span><label class="star-half" title="2.5 stars"><input type="radio" name="score" value="2.5" aria-label="2.5 stars"></label><label class="star-full" title="3 stars"><input type="radio" name="score" value="3" aria-label="3 stars"></label></span>
+                        <span class="star-unit"><span class="star-base" aria-hidden="true">★</span><span class="star-fill" aria-hidden="true">★</span><label class="star-half" title="3.5 stars"><input type="radio" name="score" value="3.5" aria-label="3.5 stars"></label><label class="star-full" title="4 stars"><input type="radio" name="score" value="4" aria-label="4 stars"></label></span>
+                        <span class="star-unit"><span class="star-base" aria-hidden="true">★</span><span class="star-fill" aria-hidden="true">★</span><label class="star-half" title="4.5 stars"><input type="radio" name="score" value="4.5" aria-label="4.5 stars"></label><label class="star-full" title="5 stars"><input type="radio" name="score" value="5" aria-label="5 stars"></label></span>
+                        <span class="rating-value" aria-live="polite">Choose</span>
+                    </div>
+                </fieldset>
+
+                <label class="question-block">
+                    <span class="question-label">What helped you most?</span>
+                    <textarea name="mostUseful" maxlength="900" placeholder="A topic, simulator, explanation, example, or another part of the course."></textarea>
+                </label>
+
+                <label class="question-block">
+                    <span class="question-label">What should be improved first?</span>
+                    <textarea name="improve" maxlength="900" placeholder="Name the exact topic, simulator, explanation, or page."></textarea>
+                </label>
+
+                <label class="question-block">
+                    <span class="question-label">Was anything confusing, wrong, or broken?</span>
+                    <textarea name="problem" maxlength="900" placeholder="Optional: describe the specific issue."></textarea>
+                </label>
+
+                <fieldset class="question-block">
+                    <legend>Would you use or recommend this course again?</legend>
+                    <div class="choice-row">
+                        <label><input type="radio" name="recommend" value="Yes"> Yes</label>
+                        <label><input type="radio" name="recommend" value="Maybe"> Maybe</label>
+                        <label><input type="radio" name="recommend" value="No"> No</label>
+                    </div>
+                </fieldset>
+
+                <p class="review-note">You can edit and send your review again later. Only your latest review is counted in statistics; earlier submissions remain in the raw history.</p>
+                <button class="review-submit" type="submit">Send course review</button>
+                <p class="review-status" role="status"></p>
+            </form>
+            <a class="deep-dive-return review-home" href="index.html">Back to course home</a>
+        </section>
+    </main>
+
+    <footer></footer>
+
+    <script>
+        (function () {
+            var context = {
+                scope: 'course',
+                lesson: 'Final course questionnaire',
+                page_path: 'course_review.html',
+                version: (window.PHYSICS_II_PROJECT_INFO || {}).version || '0.9'
+            };
+            var form = document.querySelector('.review-form');
+            var status = form.querySelector('.review-status');
+            var button = form.querySelector('.review-submit');
+
+            function ratingFromScore(score) {
+                var value = Number(score);
+                if (value >= 4) return 'Yes';
+                if (value >= 2.5) return 'Somewhat';
+                return 'No';
+            }
+
+            function line(label, value) {
+                value = String(value || '').trim();
+                return value ? label + ': ' + value : '';
+            }
+
+            function fillPrevious() {
+                if (!window.CourseFeedback || !window.CourseFeedback.readLast) return;
+                var last = window.CourseFeedback.readLast(context);
+                if (!last) return;
+                if (last.score) {
+                    var score = form.querySelector('input[name="score"][value="' + last.score + '"]');
+                    if (score) score.checked = true;
+                }
+                if (last.fields) {
+                    Object.keys(last.fields).forEach(function (name) {
+                        var field = form.elements[name];
+                        if (!field) return;
+                        if (field instanceof RadioNodeList) {
+                            var selected = form.querySelector('input[name="' + name + '"][value="' + last.fields[name] + '"]');
+                            if (selected) selected.checked = true;
+                        } else {
+                            field.value = last.fields[name] || '';
+                        }
+                    });
+                }
+                button.textContent = 'Send updated review';
+            }
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                var data = new FormData(form);
+                var fields = {
+                    score: data.get('score'),
+                    mostUseful: data.get('mostUseful'),
+                    improve: data.get('improve'),
+                    problem: data.get('problem'),
+                    recommend: data.get('recommend')
+                };
+                var comment = [
+                    'Course rating: ' + fields.score + '/5 stars',
+                    line('Most useful', fields.mostUseful),
+                    line('Improve first', fields.improve),
+                    line('Confusing, wrong, or broken', fields.problem),
+                    line('Would use or recommend again', fields.recommend)
+                ].filter(Boolean).join('\n');
+                button.disabled = true;
+                status.textContent = 'Saving...';
+                try {
+                    var result = await window.CourseFeedback.submit(context, {
+                        rating: ratingFromScore(fields.score),
+                        score: fields.score,
+                        comment: comment,
+                        fields: fields
+                    });
+                    button.textContent = 'Send updated review';
+                    status.textContent = result.pending ?
+                        'Saved. It will send when this course is online.' :
+                        'Thank you. Your course review was sent.';
+                } catch (_) {
+                    status.textContent = 'Could not save this response. Please try again.';
+                }
+                button.disabled = false;
+            });
+
+            if (window.CourseFeedback) window.CourseFeedback.start();
+            var rating = form.querySelector('.star-rating');
+            var ratingValue = form.querySelector('.rating-value');
+            function updateRating(value) {
+                var numericValue = Number(value);
+                rating.style.setProperty('--rating', numericValue);
+                ratingValue.textContent = numericValue + ' / 5';
+                rating.querySelectorAll('.star-fill').forEach(function (fill, index) {
+                    var fillPercent = Math.max(0, Math.min(1, numericValue - index)) * 100;
+                    fill.style.clipPath = 'inset(0 ' + (100 - fillPercent) + '% 0 0)';
+                });
+            }
+            if (window.CourseFeedback && window.CourseFeedback.enableRadioClear) {
+                window.CourseFeedback.enableRadioClear(form);
+            }
+            form.querySelectorAll('input[name="score"]').forEach(function (input) {
+                input.addEventListener('change', function () {
+                    updateRating(input.value);
+                });
+            });
+            fillPrevious();
+            var selectedScore = form.querySelector('input[name="score"]:checked');
+            if (selectedScore) updateRating(selectedScore.value);
+        })();
+    </script>
+</body>
+
+</html>

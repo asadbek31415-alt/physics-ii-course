@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Work Done by Magnetic Forces</title>
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="ch3_1_lorentz_force.html">Magnetostatics</a> >
+                Work Done by Magnetic Forces
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>Deep Dive: Work Done by Magnetic Forces</h1>
+
+        <section>
+            <h2>The Work-Energy Theorem and Magnetic Forces</h2>
+            <p>
+                It is a peculiar and fundamental property of the magnetic force that it does no work on a moving charged
+                particle. At first glance, this assertion often provokes skepticism—after all, magnetic cranes lift
+                cars, and electric motors drive machinery. However, if we examine the fundamental definition of work
+                alongside the Lorentz force law, the conclusion is inescapable.
+            </p>
+            <p>
+                Let us consider a particle of charge <em>Q</em> moving with velocity <strong>v</strong> through a
+                magnetic field <strong>B</strong>. The magnetic force exerted on this particle is given by the cross
+                product:
+            </p>
+            <div class="math-block">
+                $$ \mathbf{F}_{\text{mag}} = Q(\mathbf{v} \times \mathbf{B}) $$
+            </div>
+        </section>
+
+        <section>
+            <h2>Mathematical Derivation</h2>
+            <p>
+                Recall that the infinitesimal work <em>dW</em> done by a force <strong>F</strong> acting on a particle
+                as it moves by a displacement <em>d</em><strong>l</strong> is defined as the dot product of the force
+                and the displacement:
+            </p>
+            <div class="math-block">
+                $$ dW = \mathbf{F}_{\text{mag}} \cdot d\mathbf{l} $$
+            </div>
+            <p>
+                Because the particle is moving, we can express the infinitesimal displacement in terms of its velocity
+                and the infinitesimal time interval <em>dt</em>, such that \( d\mathbf{l} = \mathbf{v} \, dt \).
+                Substituting the Lorentz force expression into our work equation, we obtain:
+            </p>
+            <div class="math-block">
+                $$ dW = [Q(\mathbf{v} \times \mathbf{B})] \cdot (\mathbf{v} \, dt) $$
+            </div>
+            <p>
+                We can rearrange the scalar terms to highlight the vector operations. The crucial step relies on the
+                geometric definition of the cross product. The vector \( (\mathbf{v} \times \mathbf{B}) \) is, by
+                definition, perpendicular to both <strong>v</strong> and <strong>B</strong>. Consequently, the dot
+                product of this vector with <strong>v</strong> must be zero.
+            </p>
+            <div class="math-block">
+                $$ dW = Q [(\mathbf{v} \times \mathbf{B}) \cdot \mathbf{v}] \, dt = 0 $$
+            </div>
+            <p>
+                Since the derivative of the work is zero, the total work done by the magnetic force over any path is
+                identically zero:
+            </p>
+            <div class="math-block">
+                $$ W = \int \mathbf{F}_{\text{mag}} \cdot d\mathbf{l} = 0 $$
+            </div>
+        </section>
+
+        <section>
+            <h2>Physical Interpretation</h2>
+            <p>
+                This result dictates that a <strong>static magnetic field cannot alter the kinetic energy</strong> of a
+                charged
+                particle. Since the work-energy theorem states that \( W = \Delta T \), and \( W = 0 \), the speed of a
+                particle in a vacuum remains constant under magnetic influence alone.
+            </p>
+
+            <h3>The "Magnetic Crane" Paradox</h3>
+            <p>
+                If magnetic forces do no work, how can a magnetic crane lift a car? At first glance, it seems the
+                magnetic
+                force is doing work against gravity. However, a deeper look into the microscopic level reveals that the
+                magnetic force is merely an <strong>intermediary</strong>.
+            </p>
+            <p>
+                The magnetic force acts on the charge carriers (electrons) within the conductor, pushing them sideways.
+                These electrons then collide with the metal lattice of the crane's material, exerting a <strong>normal
+                    force</strong> that physically moves the crane and the car. While the magnetic force redirected the
+                energy, the actual work of "lifting" is performed by whatever maintains the system's current or
+                structural integrity, or by the electric fields produced by induction if the field is changing.
+            </p>
+
+            <h3>Internal Guidance</h3>
+            <p>
+                The magnetic force acts strictly as a <strong>guidance force</strong>—it is always pushing perpendicular
+                to the motion, never along it. In an electric motor, the magnetic force acts on the wire segments,
+                but the energy provided to rotate the motor ultimately comes from the <strong>battery</strong>
+                (electrical
+                potential energy), not the magnetic field itself. The battery must work harder to push the current
+                through the wire against the "back EMF" induced by the motion.
+            </p>
+        </section>
+    </main>
+    <footer></footer>
+</body>
+
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 1: The Electric Field</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              sep: "\\vec{\\mathcal{r}}", 
+              hatsep: "\\hat{\\mathcal{r}}" 
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        /* style.css */
+
+/* 1. VARIABLES - Change colors here to update the whole site */
+:root {
+    --bg-color: #121a23;
+    --card-bg: #1c2734;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0c4de;
+    --accent-color: #3498db;       /* Primary Blue */
+    --accent-purple: #bb86fc;      /* Secondary Purple */
+    --border-color: #2c3e50;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+}
+
+/* 2. GLOBAL SETTINGS */
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.7;
+    overflow-x: hidden; /* Prevents horizontal scrollbar */
+}
+
+a { text-decoration: none; color: var(--accent-color); transition: 0.2s; }
+a:hover { color: var(--accent-purple); }
+
+/* 3. HEADER & NAVIGATION */
+.header-bar {
+    background-color: rgba(18, 26, 35, 0.95);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+}
+
+.nav-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+.breadcrumb a { font-weight: 500; }
+
+/* 4. LAYOUT */
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 20px;
+}
+
+section {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* 5. TYPOGRAPHY */
+h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 1.5rem; color: white; border-bottom: 2px solid var(--accent-color); padding-bottom: 1rem; }
+h2 { color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 0; }
+h3 { color: #fff; margin-top: 1.5rem; font-size: 1.3rem; }
+h4 { color: var(--accent-purple); margin-top: 0; }
+p { font-size: 1.1rem; margin-bottom: 1.5rem; }
+
+/* 6. MATH & FORMULA BOXES */
+.math-block, .formula-box {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    text-align: center;
+    font-size: 1.3rem;
+    border: 1px solid var(--border-color);
+    overflow-x: auto;
+}
+
+/* 7. CONCEPT & NOTE BOXES */
+.concept-box {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-left: 4px solid var(--accent-color);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+}
+
+.note-box {
+    background-color: rgba(187, 134, 252, 0.1);
+    border-left: 4px solid var(--accent-purple);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+}
+
+/* 8. DEFINITION LISTS (from Ch 2.1) */
+.def-list {
+    display: grid;
+    gap: 15px;
+    margin: 2rem 0;
+    background: rgba(0,0,0,0.2);
+    padding: 2rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+}
+.def-item { display: grid; grid-template-columns: 80px 1fr; align-items: baseline; }
+.def-symbol { font-weight: 700; color: var(--accent-color); font-family: 'Times New Roman', serif; font-size: 1.3rem; }
+.def-text { color: var(--text-secondary); }
+
+/* 9. EXPERIMENT GRIDS (from Ch 2.1.3) */
+.experiment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+.experiment-card {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+.experiment-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent-purple);
+}
+
+/* 10. IFRAMES & SIMULATORS */
+.iframe-container, .sim-container {
+    width: 100%;
+    margin: 2rem 0;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* Standard heights */
+.sim-frame { height: 700px; }
+.diagram-frame { height: 500px; }
+iframe { width: 100%; height: 100%; border: none; display: block; }
+
+.caption {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    font-style: italic;
+}
+
+/* 11. BUTTONS */
+.dive-wrapper { display: flex; justify-content: center; margin: 3rem auto; }
+.dive-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+    color: var(--text-primary);
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    border: 1px solid var(--accent-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.dive-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    background: var(--accent-color);
+    color: white;
+}
+
+/* 12. FOOTER */
+footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > Chapter 1: The Electric Field
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Chapter 1: The Electric Field</h1>
+        
+        <p>
+            The fundamental problem of electrostatics is to determine the force acting on a specific charge due to a configuration of other stationary charges. This requires a precise understanding of how charges interact across space.
+        </p>
+
+        <!-- SECTION 1: COULOMB'S LAW -->
+        <section>
+            <h2>1. The Interaction of Two Charges</h2>
+            <p>
+                Consider a single <strong>Source Charge</strong> (\(q\)) situated at position \(\vec{r}'\) and a <strong>Test Charge</strong> (\(Q\)) situated at \(\vec{r}\). 
+            </p>
+            <p>
+                The force exerted on the test charge is defined by <strong>Coulomb's Law</strong>:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{F} = \frac{1}{4\pi\epsilon_0} \frac{q Q}{\mathcal{r}^2} \hat{\mathcal{r}} $$
+            </div>
+
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">\(q\)</span>
+                    <span class="def-text">The <strong>Source Charge</strong>. The charge creating the force.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(Q\)</span>
+                    <span class="def-text">The <strong>Test Charge</strong>. The charge experiencing the force.</span>
+                </div>
+                 <div class="def-item">
+                    <span class="def-symbol">\(\epsilon_0\)</span>
+                    <span class="def-text"><strong>Permittivity of Free Space</strong>. A physical constant \(\approx 8.85 \times 10^{-12} \, \text{C}^2/\text{N}\cdot\text{m}^2\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\vec{\mathcal{r}}\)</span>
+                    <span class="def-text">The <strong>Separation Vector</strong> \(\vec{\mathcal{r}} = \vec{r} - \vec{r}'\). It points from the source location to the test location.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\mathcal{r}\)</span>
+                    <span class="def-text">The <strong>magnitude</strong> (distance) between the charges.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\hat{\mathcal{r}}\)</span>
+                    <span class="def-text">The <strong>unit vector</strong> defined as \(\frac{\vec{\mathcal{r}}}{|\vec{\mathcal{r}}|}\). This specifies the direction of the force purely.</span>
+                </div>
+            </div>
+
+            <!-- SIMULATOR: COULOMB -->
+            <div class="iframe-container">
+                <iframe class="sim-frame" src="simulators/Columbs_law.html" title="Coulomb Law Simulator" scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a href="ch1_1_2_coulombs_law_details.html" class="dive-btn">
+                    <span>⚓</span> Deeper Dive: Constants & Historical Context
+                </a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: SUPERPOSITION -->
+        <section>
+            <h2>2. The Principle of Superposition</h2>
+            <p>
+                In most physical situations, there is more than one source charge. Experiments confirm that the electromagnetic force obeys the <strong>Principle of Superposition</strong>.
+            </p>
+            <p>
+                The total force on a test charge \(Q\) is the vector sum of the individual forces exerted by each source charge \(q_i\):
+            </p>
+            
+            <div class="math-block">
+                $$ \vec{F}_{net} = \vec{F}_1 + \vec{F}_2 + \dots + \vec{F}_n = \sum_{i=1}^n \vec{F}_i $$
+            </div>
+
+            <div class="iframe-container">
+                <iframe class="sim-frame" src="diagrams/superposition.html" title="Superposition Diagram"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 3: ELECTRIC FIELD -->
+        <section>
+            <h2>3. The Electric Field</h2>
+            <p>
+                If we examine the superposition equation, we observe that the test charge \(Q\) is a common factor in every term. We can factor it out:
+            </p>
+            <div class="math-block">
+                $$ \vec{F} = Q \left[ \frac{1}{4\pi\epsilon_0} \sum_{i=1}^n \frac{q_i}{\mathcal{r}_i^2} \hat{\mathcal{r}}_i \right] $$
+            </div>
+            <p>
+                The quantity inside the brackets depends only on the distribution of the source charges and the position in space. It is independent of the test charge. We define this vector field as the <strong>Electric Field</strong>, \(\vec{E}\).
+            </p>
+             <div class="math-block" style="border-color: var(--accent-color);">
+                $$ \vec{E}(\vec{r}) \equiv \frac{1}{4\pi\epsilon_0} \sum_{i=1}^n \frac{q_i}{\mathcal{r}_i^2} \hat{\mathcal{r}}_i $$
+            </div>
+            <p>
+                Thus, the force on any charge \(Q\) placed in an external electric field is simply \(\vec{F} = Q\vec{E}\).
+            </p>
+        </section>
+
+        <!-- SECTION 4: CONTINUOUS CHARGE -->
+        <section>
+            <h2>4. Continuous Charge Distributions</h2>
+            <p>
+                Macroscopic objects contain such a vast number of charge carriers that it is impractical to perform a summation. Instead, we treat the charge as being spread continuously over the object.
+            </p>
+            
+            <h3>From Summation to Integration</h3>
+            <p>
+                We divide the charged object into infinitesimal elements \(dq\). The sum becomes an integral. To perform this integration, we must express \(dq\) in terms of geometry using <strong>Charge Density</strong> (line charge \(\lambda\), surface charge \(\sigma\), or volume charge \(\rho\)).
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/continuous_distribution_dark.html"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a href="ch1_1_4_continuous_charge_details.html" class="dive-btn">
+                    <span>📝</span> Deeper Dive: Understanding Charge Densities
+                </a>
+            </div>
+        </section>
+
+        <!-- SECTION 5: INTEGRAL FORMULATION -->
+        <section>
+            <h2>5. The General Integral Formulation</h2>
+            <p>
+                Combining the concept of the electric field with continuous charge densities, the Electric Field at a position \(\vec{r}\) generated by a continuous volume of charge is:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{E}(\vec{r}) = \frac{1}{4\pi\epsilon_0} \int_V \frac{\rho(\vec{r}')}{\mathcal{r}^2} \hat{\mathcal{r}} \, d\tau' $$
+            </div>
+
+            <p>
+                <strong>Note on vectors in integrals:</strong> The unit vector \(\hat{\mathcal{r}}\) depends on the position of the source element \(dq\). As you integrate over the volume, \(\hat{\mathcal{r}}\) changes direction. Therefore, it cannot be treated as a constant and must remain inside the integral.
+            </p>
+
+            <div class="dive-wrapper">
+                <a href="ch1_5_E_integral.html" class="dive-btn">
+                    <span>🧮</span> Deeper Dive: Solving Field Integrals
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

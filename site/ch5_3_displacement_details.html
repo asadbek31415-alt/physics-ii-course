@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The DISPLACEMENT CURRENT</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > Displacement Current
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: The DISPLACEMENT CURRENT</h1>
+
+        <p class="intro-text">
+            Maxwell fixed Ampère's Law by adding a new term, $\mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t}$,
+            which acts like a current. We call this the <strong>Displacement Current</strong>.
+        </p>
+
+        <section>
+            <h2>The Capacitor Paradox</h2>
+            <p>
+                Imagine calculating the magnetic field around a wire charging a capacitor. Using Ampère's Law $\oint
+                \vec{B} \cdot d\vec{l} = \mu_0 I_{\text{enc}}$, we define an Amperian loop around the wire.
+            </p>
+            <ul>
+                <li><strong>Surface 1:</strong> A flat disk cutting through the wire. Current $I$ passes through it. $B
+                    \neq 0$.</li>
+                <li><strong>Surface 2:</strong> A "balloon" shape that passes <em>between</em> the capacitor plates.
+                    <strong>No real current</strong> passes through this surface! So $I_{\text{enc}} = 0$, implying
+                    $B=0$.</li>
+            </ul>
+            <p>
+                This ambiguity is resolved by the displacement current. Between the plates, $\vec{E}$ is changing. The
+                integration of the displacement current density $\vec{J}_d = \epsilon_0 \dot{\vec{E}}$ over Surface 2
+                gives exactly $I$, matching the conduction current in Surface 1.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/displacement_current.html"
+                    title="Displacement Current Visualization" scrolling="no"></iframe>
+            </div>
+        </section>
+
+        <section>
+            <h2>The Equation</h2>
+            <p>
+                The full form of Ampère's Law (with Maxwell's correction) is:
+            </p>
+            <div class="math-block">
+                $$ \nabla \times \vec{B} = \mu_0 \vec{J} + \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t} $$
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

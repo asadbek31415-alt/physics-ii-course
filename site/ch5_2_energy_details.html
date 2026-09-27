@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Energy in Magnetic Fields</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_2_electromagnetic_induction.html">Electromagnetic Induction</a> > Magnetic Energy
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Energy in Magnetic Fields</h1>
+
+        <p class="intro-text">
+            It takes work to establish a current in a circuit because you have to fight against the Back EMF. That work
+            is stored as potential energy in the magnetic field.
+        </p>
+
+        <section>
+            <h2>Work Done against Back EMF</h2>
+            <p>
+                The work done (per unit time) to drive a current $I$ against a back emf $\mathcal{E}$ is $P =
+                -\mathcal{E}I$. Since $\mathcal{E} = -L \frac{dI}{dt}$, we have:
+            </p>
+            <div class="math-block">
+                $$ \frac{dW}{dt} = L I \frac{dI}{dt} $$
+            </div>
+            <p>
+                Integrating this from zero current to a final current $I$:
+            </p>
+            <div class="math-block">
+                $$ W = \int_{0}^{I} L I' dI' = \frac{1}{2} L I^2 $$
+            </div>
+        </section>
+
+        <section>
+            <h2>Energy Density</h2>
+            <p>
+                Just as we did for capacitors ($W = \frac{1}{2}CV^2 \rightarrow u = \frac{1}{2}\epsilon_0 E^2$), we can
+                re-express this total energy in terms of the field itself. Using Ampere's law and vector calculus
+                identities, we can show that the energy is stored in the volume occupied by the field:
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{2\mu_0} \int_{\text{all space}} B^2 d\tau $$
+            </div>
+            <p>
+                Or in terms of energy density (Joules per cubic meter):
+            </p>
+            <div class="math-block">
+                $$ u_B = \frac{1}{2\mu_0} B^2 $$
+            </div>
+            <p>
+                This confirms that magnetic fields, like electric fields, store real energy.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

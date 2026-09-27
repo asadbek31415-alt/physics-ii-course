@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Potential Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: clamp(220px, 26vw, 280px) minmax(0, 1fr);
+        }
+        canvas { display: block; }
+        #scene-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        #ui-container {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #334155;
+            border-left: 0;
+            border-top: 0;
+            border-bottom: 0;
+            padding: 15px;
+            border-radius: 0;
+            color: #e2e8f0;
+            font-size: 14px;
+            pointer-events: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .control-group:last-child { margin-bottom: 0; }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+
+        label { cursor: pointer; display: flex; align-items: center; }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            display: inline-block;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #scene-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            #ui-container {
+                grid-column: 1;
+                grid-row: 2;
+                border-right: 0;
+                border-top: 1px solid #334155;
+                padding: 10px 12px;
+                max-height: none;
+            }
+        }
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="scene-container"></div>
+
+    <div id="ui-container">
+        <div class="control-group">
+            <label>
+                <span class="legend-color" style="background: #fbbf24;"></span>
+                <input type="checkbox" id="toggleJ" checked> Current (J)
+            </label>
+        </div>
+        <div class="control-group">
+            <label>
+                <span class="legend-color" style="background: #3b82f6;"></span>
+                <input type="checkbox" id="toggleA" checked> Vector Potential (A)
+            </label>
+        </div>
+        <div class="control-group">
+            <label>
+                <span class="legend-color" style="background: #ef4444;"></span>
+                <input type="checkbox" id="toggleB" checked> Magnetic Field (B)
+            </label>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #94a3b8; border-top: 1px solid #334155; padding-top: 8px;">
+            Left Click: Rotate<br>
+            Scroll: Zoom
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Scene Setup ---
+        const container = document.getElementById('scene-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#0f172a'); // Dark slate background
+        scene.fog = new THREE.Fog('#0f172a', 10, 50);
+
+        function getSceneSize() {
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+        const initialSize = getSceneSize();
+        const camera = new THREE.PerspectiveCamera(45, initialSize.width / initialSize.height, 0.1, 100);
+        camera.position.set(15, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(initialSize.width, initialSize.height);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- Groups for Toggling ---
+        const groupJ = new THREE.Group();
+        const groupA = new THREE.Group();
+        const groupB = new THREE.Group();
+        scene.add(groupJ);
+        scene.add(groupA);
+        scene.add(groupB);
+
+        // --- 1. Current J (Yellow Cylinder) ---
+        function createCurrent() {
+            const length = 16;
+            const radius = 0.3;
+            const geometry = new THREE.CylinderGeometry(radius, radius, length, 32);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xfbbf24, 
+                emissive: 0xf59e0b,
+                emissiveIntensity: 0.5,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            const cylinder = new THREE.Mesh(geometry, material);
+            groupJ.add(cylinder);
+
+            // Arrowhead for Current
+            const coneGeo = new THREE.ConeGeometry(0.8, 2, 32);
+            const coneMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b });
+            const cone = new THREE.Mesh(coneGeo, coneMat);
+            cone.position.y = length / 2 + 1;
+            groupJ.add(cone);
+        }
+
+        // --- 2. Vector Potential A (Blue Arrows Parallel to J) ---
+        function createVectorPotential() {
+            // A points in direction of J (Up). 
+            // Magnitude falls off with distance.
+            const layers = 3; 
+            const spacing = 2.5;
+            const heightSteps = 4;
+            const heightSpacing = 3;
+
+            for (let x = -layers; x <= layers; x++) {
+                for (let z = -layers; z <= layers; z++) {
+                    // Skip center (where wire is)
+                    if (x === 0 && z === 0) continue;
+
+                    const dist = Math.sqrt(x*x + z*z);
+                    // Visualize A decaying (1/r approximation for visual clarity, 
+                    // though infinite wire is ln(r), localized current is 1/r)
+                    const magnitude = 1.5 / dist; 
+                    
+                    // Create vertical column of arrows
+                    for (let h = -heightSteps/2; h <= heightSteps/2; h++) {
+                        const dir = new THREE.Vector3(0, 1, 0);
+                        const origin = new THREE.Vector3(x * spacing, h * heightSpacing, z * spacing);
+                        const length = magnitude * 3; // Scale for visibility
+                        const color = 0x3b82f6;
+
+                        const arrowHelper = new THREE.ArrowHelper(dir, origin, length, color, 0.4 * length, 0.2 * length);
+                        
+                        // Make arrows slightly transparent based on distance
+                        // Note: ArrowHelper doesn't support transparency easily on the whole object, 
+                        // so we just scale size.
+                        groupA.add(arrowHelper);
+                    }
+                }
+            }
+        }
+
+        // --- 3. Magnetic Field B (Red Curling Arrows) ---
+        function createMagneticField() {
+            // B curls around J. 
+            const radii = [2, 4, 6];
+            const ringsCount = 4; // Vertical stack of rings
+
+            radii.forEach(r => {
+                for (let h = -ringsCount; h <= ringsCount; h+=2) {
+                    const y = h * 1.5;
+                    
+                    // Create a ring of arrows
+                    const segments = 8 + r * 2; // More arrows for outer rings
+                    for (let i = 0; i < segments; i++) {
+                        const theta = (i / segments) * Math.PI * 2;
+                        const x = r * Math.cos(theta);
+                        const z = r * Math.sin(theta);
+
+                        // Tangent vector (Right Hand Rule: Counter-Clockwise from top)
+                        // Tangent to circle (x, z) is (-z, x)
+                        const dir = new THREE.Vector3(-Math.sin(theta), 0, Math.cos(theta)).normalize();
+                        const origin = new THREE.Vector3(x, y, z);
+                        
+                        // B falls off as 1/r
+                        const magnitude = 4 / r; 
+                        const length = magnitude * 0.8;
+                        const color = 0xef4444;
+
+                        const arrowHelper = new THREE.ArrowHelper(dir, origin, length, color, 0.3 * length, 0.2 * length);
+                        groupB.add(arrowHelper);
+                    }
+                }
+            });
+        }
+
+        // --- Initialization ---
+        createCurrent();
+        createVectorPotential();
+        createMagneticField();
+
+        // --- Interaction Logic ---
+        document.getElementById('toggleJ').addEventListener('change', (e) => {
+            groupJ.visible = e.target.checked;
+        });
+        document.getElementById('toggleA').addEventListener('change', (e) => {
+            groupA.visible = e.target.checked;
+        });
+        document.getElementById('toggleB').addEventListener('change', (e) => {
+            groupB.visible = e.target.checked;
+        });
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Optional: Slowly rotate the B field group to emphasize circulation
+            groupB.rotation.y -= 0.002;
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            const { width, height } = getSceneSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ch3_4_vector_potential_c0.0.offline.js"></script>
+
+
+</body>
+</html>

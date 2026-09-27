@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorentz Cross Product Visualization</title>
+    
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0d1117;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: clamp(240px, 30vw, 320px) minmax(0, 1fr);
+        }
+
+        #container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        #container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* UI Overlay */
+        .ui-overlay {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            overflow-y: auto;
+            background: rgba(13, 17, 23, 0.98);
+            border-right: 1px solid #30363d;
+            box-sizing: border-box;
+        }
+
+        .panel {
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            border-left: 0;
+            border-right: 0;
+            border-radius: 0;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            color: #c9d1d9;
+            pointer-events: auto;
+        }
+
+        h2 { margin: 0 0 15px 0; font-size: 1rem; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .vector-legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .math-token { white-space: nowrap; }
+
+        /* Controls */
+        .control-group { margin-top: 15px; }
+        label { display: block; font-size: 0.8rem; margin-bottom: 5px; color: #8b949e; }
+        select, button {
+            width: 100%;
+            background: #21262d;
+            color: white;
+            border: 1px solid #30363d;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        button:hover { background: #30363d; }
+
+        /* Labels */
+        .label {
+            font-family: 'Fira Code', monospace;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: black;
+            font-size: 12px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .ui-overlay {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid #30363d;
+            }
+
+            .panel {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="ui-overlay">
+        <div class="panel">
+            <h2>Vector Dynamics</h2>
+            
+            <div class="stat-row">
+                <span>Speed (<b class="math-token">|v|</b>):</span>
+                <span id="stat-speed" style="color: #f1c40f;">10.0 m/s</span>
+            </div>
+            <div class="stat-row">
+                <span>Kinetic Energy:</span>
+                <span id="stat-ke" style="color: #f1c40f;">Constant</span>
+            </div>
+            <div class="stat-row">
+                <span>Work Done (<b class="math-token">W</b>):</span>
+                <span style="color: #e74c3c;">0.0 J</span>
+            </div>
+            <div class="stat-row">
+                <span>Angle (<b class="math-token">F</b> &perp; <b class="math-token">v</b>):</span>
+                <span style="color: #2ecc71;">90.0°</span>
+            </div>
+
+            <div class="control-group">
+                <label>Magnetic Field Direction (<b class="math-token">B</b>)</label>
+                <select id="b-direction">
+                    <option value="up">Up (+Y)</option>
+                    <option value="down">Down (-Y)</option>
+                    <option value="forward">Forward (+Z)</option>
+                    <option value="right">Right (+X)</option>
+                </select>
+                <button onclick="window.resetSim()">Reset Particle</button>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <div class="vector-legend"><div class="dot" style="background: #f1c40f;"></div><span>Velocity (<b class="math-token">v</b>)</span></div>
+                <div class="vector-legend"><div class="dot" style="background: #ff3333;"></div><span>Force (<b class="math-token">F</b>)</span></div>
+                <div class="vector-legend"><div class="dot" style="background: #0088ff;"></div><span>Field (<b class="math-token">B</b>)</span></div>
+            </div>
+        </div>
+        
+        <div class="panel" style="text-align: center; font-size: 0.8rem; color: #8b949e;">
+            <b>Right Hand Rule:</b><br>
+            Index = <b class="math-token">v</b>, Middle = <b class="math-token">B</b>, Thumb = <b class="math-token">F</b>
+        </div>
+    </div>
+
+    <div id="container"></div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Setup ---
+        const container = document.getElementById('container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0d1117);
+
+        function getContainerSize() {
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+
+        const initialSize = getContainerSize();
+        const camera = new THREE.PerspectiveCamera(45, initialSize.width / initialSize.height, 0.1, 1000);
+        const initialCameraPosition = new THREE.Vector3(20, 20, 20);
+        const initialCameraTarget = new THREE.Vector3(0, 0, 0);
+        camera.position.copy(initialCameraPosition);
+        camera.lookAt(initialCameraTarget);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(initialSize.width, initialSize.height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(initialSize.width, initialSize.height);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        container.appendChild(labelRenderer.domElement);
+        requestAnimationFrame(() => {
+            const { width, height } = getContainerSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+        });
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+        controls.addEventListener('start', () => {
+            controls.autoRotate = false;
+        });
+
+        // --- Lights & Grid ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        const grid = new THREE.GridHelper(30, 30, 0x30363d, 0x161b22);
+        scene.add(grid);
+
+        // --- Physics State ---
+        const fieldDirections = {
+            up: new THREE.Vector3(0, 1, 0),
+            down: new THREE.Vector3(0, -1, 0),
+            forward: new THREE.Vector3(0, 0, 1),
+            right: new THREE.Vector3(1, 0, 0)
+        };
+        const initialParticlePosition = new THREE.Vector3(0, 0, 0);
+        const initialParticleVelocity = new THREE.Vector3(5, 0, 0);
+
+        const state = {
+            pos: initialParticlePosition.clone(),
+            vel: initialParticleVelocity.clone(), // Initial velocity in scene units
+            B: fieldDirections.up.clone(),   // Actual field used by physics
+            targetB: fieldDirections.up.clone(),
+            q: 1,
+            speed: 5
+        };
+        const displayedSpeedScale = 2;
+
+        // --- Objects ---
+        
+        // 1. Particle
+        const pGeo = new THREE.SphereGeometry(0.5, 32, 32);
+        const pMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaaa });
+        const particle = new THREE.Mesh(pGeo, pMat);
+        scene.add(particle);
+
+        // 2. Vectors (Arrows)
+        function createArrow(color, labelText) {
+            const dir = new THREE.Vector3(1, 0, 0);
+            const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0,0,0), 1, color, 1, 0.8);
+            
+            const div = document.createElement('div');
+            div.className = 'label';
+            div.style.backgroundColor = '#' + color.toString(16).padStart(6, '0');
+            div.textContent = labelText;
+            const label = new CSS2DObject(div);
+            // We'll update label position in animate loop
+            
+            return { arrow, label };
+        }
+
+        const vObj = createArrow(0xf1c40f, 'v');
+        const fObj = createArrow(0xff3333, 'F');
+        const bObj = createArrow(0x0088ff, 'B'); // Attached to particle for local view
+
+        scene.add(vObj.arrow); scene.add(vObj.label);
+        scene.add(fObj.arrow); scene.add(fObj.label);
+        scene.add(bObj.arrow); scene.add(bObj.label);
+
+        // 3. Trail
+        const MAX_TRAIL = 700;
+        const TRAIL_DURATION = 5.5;
+        const TRAIL_SAMPLE_INTERVAL = 0.025;
+        const trailPos = new Float32Array(MAX_TRAIL * 3);
+        const trailColor = new Float32Array(MAX_TRAIL * 3);
+        const trailGeo = new THREE.BufferGeometry();
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+        trailGeo.setAttribute('color', new THREE.BufferAttribute(trailColor, 3));
+        const trailMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 });
+        const trail = new THREE.Line(trailGeo, trailMat);
+        trail.frustumCulled = false;
+        scene.add(trail);
+        const trailSamples = [];
+        let trailSampleTimer = 0;
+        const trailColorHead = new THREE.Color(0x00ff88);
+        const trailColorTail = new THREE.Color(0x0d1117);
+
+        // 4. B-Field Visualization (Grid of Arrows)
+        const fieldHelpers = new THREE.Group();
+        const fieldArrows = [];
+        scene.add(fieldHelpers);
+
+        function createFieldVisuals() {
+            const spacing = 8;
+            for(let x=-10; x<=10; x+=spacing) {
+                for(let y=-5; y<=5; y+=spacing) {
+                    for(let z=-10; z<=10; z+=spacing) {
+                        const arrow = new THREE.ArrowHelper(state.B.clone(), new THREE.Vector3(x,y,z), 2, 0x0088ff, 0.5, 0.4);
+                        arrow.line.material.opacity = 0.3;
+                        arrow.line.material.transparent = true;
+                        arrow.cone.material.opacity = 0.3;
+                        arrow.cone.material.transparent = true;
+                        fieldHelpers.add(arrow);
+                        fieldArrows.push(arrow);
+                    }
+                }
+            }
+        }
+        createFieldVisuals();
+
+        // --- Logic ---
+        function clearTrail() {
+            trailSamples.length = 0;
+            trailSampleTimer = 0;
+            trailPos.fill(0);
+            trailColor.fill(0);
+            trailGeo.setDrawRange(0, 0);
+            trailGeo.attributes.position.needsUpdate = true;
+            trailGeo.attributes.color.needsUpdate = true;
+        }
+
+        function setInitialParticleVelocity() {
+            state.vel.copy(initialParticleVelocity).normalize().multiplyScalar(state.speed);
+        }
+
+        function rotateFieldTowardTarget(maxAngle) {
+            const current = state.B.clone().normalize();
+            const target = state.targetB.clone().normalize();
+            const angle = current.angleTo(target);
+
+            if (angle < 0.0005) {
+                state.B.copy(target);
+                return;
+            }
+
+            let axis = new THREE.Vector3().crossVectors(current, target);
+            if (axis.lengthSq() < 0.000001) {
+                axis = Math.abs(current.y) < 0.9
+                    ? new THREE.Vector3().crossVectors(current, new THREE.Vector3(0, 1, 0))
+                    : new THREE.Vector3().crossVectors(current, new THREE.Vector3(1, 0, 0));
+            }
+
+            state.B.copy(current.applyAxisAngle(axis.normalize(), Math.min(maxAngle, angle)).normalize());
+        }
+
+        function updateFieldVisuals() {
+            const bDir = state.B.clone().normalize();
+            fieldArrows.forEach((arrow) => {
+                arrow.setDirection(bDir);
+            });
+        }
+
+        function resetParticle() {
+            state.pos.copy(initialParticlePosition);
+            setInitialParticleVelocity();
+            clearTrail();
+            particle.position.copy(state.pos);
+        }
+
+        function resetCameraView() {
+            camera.position.copy(initialCameraPosition);
+            controls.target.copy(initialCameraTarget);
+            controls.autoRotate = true;
+            controls.update();
+        }
+
+        function advanceParticle(dt) {
+            const bStrength = state.B.length();
+            if (bStrength > 0.0001) {
+                const bDir = state.B.clone().normalize();
+                state.vel.applyAxisAngle(bDir, -state.q * bStrength * dt).normalize().multiplyScalar(state.speed);
+            }
+            state.pos.add(state.vel.clone().multiplyScalar(dt));
+        }
+
+        function updateTrail(dt) {
+            trailSampleTimer += dt;
+            if (trailSampleTimer >= TRAIL_SAMPLE_INTERVAL) {
+                trailSamples.push({ pos: state.pos.clone(), age: 0 });
+                trailSampleTimer = 0;
+            }
+
+            for (let i = trailSamples.length - 1; i >= 0; i--) {
+                trailSamples[i].age += dt;
+                if (trailSamples[i].age > TRAIL_DURATION) {
+                    trailSamples.splice(i, 1);
+                }
+            }
+
+            while (trailSamples.length > MAX_TRAIL) trailSamples.shift();
+
+            const count = trailSamples.length;
+            for (let i = 0; i < count; i++) {
+                const sample = trailSamples[i];
+                const fade = 1 - Math.min(1, sample.age / TRAIL_DURATION);
+                const color = trailColorTail.clone().lerp(trailColorHead, fade);
+                trailPos[i * 3] = sample.pos.x;
+                trailPos[i * 3 + 1] = sample.pos.y;
+                trailPos[i * 3 + 2] = sample.pos.z;
+                trailColor[i * 3] = color.r;
+                trailColor[i * 3 + 1] = color.g;
+                trailColor[i * 3 + 2] = color.b;
+            }
+
+            trailGeo.setDrawRange(0, count);
+            trailGeo.attributes.position.needsUpdate = true;
+            trailGeo.attributes.color.needsUpdate = true;
+        }
+
+        window.resetSim = function() {
+            resetParticle();
+            resetCameraView();
+        };
+
+        document.getElementById('b-direction').addEventListener('change', (e) => {
+            const val = e.target.value;
+            state.targetB.copy(fieldDirections[val] || fieldDirections.up);
+        });
+
+        let lastTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const dt = Math.min(0.035, (now - lastTime) / 1000);
+            lastTime = now;
+
+            rotateFieldTowardTarget(dt * 1.8);
+            updateFieldVisuals();
+            advanceParticle(dt);
+
+            // 1. Calculate Force: F = q(v x B)
+            const F = new THREE.Vector3().crossVectors(state.vel, state.B).multiplyScalar(state.q);
+
+            // 4. Visual Updates
+            particle.position.copy(state.pos);
+
+            // Update Vectors attached to particle
+            // Velocity
+            vObj.arrow.position.copy(state.pos);
+            vObj.arrow.setDirection(state.vel.clone().normalize());
+            vObj.arrow.setLength(4);
+            vObj.label.position.copy(state.pos.clone().add(state.vel.clone().normalize().multiplyScalar(4.5)));
+
+            // Force
+            fObj.arrow.position.copy(state.pos);
+            if (F.lengthSq() > 0.0001) {
+                const fDir = F.clone().normalize();
+                fObj.arrow.visible = true;
+                fObj.label.visible = true;
+                fObj.arrow.setDirection(fDir);
+                fObj.arrow.setLength(4);
+                fObj.label.position.copy(state.pos.clone().add(fDir.multiplyScalar(4.5)));
+            } else {
+                fObj.arrow.visible = false;
+                fObj.label.visible = false;
+            }
+
+            // Field (Local indicator)
+            bObj.arrow.position.copy(state.pos);
+            const bDir = state.B.clone().normalize();
+            bObj.arrow.setDirection(bDir);
+            bObj.arrow.setLength(3);
+            bObj.label.position.copy(state.pos.clone().add(bDir.multiplyScalar(3.5)));
+
+            // Trail
+            updateTrail(dt);
+
+            // Stats Update
+            // Work is F dot v. Should be 0.
+            const work = F.dot(state.vel);
+            document.getElementById('stat-speed').textContent = `${(state.vel.length() * displayedSpeedScale).toFixed(1)} m/s`;
+            
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            const { width, height } = getContainerSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ch3_1_lorentz_force_c0.0.offline.js"></script>
+
+
+
+</body>
+</html>

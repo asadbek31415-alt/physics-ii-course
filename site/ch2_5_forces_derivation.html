@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Force on a Dielectric Slab</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            // Macros removed to prevent recursion errors. 
+            // Standard LaTeX syntax is used in the body.
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 900px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 900px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.2rem; margin-top: 1rem; margin-bottom: 2rem; color: white; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
+        h2 { color: var(--accent-color); font-size: 1.4rem; margin-top: 3rem; margin-bottom: 1rem; }
+        
+        p { font-size: 1.05rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Diagram Container */
+        .diagram-container {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        svg text { fill: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 14px; }
+        
+        /* Derivation Steps */
+        .step {
+            border-left: 2px solid var(--border-color);
+            padding-left: 20px;
+            margin-bottom: 30px;
+        }
+        .step h3 { margin-top: 0; color: #fff; font-size: 1.1rem; }
+
+        .callout {
+            background: rgba(241, 196, 15, 0.1);
+            border-left: 4px solid var(--warning-color);
+            padding: 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 2rem 0;
+        }
+        .callout h4 { margin-top: 0; color: var(--warning-color); }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 5rem; }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { background: var(--border-color); }
+
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > <a href="ch2_5_linear_dielectrics.html">Linear Dielectrics</a> > Force Derivation
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Force on a Dielectric Slab</h1>
+        
+        <p>
+            Calculating the force on a dielectric slab using the microscopic forces on individual dipoles in a fringing field is extremely difficult. Instead, we use the <strong>Principle of Virtual Work</strong> (Energy Method), which ignores the details of the field and focuses on the total energy of the system.
+        </p>
+
+        <div class="diagram-container">
+            <!-- 3D Isometric View of Capacitor -->
+            <svg width="500" height="250" viewBox="0 0 500 250">
+                <defs>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#888" />
+                    </marker>
+                </defs>
+
+                <!-- Bottom Plate (Grey) -->
+                <path d="M100,150 L300,150 L400,100 L200,100 Z" fill="#555" stroke="#777" />
+                
+                <!-- Dielectric Slab (Light Grey) - Partially Inserted -->
+                <!-- x is insertion depth. Let's say it's inserted halfway -->
+                <path d="M200,148 L300,148 L400,98 L300,98 Z" fill="#ccc" stroke="#999" /> <!-- Top Face -->
+                <path d="M200,148 L200,122 L300,122 L300,148 Z" fill="#bbb" stroke="#999" /> <!-- Front Face -->
+                <path d="M300,148 L400,98 L400,72 L300,122 Z" fill="#999" stroke="#777" /> <!-- Side Face -->
+
+                <!-- Top Plate (Grey) -->
+                <path d="M100,120 L300,120 L400,70 L200,70 Z" fill="#666" stroke="#888" opacity="0.9" />
+
+                <!-- Dimensions -->
+                <!-- Width w -->
+                <line x1="100" y1="115" x2="200" y2="65" stroke="#aaa" stroke-width="1" marker-end="url(#arrow)" />
+                <text x="140" y="85" fill="#aaa">w</text>
+
+                <!-- Separation d -->
+                <line x1="90" y1="120" x2="90" y2="150" stroke="#aaa" stroke-width="1" marker-end="url(#arrow)" marker-start="url(#arrow)" />
+                <text x="75" y="140" fill="#aaa">d</text>
+
+                <!-- Insertion x -->
+                <line x1="200" y1="160" x2="300" y2="160" stroke="#aaa" stroke-width="1" marker-end="url(#arrow)" marker-start="url(#arrow)" />
+                <text x="245" y="175" fill="#aaa">x</text>
+
+                <!-- Total Length l -->
+                <line x1="100" y1="180" x2="300" y2="180" stroke="#aaa" stroke-width="1" />
+                <text x="200" y="195" fill="#aaa">l</text>
+                
+                <!-- Label -->
+                <text x="350" y="160" fill="#ccc">Dielectric</text>
+                <line x1="350" y1="150" x2="330" y2="130" stroke="#ccc" />
+            </svg>
+        </div>
+
+        <div class="step">
+            <h3>1. The Energy Argument</h3>
+            <p>
+                Consider a parallel-plate capacitor with width \(w\), length \(l\), and separation \(d\). A dielectric slab is inserted a distance \(x\).
+            </p>
+            <p>
+                If the system is connected to a battery (constant voltage \(V\)), the battery does work as the slab moves. The net force is given by:
+            </p>
+            <div class="math-block">
+                $$ F = + \frac{1}{2} V^2 \frac{dC}{dx} $$
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>2. Modeling Capacitance</h3>
+            <p>
+                We can treat the setup as two capacitors in parallel: one filled with dielectric (length \(x\)) and one filled with air (length \(l-x\)).
+            </p>
+            <div class="math-block">
+                $$ C_{diel} = \frac{\epsilon_0 \epsilon_r w x}{d} \quad \text{and} \quad C_{air} = \frac{\epsilon_0 w (l-x)}{d} $$
+            </div>
+            <p>
+                The total capacitance is the sum:
+            </p>
+            <div class="math-block">
+                $$ C(x) = \frac{\epsilon_0 w}{d} [ \epsilon_r x + l - x ] = \frac{\epsilon_0 w}{d} [ l + x(\epsilon_r - 1) ] $$
+            </div>
+            <p>
+                Recall that \(\chi_e = \epsilon_r - 1\). Thus:
+            </p>
+            <div class="math-block">
+                $$ C(x) = \frac{\epsilon_0 w}{d} (l + \chi_e x) $$
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>3. Calculating the Force</h3>
+            <p>
+                Now we differentiate the capacitance with respect to \(x\):
+            </p>
+            <div class="math-block">
+                $$ \frac{dC}{dx} = \frac{\epsilon_0 w \chi_e}{d} $$
+            </div>
+            <p>
+                Substituting this into the force equation for constant voltage (\(F = \frac{1}{2}V^2 \frac{dC}{dx}\)):
+            </p>
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ F = \frac{\epsilon_0 \chi_e w}{2d} V^2 $$
+            </div>
+        </div>
+
+        <div class="callout">
+            <h4>Interpretation</h4>
+            <p>
+                Since \(\chi_e\) is positive for all dielectrics, the force \(F\) is positive (in the direction of increasing \(x\)).
+            </p>
+            <p>
+                This confirms that the dielectric is always <strong>pulled into</strong> the capacitor. The force depends on the square of the voltage, so it pulls regardless of the polarity of the plates.
+            </p>
+        </div>
+
+        <div style="margin-top: 3rem; text-align: center;">
+            <a href="ch2_5_linear_dielectrics.html" class="back-btn">← Back to Linear Dielectrics</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

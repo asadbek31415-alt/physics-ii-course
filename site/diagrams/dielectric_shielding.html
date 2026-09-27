@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dielectric Shielding</title>
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --panel-bg: #1c2734;
+            --text-main: #e0e0e0;
+            --accent: #3498db;
+            --pos-color: #e74c3c;
+            --neg-color: #3498db;
+            --field-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            background-color: #000;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid #2c3e50;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #b0c4de;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .info-box {
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 3px solid var(--accent);
+            padding: 10px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: #ccc;
+        }
+
+        #canvas-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Meter for E-field comparison */
+        .meter-container {
+            margin-top: 10px;
+            background: #111;
+            border-radius: 4px;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+        .meter-label { font-size: 0.75rem; color: #888; display: flex; justify-content: space-between; margin-bottom: 4px;}
+        .bar-bg { width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+        .bar-fill { height: 100%; transition: width 0.2s, background-color 0.2s; }
+        
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <div class="control-group">
+            <label>External Field Intensity (E<sub>0</sub>)</label>
+            <input type="range" id="eField" min="10" max="100" value="60">
+        </div>
+
+        <div class="control-group">
+            <label>Dielectric Constant (ε<sub>r</sub>)</label>
+            <input type="range" id="dielectric" min="1" max="20" step="0.5" value="5">
+        </div>
+
+        <div class="info-box">
+            <strong>Dielectric Shielding</strong><br>
+            The sphere polarizes, creating an internal field that opposes the external one.
+            <br><br>
+            Notice how the field lines "suck" into the sphere. Higher E<sub>0</sub> increases flux density (more lines).
+        </div>
+
+        <div class="meter-container">
+            <div class="meter-label"><span>External Field</span> <span id="val-ext">60</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="bar-ext" style="width: 60%; background: #888;"></div></div>
+            
+            <div class="meter-label"><span>Internal Field</span> <span id="val-int">30</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="bar-int" style="width: 30%; background: var(--accent);"></div></div>
+        </div>
+    </aside>
+
+    <main id="canvas-wrapper">
+        <canvas id="simCanvas"></canvas>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+
+        // Inputs
+        const inputE = document.getElementById('eField');
+        const inputEr = document.getElementById('dielectric');
+        
+        // Meter Elements
+        const barExt = document.getElementById('bar-ext');
+        const valExt = document.getElementById('val-ext');
+        const barInt = document.getElementById('bar-int');
+        const valInt = document.getElementById('val-int');
+
+        let width, height;
+        const R = 120; // Radius of sphere
+
+        // Resize
+        const resize = () => {
+            width = wrapper.clientWidth;
+            height = wrapper.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        };
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Physics Calculation
+        function getFieldAt(x, y, E0, Er) {
+            const cx = width / 2;
+            const cy = height / 2;
+            const dx = x - cx;
+            const dy = y - cy;
+            const r = Math.sqrt(dx*dx + dy*dy);
+            const theta = Math.atan2(dy, dx); 
+
+            let Ex, Ey;
+
+            if (r < R) {
+                // Inside: Uniform field reduced by factor
+                const factor = 3 / (Er + 2);
+                const E_mag = E0 * factor;
+                Ex = E_mag;
+                Ey = 0;
+            } else {
+                // Outside: Uniform + Dipole
+                const k = (Er - 1) / (Er + 2);
+                const A = k * Math.pow(R, 3) * E0;
+
+                const cosT = Math.cos(theta);
+                const sinT = Math.sin(theta);
+                
+                const E_radial = E0 * cosT + (2 * A * cosT) / Math.pow(r, 3);
+                const E_theta  = -E0 * sinT + (A * sinT) / Math.pow(r, 3);
+
+                Ex = E_radial * cosT - E_theta * sinT;
+                Ey = E_radial * sinT + E_theta * cosT;
+            }
+
+            return { x: Ex, y: Ey };
+        }
+
+        function draw() {
+            // 1. Get Values
+            // E0 is purely for visual density scaling in this viz
+            const rawE0 = parseInt(inputE.value); 
+            const E0_physics = 1.0; // We keep physics normalized to avoid vectors blowing up
+            const Er = parseFloat(inputEr.value);
+
+            // 2. Update Meters
+            // External Bar
+            barExt.style.width = rawE0 + '%';
+            valExt.innerText = rawE0;
+
+            // Internal Bar calculation
+            const reductionFactor = 3 / (Er + 2);
+            const internalVal = rawE0 * reductionFactor;
+            
+            barInt.style.width = internalVal + '%';
+            valInt.innerText = Math.round(internalVal);
+
+            // 3. Clear Canvas
+            ctx.fillStyle = '#121a23';
+            ctx.fillRect(0, 0, width, height);
+
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // 4. Draw Sphere
+            ctx.beginPath();
+            ctx.arc(cx, cy, R, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(52, 152, 219, ${0.1 + (Er/40)})`; 
+            ctx.fill();
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 5. Draw Induced Charges
+            if (Er > 1.1) {
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Opacity based on E0 (stronger field = more polarization)
+                const chargeAlpha = 0.3 + (rawE0 / 200);
+                
+                for (let a = -1.2; a <= 1.2; a += 0.4) {
+                    const y = cy + a * (R - 10);
+                    const x_surf = Math.sqrt(R*R - (y-cy)*(y-cy));
+                    
+                    ctx.fillStyle = `rgba(231, 76, 60, ${chargeAlpha})`;
+                    ctx.fillText("+", cx + x_surf - 10, y);
+                    
+                    ctx.fillStyle = `rgba(52, 152, 219, ${chargeAlpha})`;
+                    ctx.fillText("-", cx - x_surf + 10, y);
+                }
+            }
+
+            // 6. Draw Streamlines
+            // KEY FIX: Map E0 to Line Density
+            // Min lines = 6, Max lines = 24
+            const density = Math.floor(6 + (rawE0 / 100) * 18);
+            
+            const stepSize = 5;
+            const maxSteps = width / stepSize;
+
+            ctx.lineWidth = 1.5;
+            
+            for (let i = 0; i <= density; i++) {
+                // Distribute lines vertically
+                // We add a slight margin so lines don't hug the very top/bottom edge
+                const margin = height * 0.1;
+                const availableHeight = height - 2*margin;
+                const startY = margin + (availableHeight / density) * i;
+                
+                let currentX = 0;
+                let currentY = startY;
+
+                ctx.beginPath();
+                ctx.moveTo(currentX, currentY);
+                
+                // Color based on E0 intensity (brighter = stronger)
+                const alpha = 0.4 + (rawE0 / 200);
+                ctx.strokeStyle = `rgba(241, 196, 15, ${alpha})`;
+
+                for (let s = 0; s < maxSteps; s++) {
+                    const f = getFieldAt(currentX, currentY, E0_physics, Er);
+                    const mag = Math.sqrt(f.x*f.x + f.y*f.y);
+                    
+                    if (mag === 0) break;
+
+                    const nx = f.x / mag;
+                    const ny = f.y / mag;
+
+                    const nextX = currentX + nx * stepSize;
+                    const nextY = currentY + ny * stepSize;
+                    
+                    currentX = nextX;
+                    currentY = nextY;
+                    ctx.lineTo(currentX, currentY);
+
+                    if (currentX > width) break;
+                }
+                ctx.stroke();
+            }
+        }
+
+        function loop() {
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+    </script>
+</body>
+</html>

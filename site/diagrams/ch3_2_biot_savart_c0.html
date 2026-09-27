@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steady vs Accumulation Simulation</title>
+    <!-- Fonts -->
+    
+
+    <!-- KaTeX for Math Typesetting -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+    });"></script>
+
+    <!-- Three.js from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js"
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Inter', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 320px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            outline: none;
+            width: 100%;
+            height: 100%;
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        /* UI Panel Styling */
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.95);
+            border: 0;
+            border-right: 1px solid #333;
+            border-radius: 0;
+            padding: 16px;
+            color: #e5e5e5;
+            user-select: none;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 2;
+        }
+
+        h2 {
+            margin: 0 0 4px 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: #fbbf24;
+            letter-spacing: -0.01em;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #a3a3a3;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 0;
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            color: #d4d4d8;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        button:hover {
+            background: #3f3f46;
+            color: #fff;
+        }
+
+        button.active-blue {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: white;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
+        }
+
+        button.active-orange {
+            background: #c2410c;
+            border-color: #f97316;
+            color: white;
+            box-shadow: 0 0 15px rgba(194, 65, 12, 0.2);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            row-gap: 12px;
+            border-top: 1px solid #27272a;
+            padding-top: 16px;
+            font-size: 13px;
+        }
+
+        .label {
+            color: #a1a1aa;
+        }
+
+        .value {
+            font-family: 'Fira Code', monospace;
+            font-weight: 400;
+            text-align: right;
+        }
+
+        .katex {
+            font-size: 1.1em;
+        }
+
+        /* Tweaking math size */
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid #333;
+                padding: 12px;
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .controls {
+                margin-bottom: 14px;
+            }
+
+            button {
+                min-height: 42px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="ui-layer">
+        <h2>Current Flow Simulation</h2>
+        <div class="subtitle">Observe charge behavior inside a volumetric conductor section.</div>
+
+        <div class="controls">
+            <button id="btn-steady" class="active-blue">Steady State</button>
+            <button id="btn-accum">Accumulation</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="label">Time Variance</div>
+            <div class="value" id="math-dt"></div>
+
+            <div class="label">Divergence</div>
+            <div class="value" id="math-div"></div>
+
+            <div class="label">Density Status</div>
+            <div class="value" id="status-text" style="color: #4ade80">Constant</div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+
+        // === SIMULATION CONFIGURATION ===
+        const CONFIG = {
+            count: 2400,
+            radius: 4,
+            length: 30,
+            speedBase: 0.20,
+            speedSlow: 0.05,
+            colorBase: new THREE.Color(0x3b82f6), // Blue 500
+            colorAccum: new THREE.Color(0xfb923c), // Orange 400
+        };
+
+        let mode = 'steady'; // 'steady' or 'accumulating'
+
+        // === THREE.JS SETUP ===
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505); // Very dark gray, almost black
+
+        const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        camera.position.set(20, 16, 30);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        function resizeRenderer() {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        // Volumetric Guide (Wireframe Cylinder)
+        const geometryCyl = new THREE.CylinderGeometry(CONFIG.radius, CONFIG.radius, CONFIG.length, 32, 1, true);
+        const edges = new THREE.EdgesGeometry(geometryCyl);
+        const materialLine = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.1
+        });
+        const wireframe = new THREE.LineSegments(edges, materialLine);
+        wireframe.rotation.z = Math.PI / 2;
+        scene.add(wireframe);
+
+        // Particles System (InstancedMesh)
+        const particleGeo = new THREE.IcosahedronGeometry(0.12, 1);
+        const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const mesh = new THREE.InstancedMesh(particleGeo, particleMat, CONFIG.count);
+        scene.add(mesh);
+
+        // --- PARTICLE DATA & LOGIC ---
+        // We maintain a pure data array for simulation physics
+        const particles = new Float32Array(CONFIG.count * 4); // [x, y, z, speed] per particle
+        const colors = new Float32Array(CONFIG.count * 3);    // [r, g, b] per particle
+
+        // Temp variables for the update loop
+        const dummy = new THREE.Object3D();
+        const _color = new THREE.Color();
+
+        // Initializer: Distribute Uniformly
+        function resetSimulation(randomize = true) {
+            for (let i = 0; i < CONFIG.count; i++) {
+                const i4 = i * 4;
+                const i3 = i * 3;
+
+                // Position X: Uniform distribution across length
+                particles[i4] = (Math.random() - 0.5) * CONFIG.length;
+
+                // Position Y, Z: Uniform dist in circle (approximation)
+                // Using polar coords to get uniform disc distribution
+                const r = CONFIG.radius * Math.sqrt(Math.random()) * 0.9; // 0.9 to stay inside wireframe
+                const theta = Math.random() * 2 * Math.PI;
+                particles[i4 + 1] = r * Math.cos(theta); // y
+                particles[i4 + 2] = r * Math.sin(theta); // z
+
+                particles[i4 + 3] = CONFIG.speedBase; // speed
+
+                // Reset Color to Base
+                colors[i3] = CONFIG.colorBase.r;
+                colors[i3 + 1] = CONFIG.colorBase.g;
+                colors[i3 + 2] = CONFIG.colorBase.b;
+            }
+            mesh.geometry.setAttribute('color', new THREE.InstancedBufferAttribute(colors, 3));
+        }
+
+        // === UPDATE LOOP ===
+        function update() {
+            const boundary = CONFIG.length / 2;
+            let accumulationCount = 0;
+
+            for (let i = 0; i < CONFIG.count; i++) {
+                const i4 = i * 4;
+                const i3 = i * 3;
+
+                let x = particles[i4];
+                let currentSpeed = particles[i4 + 3];
+
+                if (mode === 'accumulating') {
+                    // "Blockage" Logic: 
+                    // If particle passes x=0, it hits resistance and slows down massively.
+                    // This causes pile-up because new fast particles keep arriving.
+                    if (x > 2) {
+                        const targetSpeed = CONFIG.speedSlow;
+                        // Linear deceleration
+                        currentSpeed += (targetSpeed - currentSpeed) * 0.08;
+                    } else {
+                        // Accelerate back if it cycled (rare in this logic but good safety)
+                        currentSpeed += (CONFIG.speedBase - currentSpeed) * 0.1;
+                    }
+
+                    // Visual Heat: If slow, turn Orange
+                    if (currentSpeed < CONFIG.speedBase * 0.5) {
+                        _color.set(CONFIG.colorAccum);
+                    } else {
+                        _color.set(CONFIG.colorBase);
+                    }
+
+                    if (x > 0) accumulationCount++;
+
+                } else {
+                    // Steady Logic: Enforce constant velocity
+                    currentSpeed = CONFIG.speedBase;
+                    _color.set(CONFIG.colorBase);
+                }
+
+                // Physics Step
+                x += currentSpeed;
+
+                // Cyclic Boundary Condition
+                if (x > boundary) {
+                    x = -boundary; // Teleport to start
+
+                    if (mode === 'accumulating') {
+                        // In accumulating mode, to simulate density RISING, we want to trap them.
+                        // However, keeping flow loops visually requires teleport.
+                        // We reset speed immediately so they blast in fast again.
+                        currentSpeed = CONFIG.speedBase;
+                    }
+                }
+
+                // Write back state
+                particles[i4] = x;
+                particles[i4 + 3] = currentSpeed;
+
+                // Update Three.js instance
+                dummy.position.set(x, particles[i4 + 1], particles[i4 + 2]);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(i, dummy.matrix);
+                mesh.setColorAt(i, _color);
+            }
+
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.instanceColor.needsUpdate = true;
+        }
+
+        // === INTERACTION HANDLERS ===
+
+        // Init Math/UI
+        const uiElements = {
+            dt: document.getElementById('math-dt'),
+            div: document.getElementById('math-div'),
+            status: document.getElementById('status-text'),
+            btnSteady: document.getElementById('btn-steady'),
+            btnAccum: document.getElementById('btn-accum')
+        };
+
+        function setMath(isSteady) {
+            if (isSteady) {
+                katex.render("\\frac{\\partial \\rho}{\\partial t} = 0", uiElements.dt);
+                katex.render("\\nabla \\cdot \\mathbf{J} = 0", uiElements.div);
+                uiElements.status.innerText = "Constant (ρ)";
+                uiElements.status.style.color = "#4ade80"; // Green
+
+                uiElements.btnSteady.className = "active-blue";
+                uiElements.btnAccum.className = "";
+            } else {
+                katex.render("\\frac{\\partial \\rho}{\\partial t} > 0", uiElements.dt);
+                katex.render("\\nabla \\cdot \\mathbf{J} < 0", uiElements.div); // Negative divergence = convergence/sink
+                uiElements.status.innerText = "Increasing (ρ)";
+                uiElements.status.style.color = "#fb923c"; // Orange
+
+                uiElements.btnSteady.className = "";
+                uiElements.btnAccum.className = "active-orange";
+            }
+        }
+
+        uiElements.btnSteady.onclick = () => {
+            if (mode !== 'steady') {
+                mode = 'steady';
+                setMath(true);
+                // THE FIX: Hard Reset. Don't simulate discharge. Just SNAP to the definition of steady current.
+                // Redistribute positions randomly to eliminate any visual pile-ups immediately.
+                resetSimulation(true);
+            }
+        };
+
+        uiElements.btnAccum.onclick = () => {
+            if (mode !== 'accumulating') {
+                mode = 'accumulating';
+                setMath(false);
+                // We do NOT reset simulation here; we want to see the transition from steady to piling up.
+            }
+        };
+
+        // Resize
+        window.onresize = resizeRenderer;
+
+        // Initialize
+        resetSimulation();
+        setMath(true);
+        resizeRenderer();
+
+        // Render Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ch3_2_biot_savart_c0.0.offline.js"></script>
+
+
+</body>
+
+</html>

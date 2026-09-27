@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Cavities in Conductors</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --accent-purple: #bb86fc;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        /* Header & Nav */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Layout */
+        .container {
+            width: 90%;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #fff;
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* Cards & Boxes */
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .concept-box strong {
+            color: var(--accent-color);
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1.1em;
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        /* Simulation Embeds */
+        .sim-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Footer & Buttons */
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="electric_field_in_matter_index.html">Electric Fields in Matter</a> &gt;
+                <a href="ch2_1_conductors.html">Conductors</a> &gt;
+                Cavities
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Deep Dive: Cavities in Conductors</h1>
+
+        <p>
+            What happens when a charge is placed inside a hollow cavity within a conductor? This seemingly simple
+            question leads to profound insights about electrostatic shielding and forms the basis of the Faraday Cage.
+        </p>
+
+        <section>
+            <h2>1. Charge Inside a Cavity</h2>
+
+            <p>
+                Consider a neutral conductor of arbitrary shape containing a hollow cavity. We place a point charge $+q$
+                somewhere inside this cavity. Since the material is a conductor, the electric field in the bulk (the
+                "meat" of the conductor) must be zero.
+            </p>
+
+            <div class="concept-box">
+                <strong>The Key Insight</strong>
+                <p>
+                    Nature abhors a field inside a conductor. The conductor will do whatever is necessary—moving charges
+                    to its surfaces—to cancel out any internal field.
+                </p>
+            </div>
+
+            <h3>Finding the Induced Charge on the Inner Wall</h3>
+            <p>
+                Draw a Gaussian surface $\mathcal{S}$ completely within the conductor material, enclosing the cavity.
+            </p>
+            <div class="formula-box">
+                $$ \oint_{\mathcal{S}} \vec{E} \cdot d\vec{a} = \frac{Q_{\text{enc}}}{\epsilon_0} $$
+            </div>
+            <p>
+                Since $\vec{E}=0$ everywhere on $\mathcal{S}$ (it's inside the conductor), the flux is zero. Therefore,
+                $Q_{\text{enc}} = 0$. The enclosed charge consists of the point charge $q$ plus the induced charge on
+                the inner wall $q_{\text{inner}}$:
+            </p>
+            <div class="formula-box">
+                $$ q + q_{\text{inner}} = 0 \implies q_{\text{inner}} = -q $$
+            </div>
+
+            <h3>The Outer Surface</h3>
+            <p>
+                If the conductor was originally neutral, charge is conserved. If $-q$ moved to the inner wall, a charge
+                of $+q$ must remain. Since no charge can exist in the bulk, this $+q$ resides on the <strong>outer
+                    surface</strong>.
+            </p>
+
+            <!-- Diagram -->
+            <div class="sim-container">
+                <iframe src="diagrams/conductor_cavity_diagram.html" title="Charge in a Cavity"></iframe>
+            </div>
+        </section>
+
+        <section>
+            <h2>2. The Crucial Asymmetry</h2>
+
+            <p>
+                There's a beautiful asymmetry between the inner and outer surfaces:
+            </p>
+
+            <div class="concept-box">
+                <strong>Inner Surface</strong>
+                <p>
+                    The distribution of $-q$ on the inner wall <em>depends</em> on where $+q$ is located inside the
+                    cavity. Move the charge, and the induced distribution shifts.
+                </p>
+            </div>
+
+            <div class="concept-box">
+                <strong>Outer Surface</strong>
+                <p>
+                    The distribution of $+q$ on the outer surface does <em>not</em> depend on where $+q$ is located
+                    inside. It only depends on the outer geometry. The outside world has no idea where the charge is
+                    inside the cavity!
+                </p>
+            </div>
+
+            <p>
+                This is the principle behind <strong>electrostatic shielding</strong>. A conducting shell shields the
+                outside from knowledge of what's happening inside.
+            </p>
+        </section>
+
+        <section>
+            <h2>3. The Faraday Cage</h2>
+
+            <p>
+                The converse is also true: a conducting shell shields its interior from external fields. If you place a
+                conductor with a cavity in an external electric field, the charges on the outer surface rearrange to
+                cancel the field, but no field penetrates into the cavity.
+            </p>
+
+            <div class="formula-box">
+                $$ \vec{E}_{\text{inside cavity}} = 0 \quad \text{(regardless of external fields)} $$
+            </div>
+
+            <p>
+                This is why:
+            </p>
+            <ul>
+                <li>You're safe inside a car during a lightning storm (the metal body acts as a Faraday cage).</li>
+                <li>Sensitive electronics are housed in metal enclosures.</li>
+                <li>Microwave ovens have metal mesh in their doors to contain the radiation.</li>
+            </ul>
+        </section>
+
+    </div>
+
+    <footer></footer>
+
+</body>
+
+</html>

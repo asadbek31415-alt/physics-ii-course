@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss's Law</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    hat: "\\mathbf",
+                    enc: "\\text{enc}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 2rem;
+            font-size: 1.4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Variable Lists */
+        .def-list {
+            display: grid;
+            gap: 15px;
+            margin: 2rem 0;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .def-item {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            align-items: baseline;
+        }
+
+        .def-symbol {
+            font-weight: 700;
+            color: var(--accent-color);
+            font-family: 'Times New Roman', serif;
+            font-size: 1.3rem;
+        }
+
+        .def-text {
+            color: var(--text-secondary);
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        iframe {
+            width: 100%;
+            border: none;
+            display: block;
+        }
+
+        .diagram-frame {
+            height: 500px;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .field-symbol {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 800;
+            font-style: normal;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > Gauss's Law
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Gauss's Law</h1>
+
+        <p>
+            While Coulomb's Law allows us to calculate the electric field for any charge distribution by brute-force
+            integration, <strong>Gauss's Law</strong> offers a much more elegant and powerful approach. It relates the
+            electric field flowing through a closed surface to the charge enclosed within it.
+        </p>
+
+        <!-- SECTION 1: ELECTRIC FLUX -->
+        <section data-concept-title="1. Electric Flux" id="concept-1-1-electric-flux">
+            <h2>1. Electric Flux</h2>
+            <p>
+                To understand Gauss's Law, we first need to quantify how much electric field "flows" through a surface.
+                This quantity is called <strong>Electric Flux</strong> (\(\Phi_E\)).
+            </p>
+            <p>
+                Think of the electric field as a fluid flowing through space. The flux is the measure of how much of
+                this fluid passes through a specific surface. It depends on the strength of the field, the area of the
+                surface, and the angle between them.
+            </p>
+
+            <div class="math-block">
+                $$ \Phi_E \equiv \int_{\mathcal{S}} \vec{E} \cdot d\vec{a} $$
+            </div>
+
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">\(\vec{E}\)</span>
+                    <span class="def-text">The Electric Field vector.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(d\vec{a}\)</span>
+                    <span class="def-text">The <strong>Vector Area</strong> element. Its magnitude is the area \(da\),
+                        and its direction is <strong>normal</strong> (perpendicular) to the surface.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\cdot\)</span>
+                    <span class="def-text">The <strong>Dot Product</strong>. Only the component of \(\vec{E}\)
+                        perpendicular to the surface contributes to flux.</span>
+                </div>
+            </div>
+
+            <!-- DIAGRAM: FLUX CONCEPT -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/flux_concept.html" title="Electric Flux Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+
+        </section>
+
+        <!-- SECTION 2: THE LAW -->
+        <section data-concept-title="2. Gauss's Law (Integral Form)" id="concept-2-2-gauss-s-law-integral-form">
+            <h2>2. Gauss's Law (Integral Form)</h2>
+            <p>
+                Gauss's Law states that the total electric flux through <em>any</em> closed surface is proportional to
+                the total electric charge enclosed within that surface.
+            </p>
+
+            <div class="math-block" style="border-color: var(--accent-color);">
+                $$ \oint_{\mathcal{S}} \vec{E} \cdot d\vec{a} = \frac{Q_{\enc}}{\epsilon_0} $$
+            </div>
+
+            <p>
+                This is a profound statement: <strong>The shape of the surface does not matter.</strong> As long as the
+                surface is closed (like a balloon), the total flux depends <em>only</em> on how much charge is inside.
+            </p>
+            <ul>
+                <li>If \(Q_{\enc} > 0\), there is a net outward flux.</li>
+                <li>If \(Q_{\enc} < 0\), there is a net inward flux.</li>
+                <li>If \(Q_{\enc} = 0\), the net flux is zero (field lines entering must also exit).</li>
+            </ul>
+
+
+            <!-- DIAGRAM: GAUSSIAN ARBITRARY (Moved here) -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/gauss_arbitrary.html" title="Gauss Law Arbitrary Surface"
+                    scrolling="no"></iframe>
+            </div>
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_2_1_flux_details.html?back=ch1_2_gauss_law.html%23concept-2-2-gauss-s-law-integral-form"><span aria-hidden="true">+</span> Deep Dive: Electric Flux</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: APPLICATIONS -->
+        <section data-concept-title="3. Applications & Symmetry" id="concept-3-3-applications-symmetry">
+            <h2>3. Applications & Symmetry</h2>
+            <p>
+                Gauss's Law is always true, but it is only useful for calculating \(\vec{E}\) when the charge
+                distribution possesses high <strong>symmetry</strong>. In these cases, we can choose a "Gaussian
+                Surface" such that \(\vec{E}\) is constant over the surface and can be pulled out of the integral.
+            </p>
+
+            <h3>The Three Pillars of Symmetry</h3>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">🔵</span>
+                    <span class="def-text"><strong>Spherical Symmetry</strong>: Use a concentric sphere. (e.g., Point
+                        charges, solid spheres).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">🛢</span>
+                    <span class="def-text"><strong>Cylindrical Symmetry</strong>: Use a coaxial cylinder. (e.g.,
+                        Infinite wires, long pipes).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">🟦</span>
+                    <span class="def-text"><strong>Planar Symmetry</strong>: Use a "Gaussian Pillbox". (e.g., Infinite
+                        sheets, slabs).</span>
+                </div>
+            </div>
+
+            <!-- DIAGRAM: GAUSSIAN SYMMETRY (Corrected link) -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/gauss_symmetry.html" title="Gaussian Surfaces"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_2_2_symmetry_details.html?back=ch1_2_gauss_law.html%23concept-3-3-applications-symmetry"><span aria-hidden="true">+</span> Deep Dive: Applying Gauss's Law</a>
+            </div>
+        </section>
+
+        <!-- SECTION 4: DIFFERENTIAL FORM -->
+        <section data-concept-title="4. The Differential Form" id="concept-4-4-the-differential-form">
+            <h2>4. The Differential Form</h2>
+            <p>
+                By applying the <strong>Divergence Theorem</strong> to the integral form, we can convert Gauss's Law
+                into a differential equation relating the field to the charge density at a specific point.
+            </p>
+
+            <div class="math-block">
+                $$ \nabla \cdot \vec{E} = \frac{\rho}{\epsilon_0} $$
+            </div>
+
+            <p>
+                This states that the <strong>divergence</strong> of the electric field (how much it spreads out from a
+                point) is directly proportional to the charge density \(\rho\) at that point. This is the first of
+                <strong>Maxwell's Equations</strong>.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_2_3_divergence_details.html?back=ch1_2_gauss_law.html%23concept-4-4-the-differential-form"><span aria-hidden="true">+</span> Deep Dive: The Divergence of <span class="field-symbol">E</span></a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

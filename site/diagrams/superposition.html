@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superposition Principle - Interactive</title>
+
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: #0a0a0a;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: default;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(20, 20, 20, 0.9);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+            max-width: 250px;
+            /* Smaller width */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 1rem;
+            color: #03dac6;
+        }
+
+        p {
+            margin: 0 0 8px 0;
+            font-size: 0.85rem;
+            color: #ccc;
+            line-height: 1.3;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+            color: #eee;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .formula-box {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            /* Moved to side */
+            /* left: auto; transform: none; */
+            background-color: rgba(20, 20, 20, 0.9);
+            color: #03dac6;
+            padding: 10px 25px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 1px solid #333;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div class="canvas-container">
+        <canvas id="demonstrationCanvas"></canvas>
+
+        <div class="ui-overlay">
+            <h2>Superposition Principle</h2>
+            <p>Drag $Q, q_1, q_2$ to explore force addition.</p>
+            <div>
+                <div class="legend-item"><span class="dot" style="background:#ffc107"></span> Force $\vec{F}_1$ (from
+                    $q_1$)</div>
+                <div class="legend-item"><span class="dot" style="background:#4caf50"></span> Force $\vec{F}_2$ (from
+                    $q_2$)</div>
+                <div class="legend-item"><span class="dot" style="background:#03dac6"></span> Net Force $\vec{F}_{net}$
+                </div>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            $$\vec{F}_{net} = \vec{F}_1 + \vec{F}_2$$
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('demonstrationCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const K_CONST = 2400000;
+        const MAX_FORCE_LEN = 350;
+
+        const COLORS = {
+            bg: '#0a0a0a',
+            grid: 'rgba(255, 255, 255, 0.05)',
+            posCharge: '#ff5252',
+            negCharge: '#448aff',
+            testCharge: '#ffffff',
+            f1: '#ffc107',
+            f2: '#4caf50',
+            net: '#03dac6',
+            dash: 'rgba(255, 255, 255, 0.2)'
+        };
+
+        // State
+        let width, height;
+        let isDragging = null;
+
+        // Charges
+        const testCharge = { x: 0, y: 0, q: 1, type: 'test', label: 'Q' };
+
+        const charges = [
+            { id: 1, x: 0, y: 0, q: 0.85, type: 'pos', label: 'q' },
+            { id: 2, x: 0, y: 0, q: -1.7, type: 'neg', label: '-2q' }
+        ];
+
+        // Calculated Vectors
+        let f1Vec = { x: 0, y: 0 };
+        let f2Vec = { x: 0, y: 0 };
+        let netVec = { x: 0, y: 0 };
+
+        function init() {
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Initial Positions - moved slightly to avoid initial UI overlap
+            charges[0].x = width / 2 - 200;
+            charges[0].y = height / 2 + 50;
+            charges[1].x = width / 2;
+            charges[1].y = height / 2 - 150;
+            testCharge.x = width / 2;
+            testCharge.y = height / 2 + 50;
+
+            // Input Events
+            canvas.addEventListener('mousedown', handleDown);
+            canvas.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleUp);
+            canvas.addEventListener('touchstart', handleDown, { passive: false });
+            canvas.addEventListener('touchmove', handleMove, { passive: false });
+            window.addEventListener('touchend', handleUp);
+
+            animate();
+        }
+
+        function resize() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function calculateForces() {
+            // F1: from q1
+            let dx1 = testCharge.x - charges[0].x;
+            let dy1 = testCharge.y - charges[0].y;
+            let distSq1 = dx1 * dx1 + dy1 * dy1;
+            let dist1 = Math.sqrt(distSq1);
+            if (dist1 < 30) dist1 = 30; // Soft limiter matches charge radius + buffer
+
+            let fMag1 = K_CONST / (dist1 * dist1);
+            f1Vec.x = (dx1 / dist1) * fMag1 * charges[0].q;
+            f1Vec.y = (dy1 / dist1) * fMag1 * charges[0].q;
+
+            // F2: from q2
+            let dx2 = testCharge.x - charges[1].x;
+            let dy2 = testCharge.y - charges[1].y;
+            let distSq2 = dx2 * dx2 + dy2 * dy2;
+            let dist2 = Math.sqrt(distSq2);
+            if (dist2 < 30) dist2 = 30;
+
+            let fMag2 = K_CONST / (dist2 * dist2);
+            f2Vec.x = (dx2 / dist2) * fMag2 * charges[1].q;
+            f2Vec.y = (dy2 / dist2) * fMag2 * charges[1].q;
+
+            // Force Clamping
+            function clamp(v) {
+                const len = Math.sqrt(v.x * v.x + v.y * v.y);
+                if (len > MAX_FORCE_LEN) {
+                    const s = MAX_FORCE_LEN / len;
+                    v.x *= s;
+                    v.y *= s;
+                }
+            }
+            clamp(f1Vec);
+            clamp(f2Vec);
+
+            // Net Force
+            netVec.x = f1Vec.x + f2Vec.x;
+            netVec.y = f1Vec.y + f2Vec.y;
+        }
+
+        function animate() {
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            drawGrid();
+            calculateForces();
+
+            const ox = testCharge.x;
+            const oy = testCharge.y;
+
+            // Parallelogram
+            ctx.strokeStyle = COLORS.dash;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(ox + f1Vec.x, oy + f1Vec.y);
+            ctx.lineTo(ox + netVec.x, oy + netVec.y);
+            ctx.lineTo(ox + f2Vec.x, oy + f2Vec.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw Charges (Before Vectors, so dragging feels like moving "under" the field)
+            charges.forEach(c => drawChargeCircle(c));
+            drawChargeCircle(testCharge);
+
+            // Draw Vectors
+            drawArrow(ox, oy, f1Vec.x, f1Vec.y, COLORS.f1, "F₁");
+            drawArrow(ox, oy, f2Vec.x, f2Vec.y, COLORS.f2, "F₂");
+            drawArrow(ox, oy, netVec.x, netVec.y, COLORS.net, "F_net");
+
+            requestAnimationFrame(animate);
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 1;
+            const size = 50;
+            const offsetX = Math.floor(width / 2) % size;
+            const offsetY = Math.floor(height / 2) % size;
+
+            for (let x = offsetX; x < width; x += size) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            for (let y = offsetY; y < height; y += size) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+        }
+
+        function drawChargeCircle(c) {
+            const r = 10; // Smaller radius (was 20)
+            let color = c.type === 'pos' ? COLORS.posCharge : (c.type === 'neg' ? COLORS.negCharge : COLORS.testCharge);
+
+            // Simple Glow
+            const grad = ctx.createRadialGradient(c.x, c.y, r * 0.5, c.x, c.y, r * 2.0);
+            grad.addColorStop(0, color);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.globalAlpha = 0.2;
+            ctx.beginPath(); ctx.arc(c.x, c.y, r * 2.0, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Main Body
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill();
+
+            // Label on top
+            ctx.fillStyle = (c.type === 'test') ? '#000' : '#fff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            let sym = c.q > 0 ? '+' : '-';
+            if (c.type === 'test') sym = 'Q';
+            ctx.fillText(sym, c.x, c.y);
+
+            // Name Label below
+            ctx.fillStyle = '#888';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(c.label, c.x, c.y + r + 14);
+        }
+
+        function drawArrow(x, y, dx, dy, color, label) {
+            if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+
+            const endX = x + dx;
+            const endY = y + dy;
+            const headLen = 14;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+
+            // Line
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Head
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI / 6), endY - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI / 6), endY - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            // Label
+            ctx.font = 'bold 14px Inter, sans-serif';
+            const textMetrics = ctx.measureText(label);
+            const textW = textMetrics.width;
+
+            // Smarter label positioning to avoid line overlap
+            const offsetDist = 18;
+            const textX = endX + offsetDist * Math.cos(angle);
+            const textY = endY + offsetDist * Math.sin(angle);
+
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = color;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, textX, textY);
+            ctx.shadowBlur = 0;
+        }
+
+        // Interaction Logic
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            let cx = e.clientX;
+            let cy = e.clientY;
+
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                cx = e.changedTouches[0].clientX;
+                cy = e.changedTouches[0].clientY;
+            }
+
+            return {
+                x: (cx - rect.left) * scaleX,
+                y: (cy - rect.top) * scaleY
+            };
+        }
+
+        function handleDown(e) {
+            e.preventDefault();
+            const pos = getPos(e);
+            const hitR = 45; // Generous hit area for responsiveness
+
+            // Check Test Charge FIRST (priority)
+            let dx = pos.x - testCharge.x;
+            let dy = pos.y - testCharge.y;
+            if (dx * dx + dy * dy < hitR * hitR) {
+                isDragging = testCharge;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Check others
+            for (let i = 0; i < charges.length; i++) {
+                const c = charges[i];
+                let dx = pos.x - c.x;
+                let dy = pos.y - c.y;
+                if (dx * dx + dy * dy < hitR * hitR) {
+                    isDragging = c;
+                    canvas.style.cursor = 'grabbing';
+                    return;
+                }
+            }
+        }
+
+        function handleMove(e) {
+            const pos = getPos(e);
+            if (isDragging) {
+                e.preventDefault();
+                // Clamp to screen bounds logic?
+                // Minimal clamping
+                isDragging.x = Math.max(20, Math.min(width - 20, pos.x));
+                isDragging.y = Math.max(20, Math.min(height - 20, pos.y));
+            } else {
+                // Hover Effects
+                const hitR = 45;
+                let hover = false;
+                const all = [...charges, testCharge];
+                for (let c of all) {
+                    let dx = pos.x - c.x;
+                    let dy = pos.y - c.y;
+                    if (dx * dx + dy * dy < hitR * hitR) hover = true;
+                }
+                canvas.style.cursor = hover ? 'grab' : 'default';
+            }
+        }
+
+        function handleUp(e) {
+            isDragging = null;
+            canvas.style.cursor = 'default';
+        }
+
+        window.onload = init;
+
+
+    </script>
+</body>
+
+</html>

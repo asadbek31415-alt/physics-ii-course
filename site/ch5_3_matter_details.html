@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Maxwell's Equations in Matter</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > In Matter
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Maxwell's Equations in Matter</h1>
+
+        <p class="intro-text">
+            When dealing with macroscopic materials, it's convenient to rephrase Maxwell's equations in terms of "free"
+            charges and currents, hiding the complicated bound charges and currents within the auxiliary fields
+            $\vec{D}$ and $\vec{H}$.
+        </p>
+
+        <section>
+            <h2>The Auxiliary Fields</h2>
+            <p>
+                We define:
+            </p>
+            <div class="math-block">
+                $$
+                \begin{aligned}
+                \vec{P} &= \text{Polarization} \\
+                \vec{M} &= \text{Magnetization} \\
+                \vec{D} &= \epsilon_0 \vec{E} + \vec{P} \quad \text{(displacement field)} \\
+                \vec{H} &= \frac{1}{\mu_0} \vec{B} - \vec{M} \quad \text{(H-field)}
+                \end{aligned}
+                $$
+            </div>
+        </section>
+
+        <section>
+            <h2>Maxwell's Equations (Macroscopic)</h2>
+            <p>
+                In terms of free charge density $\rho_f$ and free current density $\vec{J}_f$:
+            </p>
+            <div class="math-block">
+                $$
+                \begin{aligned}
+                \nabla \cdot \vec{D} &= \rho_f \\
+                \nabla \cdot \vec{B} &= 0 \\
+                \nabla \times \vec{E} &= -\frac{\partial \vec{B}}{\partial t} \\
+                \nabla \times \vec{H} &= \vec{J}_f + \frac{\partial \vec{D}}{\partial t}
+                \end{aligned}
+                $$
+            </div>
+            <p>
+                These are the equations used in most engineering applications, where we control $\rho_f$ and $\vec{J}_f$
+                on conductors, and the material properties ($\epsilon, \mu$) take care of the rest.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

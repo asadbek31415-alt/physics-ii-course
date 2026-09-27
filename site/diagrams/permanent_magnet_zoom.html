@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permanent Magnet Zoom</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #e0e0e0;
+            pointer-events: none;
+            width: 340px;
+            z-index: 10;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #ef4444;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        p {
+            margin: 5px 0 15px 0;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .slider-container {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        .annotation {
+            position: absolute;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .pole-label {
+            font-size: 2.5rem;
+            font-weight: 900;
+            opacity: 0.9;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .b-label {
+            color: #d8b4fe; 
+            font-style: italic;
+            background: rgba(147, 51, 234, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #a855f7;
+        }
+
+        .m-label {
+            color: #facc15;
+            background: rgba(0,0,0,0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    </style>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>Permanent Magnet</h2>
+        <p>Zoom in to see the aligned atomic dipoles creating the field.</p>
+        
+        <div class="slider-container">
+            <input type="range" id="zoomSlider" min="0" max="100" value="0">
+            <div class="labels">
+                <span>Macro (B-Field)</span>
+                <span>Micro (Dipoles)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotations -->
+    <div id="label-n" class="annotation pole-label" style="color: #ef4444;">N</div>
+    <div id="label-s" class="annotation pole-label" style="color: #3b82f6;">S</div>
+    <div id="label-b" class="annotation b-label">B-Field Lines</div>
+    <div id="label-m" class="annotation m-label">m (Magnetic Moment)</div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020617); // Darker blue/black
+        scene.fog = new THREE.Fog(0x020617, 20, 90);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        const startZ = 55;
+        const endZ = 7;
+        camera.position.set(0, 0, startZ);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 3);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0xffffff, 1.5);
+        pointLight.position.set(20, 20, 20);
+        scene.add(pointLight);
+
+        // --- 1. MACROSCOPIC MAGNET ---
+        const macroGroup = new THREE.Group();
+        scene.add(macroGroup);
+
+        // Magnet Block
+        const blockHeight = 16;
+        const blockGeo = new THREE.BoxGeometry(8, blockHeight, 8);
+        const blockMat = new THREE.MeshPhongMaterial({ 
+            color: 0x334155, 
+            transparent: true, 
+            opacity: 0.95,
+            shininess: 100
+        });
+        const block = new THREE.Mesh(blockGeo, blockMat);
+        macroGroup.add(block);
+
+        // Edges
+        const edges = new THREE.EdgesGeometry(blockGeo);
+        const lineSegs = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.3 }));
+        macroGroup.add(lineSegs);
+
+        // --- B-FIELD PARTICLES (ANIMATED) ---
+        const fieldGroup = new THREE.Group();
+        macroGroup.add(fieldGroup);
+
+        const curves = []; // Store curve data for animation
+        const particlesPerCurve = 15;
+        
+        // Helper to create field lines
+        function createFieldCurve(radiusX, radiusZ) {
+            // Bezier curve from Top(N) to Bottom(S)
+            const curve = new THREE.CubicBezierCurve3(
+                new THREE.Vector3(radiusX * 0.2, blockHeight/2, radiusZ * 0.2), 
+                new THREE.Vector3(radiusX * 2.5, blockHeight * 1.5, radiusZ * 2.5), 
+                new THREE.Vector3(radiusX * 2.5, -blockHeight * 1.5, radiusZ * 2.5), 
+                new THREE.Vector3(radiusX * 0.2, -blockHeight/2, radiusZ * 0.2)
+            );
+
+            // 1. Faint static line for the path
+            const points = curve.getPoints(40);
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xa855f7, opacity: 0.15, transparent: true });
+            fieldGroup.add(new THREE.Line(lineGeo, lineMat));
+
+            // 2. Particles system for flow
+            const particleGeo = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particlesPerCurve * 3);
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xd8b4fe,
+                size: 0.4,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const particles = new THREE.Points(particleGeo, particleMat);
+            fieldGroup.add(particles);
+
+            // Store data for animation
+            curves.push({
+                curve: curve,
+                mesh: particles,
+                speed: 0.005 + Math.random() * 0.002 // Slight speed variation
+            });
+        }
+
+        // Generate Field Lines
+        for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2;
+            const x = Math.cos(angle);
+            const z = Math.sin(angle);
+            createFieldCurve(x * 6, z * 6); // Outer
+            if(i % 2 === 0) createFieldCurve(x * 3.5, z * 3.5); // Inner
+        }
+
+
+        // --- 2. ATOMIC STRUCTURE (Background) ---
+        const atomsGroup = new THREE.Group();
+        scene.add(atomsGroup);
+        atomsGroup.visible = false;
+
+        // Shared Geometries/Materials for performance
+        const atomNucGeo = new THREE.SphereGeometry(0.3, 8, 8);
+        const atomNucMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+        
+        const atomOrbitGeo = new THREE.TorusGeometry(1.4, 0.05, 6, 32);
+        const atomOrbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.4, transparent: true });
+        
+        const atomElecGeo = new THREE.SphereGeometry(0.15, 6, 6);
+        const atomElecMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+        const bgAtoms = []; // Store for animation
+
+        // Create 60 aligned atoms
+        for(let i=0; i<60; i++) {
+            const atom = new THREE.Group();
+            
+            // 1. Nucleus
+            const nuc = new THREE.Mesh(atomNucGeo, atomNucMat);
+            atom.add(nuc);
+            
+            // 2. Orbit Ring
+            const orb = new THREE.Mesh(atomOrbitGeo, atomOrbitMat);
+            orb.rotation.x = Math.PI/2;
+            atom.add(orb);
+
+            // 3. Electron
+            const elecPivot = new THREE.Group();
+            const elec = new THREE.Mesh(atomElecGeo, atomElecMat);
+            elec.position.set(1.4, 0, 0); // Radius matches orbit
+            elecPivot.add(elec);
+            // Random start angle
+            elecPivot.rotation.y = Math.random() * Math.PI * 2; 
+            // Store speed
+            elecPivot.userData = { speed: 0.05 + Math.random() * 0.05 };
+            atom.add(elecPivot);
+
+            // 4. Dipole Arrow (Aligned UP for North)
+            const dir = new THREE.Vector3(0, 1, 0);
+            const origin = new THREE.Vector3(0, -0.8, 0);
+            const arrow = new THREE.ArrowHelper(dir, origin, 2.5, 0xfacc15, 0.6, 0.4);
+            atom.add(arrow);
+
+            // Position
+            atom.position.set(
+                (Math.random() - 0.5) * 7.5,
+                (Math.random() - 0.5) * 14,
+                (Math.random() - 0.5) * 7.5
+            );
+
+            // Tiny random jitter rotation so they aren't perfectly robotic
+            atom.rotation.set(
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1
+            );
+
+            atomsGroup.add(atom);
+            bgAtoms.push(elecPivot); // Track for animation
+        }
+
+
+        // --- 3. HERO ATOM (Detailed Foreground) ---
+        const heroAtom = new THREE.Group();
+        scene.add(heroAtom);
+        heroAtom.visible = false;
+
+        // Hero Nucleus
+        const hNuc = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 32, 32),
+            new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x500000, roughness: 0.2 })
+        );
+        heroAtom.add(hNuc);
+
+        // Hero Orbit
+        const hOrbitRadius = 2.5;
+        const hOrbit = new THREE.Mesh(
+            new THREE.TorusGeometry(hOrbitRadius, 0.05, 16, 100),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.6, transparent: true })
+        );
+        hOrbit.rotation.x = Math.PI / 2;
+        heroAtom.add(hOrbit);
+
+        // Hero Electron
+        const hElecPivot = new THREE.Group();
+        const hElec = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088aa })
+        );
+        hElec.position.set(hOrbitRadius, 0, 0);
+        hElecPivot.add(hElec);
+        heroAtom.add(hElecPivot);
+
+        // Hero Dipole
+        const hArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 1, 0), 
+            new THREE.Vector3(0, -1, 0), 
+            4, 0xfacc15, 0.8, 0.5
+        );
+        heroAtom.add(hArrow);
+
+
+        // --- ANIMATION & LOGIC ---
+        let time = 0;
+        const slider = document.getElementById('zoomSlider');
+        const labelN = document.getElementById('label-n');
+        const labelS = document.getElementById('label-s');
+        const labelB = document.getElementById('label-b');
+        const labelM = document.getElementById('label-m');
+
+        function updateZoom() {
+            const val = parseInt(slider.value) / 100;
+
+            // Camera Zoom
+            camera.position.z = startZ - (val * (startZ - endZ));
+
+            // Opacity Logic
+            // Macro fades out
+            let macroOp = 1;
+            if (val > 0.1) macroOp = 1 - ((val - 0.1) * 2.5);
+            if (macroOp < 0) macroOp = 0;
+
+            block.material.opacity = 0.95 * macroOp;
+            lineSegs.material.opacity = 0.3 * macroOp;
+            
+            // Fade particles
+            fieldGroup.children.forEach(c => {
+                if(c.material) c.material.opacity = (c.type === 'Points' ? 0.8 : 0.15) * macroOp;
+            });
+
+            // Micro fades in
+            let microOp = 0;
+            if (val > 0.3) microOp = (val - 0.3) * 1.5;
+            if (microOp > 1) microOp = 1;
+
+            if (microOp > 0) {
+                atomsGroup.visible = true;
+                heroAtom.visible = true;
+                
+                // Update opacity of background atoms (hacky but works)
+                atomsGroup.children.forEach(a => {
+                    // Nucleus
+                    a.children[0].material.opacity = microOp; // Basic material doesn't support transparency unless set
+                    // Orbit
+                    a.children[1].material.opacity = 0.4 * microOp;
+                    // Electron
+                    a.children[2].children[0].material.opacity = microOp;
+                    // Arrow (Line + Cone)
+                    a.children[3].line.material.opacity = microOp;
+                    a.children[3].cone.material.opacity = microOp;
+                    a.children[3].line.material.transparent = true;
+                    a.children[3].cone.material.transparent = true;
+                });
+            } else {
+                atomsGroup.visible = false;
+                heroAtom.visible = false;
+            }
+
+            // Labels
+            const showMacro = val < 0.2;
+            labelN.style.opacity = showMacro ? 1 : 0;
+            labelS.style.opacity = showMacro ? 1 : 0;
+            labelB.style.opacity = showMacro ? 1 : 0;
+
+            const showMicro = val > 0.85;
+            labelM.style.opacity = showMicro ? 1 : 0;
+        }
+
+        function updateLabels() {
+            // Macro Labels Positions
+            if (parseFloat(labelN.style.opacity) > 0) {
+                const nPos = new THREE.Vector3(0, 9, 0).project(camera);
+                const sPos = new THREE.Vector3(0, -9, 0).project(camera);
+                const bPos = new THREE.Vector3(6, 0, 0).project(camera);
+
+                toScreen(nPos, labelN);
+                toScreen(sPos, labelS);
+                toScreen(bPos, labelB);
+            }
+
+            // Micro Label Position
+            if (parseFloat(labelM.style.opacity) > 0) {
+                const mPos = new THREE.Vector3(0, 3, 0); // Tip of hero arrow
+                mPos.applyMatrix4(heroAtom.matrixWorld);
+                mPos.project(camera);
+                toScreen(mPos, labelM, 0, -20);
+            }
+        }
+
+        function toScreen(vec, el, offX=0, offY=0) {
+            const x = (vec.x * .5 + .5) * window.innerWidth;
+            const y = (-(vec.y * .5) + .5) * window.innerHeight;
+            el.style.transform = `translate(-50%, -50%) translate(${x + offX}px, ${y + offY}px)`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // 1. Rotate Macro Block
+            macroGroup.rotation.y = Math.sin(time * 0.5) * 0.1;
+
+            // 2. Animate Field Particles
+            curves.forEach(obj => {
+                const positions = obj.mesh.geometry.attributes.position.array;
+                for(let i=0; i<particlesPerCurve; i++) {
+                    // Calculate T (0 to 1) based on time and index
+                    let t = (time * obj.speed + (i / particlesPerCurve)) % 1;
+                    
+                    // Get point on curve
+                    const point = obj.curve.getPoint(t);
+                    
+                    positions[i*3] = point.x;
+                    positions[i*3+1] = point.y;
+                    positions[i*3+2] = point.z;
+                }
+                obj.mesh.geometry.attributes.position.needsUpdate = true;
+            });
+
+            // 3. Animate Atoms (Electrons)
+            // Hero
+            hElecPivot.rotation.y -= 0.1; // Spin
+            
+            // Background Atoms
+            bgAtoms.forEach(pivot => {
+                pivot.rotation.y -= pivot.userData.speed;
+            });
+
+            // Sync Groups rotation
+            atomsGroup.rotation.y = macroGroup.rotation.y;
+            heroAtom.rotation.y = macroGroup.rotation.y;
+
+            updateZoom();
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

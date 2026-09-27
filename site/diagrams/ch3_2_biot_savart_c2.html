@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circular Loop B-Field Simulation</title>
+
+    <!-- 1. Stylesheets -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+
+    <style>
+        /* Base Reset */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d1117;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #c9d1d9;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar UI */
+        #ui {
+            width: 300px;
+            background-color: #161b22;
+            padding: 16px;
+            border-right: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 10;
+            box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #58a6ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 8px;
+            margin: 0 0 5px 0;
+        }
+
+        .control-group {
+            margin-bottom: 8px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #e6edf3;
+            margin-bottom: 4px;
+        }
+
+        .val-disp {
+            font-family: 'Courier New', Courier, monospace;
+            color: #79c0ff;
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #1f6feb;
+            margin: 5px 0;
+        }
+
+        /* Toggles */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+            cursor: pointer;
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        input[type=checkbox] {
+            width: 18px;
+            height: 18px;
+            accent-color: #238636;
+            cursor: pointer;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #8b949e;
+            line-height: 1.4;
+            margin-top: 2px;
+            font-style: italic;
+            background: rgba(110, 118, 129, 0.1);
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        /* Legend */
+        .legend {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            font-size: 0.85rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .line-legend {
+            width: 15px;
+            height: 3px;
+            margin-right: 8px;
+        }
+
+        /* Canvas */
+        #canvas-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            overflow: hidden;
+        }
+
+        /* Labels */
+        .math-label {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-shadow: 0 0 4px #000, 0 0 2px #000;
+            pointer-events: none;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 700px) {
+            #container {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100dvh;
+                min-height: 0;
+            }
+
+            #canvas-wrapper {
+                grid-column: 1;
+                grid-row: 1;
+                min-height: 0;
+            }
+
+            #ui {
+                grid-column: 1;
+                grid-row: 2;
+                width: 100%;
+                box-sizing: border-box;
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 7px 8px;
+                padding: 8px 10px;
+                border-right: 0;
+                border-top: 1px solid #30363d;
+                overflow: hidden;
+            }
+
+            #ui > div {
+                min-width: 0;
+            }
+
+            h2 {
+                font-size: 0.72rem;
+                padding-bottom: 4px;
+                margin-bottom: 4px;
+            }
+
+            .control-group {
+                margin-bottom: 4px;
+            }
+
+            .label-row,
+            .toggle-row,
+            .legend {
+                font-size: 0.7rem;
+            }
+
+            input[type=range] {
+                min-height: 28px;
+                margin: 0;
+            }
+
+            .toggle-row {
+                padding: 4px 0;
+            }
+
+            .hint {
+                display: none;
+            }
+
+            .legend {
+                grid-column: 1 / -1;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                padding: 6px;
+                gap: 5px;
+            }
+        }
+    </style>
+
+    <!-- 2. Scripts -->
+    <!-- KaTeX -->
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="container">
+        <div id="ui">
+            <div>
+                <h2>Geometric Setup</h2>
+                <div class="control-group">
+                    <div class="label-row">
+                        <span>Point Height <i>z</i></span>
+                        <span id="disp-z" class="val-disp">4.0</span>
+                    </div>
+                    <input type="range" id="slider-z" min="-8" max="8" step="0.1" value="4.0">
+                </div>
+
+                <div class="control-group">
+                    <div class="label-row">
+                        <span>Loop Radius <i>R</i></span>
+                        <span id="disp-r" class="val-disp">5.0</span>
+                    </div>
+                    <input type="range" id="slider-r" min="2" max="7" step="0.1" value="5.0">
+                </div>
+
+                <div class="control-group">
+                    <div class="label-row">
+                        <span>Element Angle <i>&phi;</i></span>
+                        <span id="disp-phi" class="val-disp">45°</span>
+                    </div>
+                    <input type="range" id="slider-phi" min="0" max="360" step="1" value="45">
+                </div>
+            </div>
+
+            <div>
+                <h2>Symmetry Argument</h2>
+                <label class="toggle-row">
+                    <span>Show Element Vectors</span>
+                    <input type="checkbox" id="chk-vectors">
+                </label>
+
+                <label class="toggle-row">
+                    <span>Show Symmetric Element</span>
+                    <input type="checkbox" id="chk-symmetry">
+                </label>
+                <div class="hint">
+                    Adds diametrically opposite element. Notice how horizontal components (<i>dB</i><sub>&perp;</sub>)
+                    cancel out.
+                </div>
+
+                <label class="toggle-row">
+                    <span>Show Components (<i>dB<sub>z</sub>, dB<sub>&perp;</sub></i>)</span>
+                    <input type="checkbox" id="chk-components">
+                </label>
+            </div>
+
+            <div>
+                <h2>Result & Probe</h2>
+                <label class="toggle-row">
+                    <span>Show Global Field Lines</span>
+                    <input type="checkbox" id="chk-field" checked>
+                </label>
+                <label class="toggle-row">
+                    <span>Enable Probe</span>
+                    <input type="checkbox" id="chk-probe">
+                </label>
+                <label class="toggle-row" style="color: #ff7b72;">
+                    <span>Coordinate Vectors (r⃗, r⃗')</span>
+                    <input type="checkbox" id="chk-coords">
+                </label>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="dot" style="background:#ff3333;"></div><span>d<b>l</b>'</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#00ff00;"></div><span><b>r̂</b></span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#00ffff;"></div><span>d<b>B</b></span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#ffff00;"></div><span>Components</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#d2a8ff;"></div><span>Total <b>B</b></span>
+                </div>
+                <div class="legend-item">
+                    <div class="line-legend" style="background:#8b949e;"></div><span>Loop (<i>I</i>)</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-wrapper"></div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Config ---
+        let scene, camera, renderer, labelRenderer, controls;
+        let ui = { z: 4.0, R: 5.0, phi: 45 };
+        let labels = {};
+
+        // Groups
+        let geometryGroup, vectorGroup, symmetryGroup, fieldGroup, probeGroup, coordGroup;
+
+        // Objects
+        let loopMesh, pointP, I_arrows = [];
+        let el1 = {}, el2 = {}; // Element objects wrapper
+        let probeMesh, probeArrow, probeRing;
+
+        // Interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        // Intersection plane (XZ plane, but we might drag up/down later, stick to horizontal dragging for now)
+        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let isDragging = false;
+
+        window.onload = init;
+
+        function init() {
+            const container = document.getElementById('canvas-wrapper');
+
+            // Scene
+            scene = new THREE.Scene();
+            // Fog for depth
+            scene.fog = new THREE.FogExp2(0x0d1117, 0.015);
+
+            // Camera (Looking at origin)
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(20, 15, 20);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(container.clientWidth, container.clientHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            labelRenderer.domElement.style.pointerEvents = 'none';
+            container.appendChild(labelRenderer.domElement);
+
+            controls = new OrbitControls(camera, container);
+            controls.enableDamping = true;
+
+            // Lights
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Grid (XZ plane is the "floor" where the loop sits)
+            const grid = new THREE.GridHelper(40, 40, 0x30363d, 0x161b22);
+            scene.add(grid);
+
+            // --- Geometry Setup ---
+            geometryGroup = new THREE.Group();
+            scene.add(geometryGroup);
+
+            // 1. The Circular Loop
+            // TorusGeometry(radius, tube, radialSegments, tubularSegments)
+            const loopGeo = new THREE.TorusGeometry(1, 0.08, 16, 100);
+            // Torus is XY by default. We want it in XZ plane. Rotate X 90.
+            loopGeo.rotateX(Math.PI / 2);
+            const loopMat = new THREE.MeshPhongMaterial({ color: 0x8b949e, transparent: true, opacity: 0.6 });
+            loopMesh = new THREE.Mesh(loopGeo, loopMat);
+            geometryGroup.add(loopMesh);
+
+            // Current Arrows (Chevrons)
+            for (let i = 0; i < 8; i++) {
+                const arr = createChevron();
+                geometryGroup.add(arr);
+                I_arrows.push(arr);
+            }
+            labels['I'] = createMathLabel("I", new THREE.Vector3(0, 0, 0));
+
+            // 2. Point P
+            pointP = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            geometryGroup.add(pointP);
+            labels['P'] = createMathLabel("P(0,0,z)", new THREE.Vector3(0, 0, 0));
+
+            // --- Vector Visualization (Element 1) ---
+            vectorGroup = new THREE.Group();
+            scene.add(vectorGroup);
+            initElementObjects(el1, vectorGroup, false); // false = not faded
+
+            // --- Symmetry Visualization (Element 2) ---
+            symmetryGroup = new THREE.Group();
+            scene.add(symmetryGroup);
+            initElementObjects(el2, symmetryGroup, true); // true = faded
+
+            // --- Global Field ---
+            fieldGroup = new THREE.Group();
+            scene.add(fieldGroup);
+            generateFieldLines();
+
+            // --- Probe ---
+            probeGroup = new THREE.Group();
+            scene.add(probeGroup);
+
+            probeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshStandardMaterial({ color: 0xd2a8ff, emissive: 0x5500aa }));
+            probeMesh.position.set(4, 0, 4);
+            probeGroup.add(probeMesh);
+
+            probeArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xd2a8ff, 0.6, 0.3);
+            probeGroup.add(probeArrow);
+
+            labels['probe'] = createMathLabel("\\vec{B}", new THREE.Vector3());
+
+            // --- Coordinate Vectors ---
+            coordGroup = new THREE.Group();
+            scene.add(coordGroup);
+            coordGroup.visible = false;
+
+            const originSphere = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            coordGroup.add(originSphere);
+            labels['origin'] = createMathLabel("Origin", new THREE.Vector3(0, -0.4, 0));
+
+            labels['r_abs'] = createMathLabel("\\vec{r}", new THREE.Vector3());
+            labels['r_prime_abs'] = createMathLabel("\\vec{r}'", new THREE.Vector3());
+
+            el1.rAbsArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xff0000, 0.4, 0.2);
+            el1.rPrimeAbsArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0x58a6ff, 0.4, 0.2);
+            coordGroup.add(el1.rAbsArrow, el1.rPrimeAbsArrow);
+
+            // Events
+            window.addEventListener('resize', onResize);
+            setupUI();
+
+            // Loop
+            animate();
+            updateSim();
+        }
+
+        function initElementObjects(obj, group, isFaded) {
+            // Source Element dl (Red/Orange)
+            const dlColor = isFaded ? 0xff8888 : 0xff3333;
+            obj.dlArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, dlColor, 0.5, 0.3);
+            group.add(obj.dlArrow);
+            obj.lblDl = createMathLabel(isFaded ? "" : "d\\vec{l}'", new THREE.Vector3());
+
+            // r Vector (Green) - Now unit vector r-hat
+            const rColor = isFaded ? 0x88ff88 : 0x00ff00;
+            obj.rArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, rColor, 0.5, 0.3);
+            group.add(obj.rArrow);
+            obj.lblR = createMathLabel(isFaded ? "" : "\\hatrsep", new THREE.Vector3());
+
+            // dB Vector (Cyan)
+            const dbColor = isFaded ? 0x88ffff : 0x00ffff;
+            obj.dbArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, dbColor, 0.5, 0.3);
+            group.add(obj.dbArrow);
+            obj.lblDB = createMathLabel(isFaded ? "d\\vec{B}_2" : "d\\vec{B}_1", new THREE.Vector3());
+
+            // Components (Yellow)
+            obj.compZ = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xffff00, 0.3, 0.2);
+            obj.compPerp = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0xffff00, 0.3, 0.2);
+            obj.dashedLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.2, gapSize: 0.1 }));
+
+            group.add(obj.compZ);
+            group.add(obj.compPerp);
+            group.add(obj.dashedLines);
+
+            if (!isFaded) {
+                obj.lblCompZ = createMathLabel("dB_z", new THREE.Vector3());
+                obj.lblCompPerp = createMathLabel("dB_\\perp", new THREE.Vector3());
+            }
+        }
+
+        function createChevron() {
+            const shape = new THREE.Shape();
+            shape.moveTo(-0.2, -0.2);
+            shape.lineTo(0, 0);
+            shape.lineTo(0.2, -0.2);
+            const geo = new THREE.BufferGeometry().setFromPoints(shape.getPoints());
+            // Rotate flat
+            geo.rotateX(-Math.PI / 2);
+            const mat = new THREE.LineBasicMaterial({ color: 0xffffff });
+            return new THREE.Line(geo, mat);
+        }
+
+        function createMathLabel(str, pos) {
+            const div = document.createElement('div');
+            div.className = 'math-label';
+            div.textContent = str;
+            if (window.katex && str !== "") {
+                try {
+                    div.innerHTML = katex.renderToString(str, {
+                        macros: {
+                            '\\rsep': '{\\text{𝓇}}',
+                            '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                            '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                        }
+                    });
+                } catch (e) { div.textContent = str; }
+            }
+            const obj = new CSS2DObject(div);
+            obj.position.copy(pos);
+            scene.add(obj);
+            return obj;
+        }
+
+        // --- Physics Calculation ---
+
+        // Calculates B vector at a specific point (px, py, pz) for a loop of radius R
+        // Using discrete integration because elliptic integrals are messy
+        function calculateB(px, py, pz, R) {
+            const segments = 100;
+            const dB_total = new THREE.Vector3(0, 0, 0);
+
+            for (let i = 0; i < segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const nextTheta = ((i + 1) / segments) * Math.PI * 2;
+
+                // Segment start/mid
+                const sx = R * Math.cos(theta);
+                const sz = R * Math.sin(theta);
+                const sy = 0; // Loop in XZ plane
+
+                // dl vector (tangent)
+                // dl direction is (-sin, 0, cos)
+                const dLx = -Math.sin(theta);
+                const dLz = Math.cos(theta);
+
+                // r vector (Source -> Point)
+                const rx = px - sx;
+                const ry = py - sy;
+                const rz = pz - sz;
+                const rSq = rx * rx + ry * ry + rz * rz;
+                const rMag = Math.sqrt(rSq);
+
+                // dB = dl x r / r^3
+                // Cross product:
+                // x: dLy*rz - dLz*ry = 0 - cos*ry
+                // y: dLz*rx - dLx*rz = cos*rx - (-sin)*rz
+                // z: dLx*ry - dLy*rx = -sin*ry - 0
+
+                const crossX = -dLz * ry;
+                const crossY = dLz * rx - dLx * rz;
+                const crossZ = dLx * ry;
+
+                dB_total.x += crossX / (rMag * rSq);
+                dB_total.y += crossY / (rMag * rSq);
+                dB_total.z += crossZ / (rMag * rSq);
+            }
+            return dB_total; // This is unscaled, relative magnitude
+        }
+
+        function updateSim() {
+            document.getElementById('disp-z').textContent = ui.z.toFixed(1);
+            document.getElementById('disp-r').textContent = ui.R.toFixed(1);
+            document.getElementById('disp-phi').textContent = ui.phi + "°";
+
+            // 1. Geometry Update
+            // Scale Loop
+            loopMesh.scale.set(ui.R, ui.R, ui.R); // Scale geometry
+
+            // Position P
+            const P = new THREE.Vector3(0, ui.z, 0);
+            pointP.position.copy(P);
+            labels['P'].position.copy(P).add(new THREE.Vector3(0.5, 0.5, 0));
+
+            // Update Current Arrows
+            I_arrows.forEach((arr, i) => {
+                const ang = (i / 8) * Math.PI * 2;
+                arr.position.set(ui.R * Math.cos(ang), 0, ui.R * Math.sin(ang));
+                arr.rotation.y = -ang; // Tangent
+            });
+            labels['I'].position.set(ui.R + 0.5, 0, 0);
+
+            // 2. Element 1 Update
+            const phiRad = (ui.phi * Math.PI) / 180;
+            updateElement(el1, phiRad, P, false);
+
+            // 3. Symmetry Element (Element 2)
+            const symmetryEnabled = document.getElementById('chk-symmetry').checked;
+            symmetryGroup.visible = symmetryEnabled;
+            if (symmetryEnabled) {
+                updateElement(el2, phiRad + Math.PI, P, true);
+            }
+
+            // 4. Probe Update
+            updateProbe();
+
+            // 5. Visibility
+            const vectorsVisible = document.getElementById('chk-vectors').checked;
+            const compsVisible = document.getElementById('chk-components').checked;
+
+            vectorGroup.visible = vectorsVisible;
+
+            // Explicit Label Visibility
+            labels['P'].element.style.visibility = (vectorsVisible || symmetryEnabled) ? 'visible' : 'hidden';
+            el1.lblDl.element.style.visibility = vectorsVisible ? 'visible' : 'hidden';
+            el1.lblR.element.style.visibility = vectorsVisible ? 'visible' : 'hidden';
+            el1.lblDB.element.style.visibility = vectorsVisible ? 'visible' : 'hidden';
+
+            if (vectorsVisible) {
+                el1.compZ.visible = compsVisible;
+                el1.compPerp.visible = compsVisible;
+                el1.dashedLines.visible = compsVisible;
+                el1.lblCompZ.element.style.visibility = compsVisible ? 'visible' : 'hidden';
+                el1.lblCompPerp.element.style.visibility = compsVisible ? 'visible' : 'hidden';
+            }
+
+            if (symmetryEnabled) {
+                el2.lblDB.element.style.visibility = 'visible';
+                el2.compZ.visible = compsVisible;
+                el2.compPerp.visible = compsVisible;
+                el2.dashedLines.visible = compsVisible;
+            } else {
+                el2.lblDB.element.style.visibility = 'hidden';
+            }
+
+            fieldGroup.visible = document.getElementById('chk-field').checked;
+
+            // Re-generate field lines if Radius changes (optimization: only on drag end would be better, but fast enough)
+            // Actually, scaling the group works better than recalculating if only R changes, but field shape depends on R vs Z.
+            // For simplicity, we won't regenerate lines every frame, just scaling the group roughly.
+            // Correct approach: Let's regenerate if R changed significantly? No, simpler to just keep lines static relative to R=5 
+            // and scale the visualization group. 
+            // Let's just scale the fieldGroup to match R/5 ratio.
+            fieldGroup.scale.set(ui.R / 5, ui.R / 5, ui.R / 5);
+
+            // 6. Coordinate Vectors
+            const coordsVisible = document.getElementById('chk-coords').checked;
+            coordGroup.visible = coordsVisible;
+            if (coordsVisible) {
+                const S = new THREE.Vector3(ui.R * Math.cos(phiRad), 0, ui.R * Math.sin(phiRad));
+                // r: Origin -> P
+                el1.rAbsArrow.setDirection(P.clone().normalize());
+                el1.rAbsArrow.setLength(P.length());
+                labels['r_abs'].position.copy(P.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0.3, 0, 0));
+                labels['r_abs'].element.style.visibility = 'visible';
+
+                // r': Origin -> S
+                el1.rPrimeAbsArrow.setDirection(S.clone().normalize());
+                el1.rPrimeAbsArrow.setLength(S.length());
+                labels['r_prime_abs'].position.copy(S.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.3, 0));
+                labels['r_prime_abs'].element.style.color = '#58a6ff'; // Blue for r'
+                labels['r_prime_abs'].element.style.visibility = 'visible';
+
+                // r: Origin -> P (keep red)
+                labels['r_abs'].element.style.color = '#ff0000';
+                labels['r_abs'].element.style.visibility = 'visible';
+
+                labels['origin'].element.style.visibility = 'visible';
+            } else {
+                labels['r_abs'].element.style.visibility = 'hidden';
+                labels['r_prime_abs'].element.style.visibility = 'hidden';
+                labels['origin'].element.style.visibility = 'hidden';
+            }
+        }
+
+        function updateElement(obj, angle, P, isSym) {
+            // Position S on ring
+            const S = new THREE.Vector3(ui.R * Math.cos(angle), 0, ui.R * Math.sin(angle));
+
+            // dl vector: Tangent (-sin, 0, cos)
+            const dlDir = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+
+            obj.dlArrow.position.copy(S);
+            obj.dlArrow.setDirection(dlDir);
+            if (obj.lblDl) obj.lblDl.position.copy(S).add(dlDir).add(new THREE.Vector3(0, 0.5, 0));
+
+            // r Vector: P - S (Unit Vector)
+            const vecR = new THREE.Vector3().subVectors(P, S);
+            const distR = vecR.length();
+            obj.rArrow.position.copy(S);
+            obj.rArrow.setDirection(vecR.clone().normalize());
+            obj.rArrow.setLength(2.5, 0.4, 0.3); // Fixed length for unit vector
+            if (obj.lblR) obj.lblR.position.copy(S).add(vecR.clone().normalize().multiplyScalar(2.7)).add(new THREE.Vector3(0, 0.5, 0));
+
+            // dB Vector
+            // Cross product dl x r
+            const dB = new THREE.Vector3().crossVectors(dlDir, vecR).normalize();
+
+            // Scale dB visually based on distance (physics: 1/r^2)
+            // Base scale factor
+            const scale = (25 / (distR * distR)) * 4;
+            const visLen = Math.min(Math.max(scale, 0.5), 5);
+
+            obj.dbArrow.position.copy(P);
+            obj.dbArrow.setDirection(dB);
+            obj.dbArrow.setLength(visLen, 0.2 * visLen, 0.1 * visLen);
+            if (obj.lblDB) obj.lblDB.position.copy(P).add(dB.clone().multiplyScalar(visLen)).add(new THREE.Vector3(0, 0.2, 0));
+
+            // Components
+            // Vertical component (Project onto Y axis)
+            const compZ = new THREE.Vector3(0, dB.y, 0);
+            // Horizontal component (dB - compZ)
+            const compPerp = new THREE.Vector3(dB.x, 0, dB.z);
+
+            obj.compZ.position.copy(P);
+            obj.compZ.setDirection(new THREE.Vector3(0, Math.sign(dB.y), 0));
+            obj.compZ.setLength(Math.abs(dB.y) * visLen, 0.2, 0.1);
+
+            obj.compPerp.position.copy(P);
+            obj.compPerp.setDirection(compPerp.clone().normalize());
+            obj.compPerp.setLength(compPerp.length() * visLen, 0.2, 0.1);
+
+            // Dashed construction lines
+            // Box from tip of dB to components
+            const tip = dB.clone().multiplyScalar(visLen);
+            const perpTip = compPerp.clone().multiplyScalar(visLen);
+            const zTip = compZ.clone().multiplyScalar(visLen);
+
+            const pts = [
+                tip, perpTip, // Line down to horiz
+                tip, zTip     // Line over to vert
+            ];
+            obj.dashedLines.position.copy(P);
+            obj.dashedLines.geometry.setFromPoints(pts);
+            obj.dashedLines.computeLineDistances();
+
+            if (obj.lblCompZ) obj.lblCompZ.position.copy(P).add(zTip).add(new THREE.Vector3(0.3, 0, 0));
+            if (obj.lblCompPerp) obj.lblCompPerp.position.copy(P).add(perpTip).add(new THREE.Vector3(0, -0.3, 0));
+        }
+
+        function updateProbe() {
+            const enabled = document.getElementById('chk-probe').checked;
+            probeGroup.visible = enabled;
+            labels['probe'].element.style.visibility = enabled ? 'visible' : 'hidden';
+
+            if (!enabled) return;
+
+            const pos = probeMesh.position;
+            // Physics Calculation at Probe Position
+            // Note: Using R=5 as reference, scaling by ui.R
+            // Actually, calculateB takes absolute coords.
+            const B = calculateB(pos.x, pos.y, pos.z, ui.R);
+            const mag = B.length();
+            const visLen = Math.min(mag * 200, 5); // Arbitrary visual scaling
+
+            probeArrow.position.copy(pos);
+            probeArrow.setDirection(B.normalize());
+            probeArrow.setLength(visLen, 0.2 * visLen, 0.1 * visLen);
+            labels['probe'].position.copy(pos).add(B.multiplyScalar(visLen + 0.5));
+        }
+
+        function generateFieldLines() {
+            // Pre-calculate lines for a generic Radius=5 loop
+            const R_ref = 5;
+            const mat = new THREE.LineBasicMaterial({ color: 0xd2a8ff, transparent: true, opacity: 0.2 });
+
+            // Start points inside the loop
+            const startRadii = [1, 2, 3, 4];
+
+            startRadii.forEach(r0 => {
+                // Trace line
+                const pts = [];
+                // Start at z=0, x=r0
+                let curr = new THREE.Vector3(r0, 0, 0);
+
+                // Forward trace (up)
+                for (let i = 0; i < 100; i++) {
+                    pts.push(curr.clone());
+                    const B = calculateB(curr.x, curr.y, curr.z, R_ref);
+                    B.normalize().multiplyScalar(0.5); // Step size
+                    curr.add(B);
+                    if (curr.length() > 20) break; // Bounds
+                }
+
+                // Backward trace (down) - mirror geometry implies symmetry, but let's calc
+                curr = new THREE.Vector3(r0, 0, 0);
+                const ptsDown = [];
+                for (let i = 0; i < 100; i++) {
+                    const B = calculateB(curr.x, curr.y, curr.z, R_ref);
+                    B.normalize().multiplyScalar(0.5).negate(); // Step back
+                    curr.add(B);
+                    if (curr.length() > 20) break;
+                    ptsDown.push(curr.clone());
+                }
+
+                // Combine: Reverse down, add start, add up
+                const totalPts = [...ptsDown.reverse(), ...pts];
+                const geo = new THREE.BufferGeometry().setFromPoints(totalPts);
+                const line = new THREE.Line(geo, mat);
+                fieldGroup.add(line);
+
+                // Add arrow
+                const arrow = new THREE.ArrowHelper(
+                    new THREE.Vector3(0, 1, 0),
+                    new THREE.Vector3(r0, 0, 0),
+                    0.5, 0xd2a8ff, 0.3, 0.2
+                );
+                fieldGroup.add(arrow);
+            });
+
+            // Add Center Line
+            const centerLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -20, 0), new THREE.Vector3(0, 20, 0)]);
+            const centerLine = new THREE.Line(centerLineGeo, new THREE.LineDashedMaterial({ color: 0xd2a8ff, opacity: 0.4, transparent: true, dashSize: 1, gapSize: 1 }));
+            centerLine.computeLineDistances();
+            fieldGroup.add(centerLine);
+        }
+
+        function setupUI() {
+            document.getElementById('slider-z').addEventListener('input', (e) => { ui.z = parseFloat(e.target.value); updateSim(); });
+            document.getElementById('slider-r').addEventListener('input', (e) => { ui.R = parseFloat(e.target.value); updateSim(); });
+            document.getElementById('slider-phi').addEventListener('input', (e) => { ui.phi = parseFloat(e.target.value); updateSim(); });
+
+            ['chk-vectors', 'chk-symmetry', 'chk-components', 'chk-field', 'chk-probe', 'chk-coords'].forEach(id => {
+                document.getElementById(id).addEventListener('change', updateSim);
+            });
+
+            // Draggable Probe
+            const c = document.getElementById('canvas-wrapper');
+            c.addEventListener('mousedown', (e) => {
+                const rect = c.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                if (raycaster.intersectObject(probeMesh).length > 0) {
+                    isDragging = true;
+                    controls.enabled = false;
+                    c.style.cursor = 'grabbing';
+                }
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const rect = c.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                // Drag on a plane facing camera? Or just XZ/XY?
+                // Let's create a plane perpendicular to camera for intuitive drag, or just stick to XZ for clarity.
+                // Let's stick to XZ plane (y=0) for movement, but allow Y movement with shift?
+                // Simplest for now: Drag on XZ plane at current Probe Height? 
+                // Better: Drag parallel to camera view plane.
+
+                raycaster.setFromCamera(mouse, camera);
+
+                // Create a drag plane at the probe's current depth? 
+                // Simple approach: Allow moving in XZ plane (horizontal) directly.
+                // If user wants Z change, they use the Z slider for the point P calculation, 
+                // but the probe is free 3D.
+                // Let's define dragPlane based on camera look direction to move in 3D "screen space"
+                const normal = new THREE.Vector3();
+                camera.getWorldDirection(normal);
+                dragPlane.normal.copy(normal).negate();
+                dragPlane.constant = -probeMesh.position.dot(dragPlane.normal);
+
+                const target = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, target);
+                if (target) {
+                    probeMesh.position.copy(target);
+                    updateSim();
+                }
+            });
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                controls.enabled = true;
+                c.style.cursor = 'auto';
+            });
+        }
+
+        function onResize() {
+            const c = document.getElementById('canvas-wrapper');
+            camera.aspect = c.clientWidth / c.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(c.clientWidth, c.clientHeight);
+            labelRenderer.setSize(c.clientWidth, c.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        // --- MATH RENDER FOR UI ---
+        function renderUI() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.getElementById('ui'), {
+                    delimiters: [{ left: '$', right: '$', display: false }],
+                    macros: {
+                        '\\rsep': '{\\text{𝓇}}',
+                        '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                        '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                    }
+                });
+            }
+        }
+
+        // Init
+        setTimeout(renderUI, 500); // Small delay to ensure KaTeX is loaded
+    </script>
+<script defer data-offline-bundle src="ch3_2_biot_savart_c2.0.offline.js"></script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Dielectric Shielding Examples</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dtau: "d\\tau",
+              er: "\\epsilon_r",
+              e0: "\\epsilon_0"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header & Nav */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Content Layout */
+        .container {
+            max-width: 800px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.2rem; margin-top: 0.5rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        h3 { color: var(--text-primary); margin-top: 2rem; font-size: 1.3rem; }
+        p { color: var(--text-secondary); margin-bottom: 1.5rem; }
+
+        /* Math Styling */
+        .math-step {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid var(--border-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .math-result {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--success-color);
+            border-left: 6px solid var(--success-color);
+            overflow-x: auto;
+        }
+
+        /* Iframe Container */
+        .iframe-container {
+            width: 100%;
+            height: 450px;
+            background-color: #000;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin: 2rem 0;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+        }
+        .comparison-table th { background: rgba(0,0,0,0.2); color: var(--accent-color); }
+        .comparison-table tr:last-child td { border-bottom: none; }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 4rem;}
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> > 
+                <a href="ch2_5_linear_dielectrics.html">Linear Dielectrics</a> >
+                Shielding Examples
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Dielectric Shielding Examples</h1>
+        
+        <p>
+            Here we explore two classic boundary value problems that demonstrate how dielectrics modify electric fields. In both cases, the dielectric material reduces ("shields") the electric field, but the geometry dictates exactly how.
+        </p>
+
+        <!-- EXAMPLE 1: DIELECTRIC SPHERE -->
+        <section id="dielectric-sphere">
+            <h2>1. Dielectric Sphere in a Uniform Field</h2>
+            <p>
+                <strong>Problem:</strong> A sphere of radius \(R\) made of linear dielectric material (\(\epsilon\)) is placed in an otherwise uniform electric field \(\vec{E}_0\). Find the field inside the sphere.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/dielectric_shielding.html" title="Dielectric Sphere Visualizer"></iframe>
+            </div>
+
+            <h3>The Solution Strategy</h3>
+            <p>
+                Since there is no free charge (\(\rho_f = 0\)), the potential satisfies Laplace's Equation \(\nabla^2 V = 0\). We solve this using separation of variables in spherical coordinates, applying boundary conditions at \(r=R\).
+            </p>
+            
+            <div class="math-step">
+                <strong>Boundary Condition 1 (Potential):</strong> \( V_{in} = V_{out} \)
+                <br>
+                <span style="font-size: 0.9rem; opacity: 0.7;">(Potential is continuous)</span>
+            </div>
+            
+            <div class="math-step">
+                <strong>Boundary Condition 2 (Displacement):</strong> \( \epsilon \frac{\partial V_{in}}{\partial r} = \epsilon_0 \frac{\partial V_{out}}{\partial r} \)
+                <br>
+                <span style="font-size: 0.9rem; opacity: 0.7;">(Normal component of D is continuous because \(\sigma_f = 0\))</span>
+            </div>
+
+            <h3>The Result</h3>
+            <p>
+                After solving for the coefficients (Legendre polynomials), we find a remarkable result: the field inside the sphere is <strong>uniform</strong>.
+            </p>
+
+            <div class="math-result">
+                $$ \vec{E}_{in} = \frac{3}{\epsilon_r + 2} \vec{E}_0 $$
+            </div>
+
+            <p>
+                Since \(\epsilon_r > 1\), the field inside is always <strong>weaker</strong> than the external field. The induced bound charges on the surface create an internal field that opposes \(\vec{E}_0\).
+            </p>
+        </section>
+
+        <!-- EXAMPLE 2: METAL SPHERE WITH SHELL -->
+        <section id="metal-sphere">
+            <h2>2. Metal Sphere with Dielectric Shell</h2>
+            <p>
+                <strong>Problem:</strong> A metal sphere of radius \(a\) carries a charge \(Q\). It is surrounded by a linear dielectric shell of permittivity \(\epsilon\) out to radius \(b\). Find the potential at the center relative to infinity.
+            </p>
+
+            <h3>Step 1: Find Displacement (D)</h3>
+            <p>
+                This problem has spherical symmetry and free charge \(Q\) at the center. Gauss's Law for \(\vec{D}\) is the fastest tool:
+            </p>
+            <div class="math-step">
+                $$ \vec{D} = \frac{Q}{4\pi r^2} \hat{r} \quad \text{(everywhere outside metal)} $$
+            </div>
+
+            <h3>Step 2: Find Electric Field (E)</h3>
+            <p>
+                We convert \(\vec{D}\) to \(\vec{E}\) using the local permittivity:
+            </p>
+            <table class="comparison-table">
+                <tr>
+                    <th>Region</th>
+                    <th>Permittivity</th>
+                    <th>Electric Field (\(\vec{E}\))</th>
+                </tr>
+                <tr>
+                    <td>Inside Shell (\(a < r < b\))</td>
+                    <td>\(\epsilon\)</td>
+                    <td>\( \frac{Q}{4\pi \epsilon r^2} \hat{r} \)</td>
+                </tr>
+                <tr>
+                    <td>Outside Shell (\(r > b\))</td>
+                    <td>\(\epsilon_0\)</td>
+                    <td>\( \frac{Q}{4\pi \epsilon_0 r^2} \hat{r} \)</td>
+                </tr>
+            </table>
+
+            <h3>Step 3: Calculate Potential (V)</h3>
+            <p>
+                We integrate from infinity to the surface of the metal (\(r=a\)):
+                $$ V = - \int_{\infty}^{b} \vec{E}_{out} \cdot d\vec{l} - \int_{b}^{a} \vec{E}_{in} \cdot d\vec{l} $$
+            </p>
+
+            <div class="math-result">
+                $$ V(a) = \frac{Q}{4\pi\epsilon_0} \left( \frac{1}{b} + \frac{1}{\epsilon_r} \left( \frac{1}{a} - \frac{1}{b} \right) \right) $$
+            </div>
+
+            <p>
+                Notice that if \(\epsilon_r = 1\) (vacuum), this reduces to the standard Coulomb potential \(Q/4\pi\epsilon_0 a\). With the dielectric, the potential is reduced because the dielectric "shields" the charge.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

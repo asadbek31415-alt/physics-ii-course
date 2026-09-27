@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Field Simulator</title>
+    <style>
+        :root {
+            --panel: rgba(30, 30, 30, 0.88);
+            --line: #444;
+            --text: #eee;
+            --muted: #cbd5e1;
+            --positive: #ff4b55;
+            --negative: #3b82f6;
+            --field-line: #ffd700;
+            --vector: #00c8ff;
+            --probe: #d946ef;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: var(--text);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #scene-container {
+            position: fixed;
+            inset: 0;
+            background: #000;
+        }
+
+        .controls-panel {
+            position: absolute;
+            inset: 0 auto 0 0;
+            z-index: 10;
+            width: 260px;
+            padding: 9px 10px;
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+            border-radius: 0;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease-in-out;
+            user-select: none;
+            overflow: visible;
+        }
+
+        #controls.collapsed { transform: translateX(calc(-100% + 2px)); }
+
+        .panel-toggle {
+            position: absolute;
+            top: 0;
+            right: -30px;
+            width: 30px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        #controls-toggle {
+            border-left: none;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        h2 {
+            margin: 0 0 7px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #555;
+            font-size: 0.96rem;
+            line-height: 1.15;
+        }
+
+        .control-group { margin-bottom: 5px; }
+
+        label {
+            display: block;
+            margin-bottom: 3px;
+            color: var(--text);
+            font-size: 0.76rem;
+        }
+
+        input[type="number"],
+        input[type="range"] {
+            width: 100%;
+            color: var(--text);
+        }
+
+        input[type="number"] {
+            padding: 5px 5px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 5px 5px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: var(--text);
+        }
+
+        select {
+            width: 100%;
+            min-height: 26px;
+            padding: 4px 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: var(--text);
+            background: #333;
+            font: inherit;
+        }
+
+        input[type="range"] {
+            accent-color: #1f7aff;
+        }
+
+        .pos-inputs {
+            display: flex;
+            gap: 5px;
+        }
+
+        .position-control {
+            position: relative;
+        }
+
+        .axis-field {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+        }
+
+        .axis-field span {
+            display: block;
+            margin-bottom: 2px;
+            color: var(--muted);
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .coord-popover {
+            position: absolute;
+            left: 0;
+            top: calc(100% + 8px);
+            z-index: 20;
+            width: 176px;
+            padding: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.46);
+            border-radius: 6px;
+            background: rgba(12, 18, 27, 0.96);
+            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
+            opacity: 0;
+            transform: translateY(-3px);
+            pointer-events: none;
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+
+        .position-control:hover .coord-popover,
+        .position-control:focus-within .coord-popover {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .coord-popover svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 7px;
+            padding: 7px 6px;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font: inherit;
+            font-size: 0.76rem;
+            cursor: pointer;
+            transition: filter 0.2s, background-color 0.2s;
+        }
+
+        button:hover { filter: brightness(1.08); }
+
+        #add-charge-btn { background: #198754; }
+        #remove-charge-btn { background: #6c757d; }
+        #view-2d-btn { background: #6f42c1; }
+        #view-2d-btn.active { background: #0dcaf0; color: #061018; }
+
+        .view-switcher {
+            display: flex;
+            gap: 5px;
+        }
+
+        .view-switcher button {
+            margin-top: 0;
+            background: #6c757d;
+        }
+
+        .view-switcher button.active {
+            background: #0dcaf0;
+            color: #061018;
+        }
+
+        #charge-value-display,
+        #density-value-display,
+        #size-value-display {
+            margin: 3px 0;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr auto 1fr;
+            gap: 7px;
+            align-items: center;
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .button-grid button {
+            margin-top: 0;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .scenario-grid button {
+            min-height: 48px;
+            margin: 0;
+            padding: 7px 5px;
+            text-align: center;
+            background: #18181b;
+            border: 1px solid #374151;
+        }
+
+        .scenario-grid button.active {
+            border-color: #0dcaf0;
+            background: rgba(13, 202, 240, 0.18);
+            color: #fff;
+        }
+
+        .scenario-grid strong,
+        .scenario-grid span {
+            display: block;
+        }
+
+        .scenario-grid span {
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 0.64rem;
+            font-weight: 500;
+            line-height: 1.18;
+        }
+
+        .legacy-editor {
+            display: none;
+        }
+
+        .section-title {
+            margin: 6px 0 4px;
+            padding-top: 6px;
+            border-top: 1px solid #555;
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .coord-z.hidden-2d {
+            display: none;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 700px) {
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+            }
+
+            body {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #scene-container {
+                position: relative;
+                inset: auto;
+                grid-column: 1;
+                grid-row: 1;
+                width: 100%;
+                min-height: 0;
+                align-self: stretch;
+            }
+
+            .controls-panel {
+                position: relative;
+                inset: auto;
+                grid-column: 1;
+                grid-row: 2;
+                width: 100%;
+                max-height: none;
+                padding: 7px 9px 8px;
+                border-right: 0;
+                border-top: 1px solid var(--line);
+                overflow: hidden;
+                transform: none;
+            }
+
+            #controls.collapsed {
+                transform: translateY(calc(100% - 40px));
+            }
+
+            .panel-toggle {
+                top: -40px;
+                right: 8px;
+                border-radius: 8px 8px 0 0;
+                border-bottom: none;
+            }
+
+            .scenario-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 4px;
+            }
+
+            .scenario-grid button {
+                min-height: 38px;
+                padding: 5px 3px;
+            }
+
+            .view-switcher,
+            .button-grid {
+                gap: 5px;
+            }
+
+            .legacy-editor {
+                display: none;
+            }
+
+            .section-title,
+            .control-group {
+                margin-bottom: 3px;
+            }
+
+            h2 { font-size: 0.9rem; }
+            button { padding: 6px 5px; font-size: 0.72rem; }
+            label { font-size: 0.7rem; }
+            #density-value-display,
+            #size-value-display { font-size: 0.8rem; }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div id="scene-container"></div>
+
+    <div id="controls" class="controls-panel">
+        <div id="controls-toggle" class="panel-toggle">&larr;</div>
+        <h2>Electric Field</h2>
+        <div class="scenario-grid" aria-label="Field configurations">
+            <button id="scenario-single" class="active" type="button">
+                <strong>Single charge</strong>
+                <span>A positive source sends field outward.</span>
+            </button>
+            <button id="scenario-random" type="button">
+                <strong>Random cluster</strong>
+                <span>Several charges add to one net effect far away.</span>
+            </button>
+            <button id="scenario-net-same" type="button">
+                <strong>Net +3</strong>
+                <span>Same position: +5 and -2 combine to +3.</span>
+            </button>
+            <button id="scenario-dipole" type="button">
+                <strong>Dipole</strong>
+                <span>Zero net charge, but separated signs still matter.</span>
+            </button>
+        </div>
+
+        <div class="section-title">Visualization</div>
+        <div class="control-group">
+            <label>Display Mode:</label>
+            <div class="view-switcher">
+                <button id="view-lines-btn" type="button">Lines</button>
+                <button id="view-vectors-btn" class="active" type="button">Vectors</button>
+                <button id="view-off-btn" type="button">Off</button>
+            </div>
+        </div>
+        <div class="control-group">
+            <label for="density-slider">Field Density:</label>
+            <input type="range" id="density-slider" min="0" max="100" value="50">
+            <div id="density-value-display">Medium</div>
+        </div>
+        <div class="control-group">
+            <label for="size-slider">Field Range (m):</label>
+            <input type="range" id="size-slider" min="5" max="40" value="20">
+            <div id="size-value-display">20 m</div>
+        </div>
+        <button id="view-2d-btn" type="button">Toggle 2D Top View</button>
+
+        <div class="legacy-editor">
+            <select id="charge-select"></select>
+            <input type="range" id="charge-q" min="-10" max="10" value="5" step="1">
+            <div id="charge-value-display">5.0 nC</div>
+            <input type="text" id="pos-x" value="-5">
+            <input type="text" id="pos-y" value="0">
+            <input type="text" id="pos-z" class="coord-z" value="0">
+            <button id="add-charge-btn" type="button">Add</button>
+            <button id="remove-charge-btn" type="button">Remove</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const stage = document.getElementById('scene-container');
+        const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+        camera.position.set(0, 8, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        stage.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = true;
+        controls.enableZoom = true;
+        controls.screenSpacePanning = true;
+        controls.zoomSpeed = 0.35;
+        controls.minDistance = 8;
+        controls.maxDistance = 110;
+        controls.target.set(0, 0, 0);
+        controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+        controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+        controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+        controls.touches.ONE = THREE.TOUCH.PAN;
+        controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.68));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        const gridHelper = new THREE.GridHelper(50, 50, 0x444444, 0x333333);
+        scene.add(gridHelper);
+
+        const groups = {
+            charges: new THREE.Group(),
+            lines: new THREE.Group(),
+            vectors: new THREE.Group(),
+            probe: new THREE.Group(),
+            center: new THREE.Group()
+        };
+        scene.add(groups.charges, groups.lines, groups.vectors, groups.probe, groups.center);
+
+        const colors = {
+            positive: 0xff4b55,
+            negative: 0x3b82f6,
+            line: 0xffd700,
+            vector: 0x00c8ff,
+            probe: 0xd946ef
+        };
+
+        const CHARGE_RADIUS = 0.34;
+        const k = 8.99;
+        let currentMode = 'vectors';
+        let is2DMode = false;
+        let fieldSize = 20;
+        let lineBudget = 36;
+        let vectorBudget = 160;
+        let charges = [];
+        let testCharge = null;
+        let selectedChargeId = null;
+        let draggingCharge = null;
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const dragPoint = new THREE.Vector3();
+
+        const chargeSelect = document.getElementById('charge-select');
+        const densitySlider = document.getElementById('density-slider');
+        const densityDisplay = document.getElementById('density-value-display');
+        const sizeSlider = document.getElementById('size-slider');
+        const sizeDisplay = document.getElementById('size-value-display');
+        const fieldProbeStatus = document.getElementById('field-probe-status');
+        const chargeSlider = document.getElementById('charge-q');
+        const chargeValueDisplay = document.getElementById('charge-value-display');
+        const MAX_FIELD_RANGE = Number(sizeSlider.max) || 40;
+        const SAMPLE_RADIUS = MAX_FIELD_RANGE * 0.95;
+        const MAX_VECTOR_SAMPLES = 2600;
+        const MAX_VECTOR_NEAR_SAMPLES = 420;
+
+        function clearGroup(group) {
+            while (group.children.length) {
+                const child = group.children[0];
+                group.remove(child);
+                child.traverse?.(object => {
+                    object.geometry?.dispose?.();
+                    if (Array.isArray(object.material)) object.material.forEach(mat => mat.dispose?.());
+                    else object.material?.dispose?.();
+                });
+            }
+        }
+
+        function densityText(alpha) {
+            if (alpha < 0.2) return 'Very Low';
+            if (alpha < 0.4) return 'Low';
+            if (alpha < 0.6) return 'Medium';
+            if (alpha < 0.8) return 'High';
+            return 'Very High';
+        }
+
+        function updateDynamicParameters() {
+            const alpha = Number(densitySlider.value) / 100;
+            fieldSize = Number(sizeSlider.value);
+            lineBudget = Math.max(8, Math.round(12 + alpha * 52));
+            vectorBudget = Math.max(70, Math.round(90 + alpha * 880));
+            densityDisplay.textContent = densityText(alpha);
+            sizeDisplay.textContent = `${fieldSize} m`;
+        }
+
+        function projectedPosition(position) {
+            return is2DMode ? new THREE.Vector3(position.x, 0, position.z) : position.clone();
+        }
+
+        function fieldCenter() {
+            if (charges.length === 0) return new THREE.Vector3();
+            const center = new THREE.Vector3();
+            for (const charge of charges) center.add(projectedPosition(charge.position));
+            return center.multiplyScalar(1 / charges.length);
+        }
+
+        function syncCameraToCenter(resetDistance = false) {
+            const center = fieldCenter();
+            controls.target.copy(center);
+
+            if (is2DMode) {
+                camera.position.set(center.x, center.y + Math.max(18, fieldSize * 1.75), center.z + 0.01);
+                camera.up.set(0, 0, -1);
+            } else if (resetDistance) {
+                camera.position.set(center.x, center.y + 8, center.z + Math.max(18, fieldSize));
+                camera.up.set(0, 1, 0);
+            }
+            camera.lookAt(center);
+            controls.update();
+        }
+
+        function pivotCameraAroundCenter() {
+            if (charges.length === 0) return;
+            const center = fieldCenter();
+            controls.target.copy(center);
+            camera.lookAt(center);
+            controls.update();
+        }
+
+        function makeTextSprite(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+            ctx.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.font = '24px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+            const texture = new THREE.CanvasTexture(canvas);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+            sprite.scale.set(3.0, 0.75, 1);
+            return sprite;
+        }
+
+        function updateCenterMarker() {
+            clearGroup(groups.center);
+            const center = fieldCenter();
+            if (charges.length === 0) return;
+            const marker = new THREE.Group();
+            const material = new THREE.LineBasicMaterial({ color: 0xe5e7eb, transparent: true, opacity: 0.72 });
+            const size = 0.45;
+            const lineA = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-size, 0, 0),
+                    new THREE.Vector3(size, 0, 0)
+                ]),
+                material
+            );
+            const lineB = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0, -size),
+                    new THREE.Vector3(0, 0, size)
+                ]),
+                material.clone()
+            );
+            marker.add(lineA, lineB);
+            marker.position.copy(center);
+            groups.center.add(marker);
+        }
+
+        function calculateEFieldAt(point) {
+            const total = new THREE.Vector3();
+            const p = projectedPosition(point);
+            for (const charge of charges) {
+                const source = projectedPosition(charge.position);
+                const rVec = new THREE.Vector3().subVectors(p, source);
+                const rSq = rVec.lengthSq();
+                if (rSq < CHARGE_RADIUS * CHARGE_RADIUS) return null;
+                const magnitude = k * charge.q / rSq;
+                total.add(rVec.normalize().multiplyScalar(magnitude));
+            }
+            if (is2DMode) total.y = 0;
+            return total;
+        }
+
+        function fibonacciDirection(index, count) {
+            const golden = Math.PI * (3 - Math.sqrt(5));
+            const y = 1 - (index / Math.max(1, count - 1)) * 2;
+            const radius = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = golden * index;
+            return new THREE.Vector3(Math.cos(theta) * radius, y, Math.sin(theta) * radius).normalize();
+        }
+
+        function circleDirection(index, count) {
+            const theta = (Math.PI * 2 * index) / count;
+            return new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
+        }
+
+        function vectorSphereDirection(index, count) {
+            const y = hash01(index * 17.17 + count * 0.31) * 2 - 1;
+            const radius = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = Math.PI * 2 * hash01(index * 29.91 + count * 0.73);
+            return new THREE.Vector3(Math.cos(theta) * radius, y, Math.sin(theta) * radius).normalize();
+        }
+
+        function hash01(seed) {
+            const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453123;
+            return value - Math.floor(value);
+        }
+
+        function effectiveLineSources() {
+            const sources = [];
+            for (const charge of charges) {
+                const position = projectedPosition(charge.position);
+                const existing = sources.find(source => source.position.distanceToSquared(position) < 1e-10);
+                if (existing) existing.q += charge.q;
+                else sources.push({ q: charge.q, position });
+            }
+            return sources.filter(source => Math.abs(source.q) > 1e-10);
+        }
+
+        function nearestSink(point, directionSign, sources) {
+            return sources.find(charge => {
+                if (directionSign > 0 && charge.q >= 0) return false;
+                if (directionSign < 0 && charge.q <= 0) return false;
+                return point.distanceTo(charge.position) < CHARGE_RADIUS * 1.4;
+            });
+        }
+
+        function rk2Step(point, directionSign, step) {
+            const e1 = calculateEFieldAt(point);
+            if (!e1 || e1.lengthSq() < 1e-9) return null;
+            const d1 = e1.clone().normalize().multiplyScalar(directionSign);
+            const mid = point.clone().add(d1.multiplyScalar(step * 0.5));
+            const e2 = calculateEFieldAt(mid);
+            if (!e2 || e2.lengthSq() < 1e-9) return null;
+            return point.clone().add(e2.normalize().multiplyScalar(directionSign * step));
+        }
+
+        function traceFieldLine(startPoint, directionSign, sources) {
+            const step = MAX_FIELD_RANGE / 220;
+            const hasOppositeSink = sources.some(charge => directionSign > 0 ? charge.q < 0 : charge.q > 0);
+            const maxSteps = hasOppositeSink ? 4200 : 780;
+            const center = fieldCenter();
+            const bounds = hasOppositeSink ? MAX_FIELD_RANGE * 12.0 : MAX_FIELD_RANGE * 1.55;
+            const points = [startPoint.clone()];
+            let current = startPoint.clone();
+            let hitSink = false;
+
+            for (let i = 0; i < maxSteps; i++) {
+                const next = rk2Step(current, directionSign, step);
+                if (!next) break;
+                if (is2DMode) next.y = 0;
+                points.push(next.clone());
+                current = next;
+
+                const sink = nearestSink(current, directionSign, sources);
+                if (sink) {
+                    points.push(sink.position.clone());
+                    hitSink = true;
+                    break;
+                }
+
+                if (current.distanceTo(center) > bounds) break;
+            }
+            return { points, hitSink };
+        }
+
+        function pointInRange(point, radius = fieldSize) {
+            const center = fieldCenter();
+            return point.distanceTo(center) < radius * 0.985;
+        }
+
+        function lineFullyInRange(points) {
+            return points.every(point => pointInRange(point));
+        }
+
+        function openLineInteriorSegment(points) {
+            const center = fieldCenter();
+            const softLimit = fieldSize * 0.78;
+            const segment = [];
+            for (const point of points) {
+                if (point.distanceTo(center) > softLimit) break;
+                segment.push(point);
+            }
+            return segment.length > 5 ? segment : [];
+        }
+
+        function distanceToSegment(point, a, b) {
+            const segment = new THREE.Vector3().subVectors(b, a);
+            const lengthSq = segment.lengthSq();
+            if (lengthSq < 1e-8) return point.distanceTo(a);
+            const t = Math.max(0, Math.min(1, new THREE.Vector3().subVectors(point, a).dot(segment) / lengthSq));
+            return point.distanceTo(a.clone().add(segment.multiplyScalar(t)));
+        }
+
+        function makeArrow(direction, origin, length, color, headLength = 0.45, headWidth = 0.28) {
+            if (!direction || direction.lengthSq() < 1e-8 || length <= 0) return null;
+            return new THREE.ArrowHelper(direction.clone().normalize(), origin, length, color, headLength, headWidth);
+        }
+
+        function addFieldLine(points, arrowForward = true) {
+            if (points.length < 2) return;
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: colors.line, transparent: true, opacity: 0.86 });
+            groups.lines.add(new THREE.Line(geometry, material));
+
+            const idx = Math.max(1, Math.min(points.length - 2, Math.floor(points.length * 0.58)));
+            const from = arrowForward ? points[idx - 1] : points[idx + 1];
+            const to = points[idx];
+            const dir = new THREE.Vector3().subVectors(to, from);
+            const arrow = makeArrow(dir, from, Math.min(1.0, dir.length() + 0.7), colors.line, 0.28, 0.18);
+            if (arrow) groups.lines.add(arrow);
+        }
+
+        function drawRadialLines(source, count) {
+            const startRadius = CHARGE_RADIUS * 1.18;
+            const endRadius = fieldSize * 0.78;
+            for (let i = 0; i < count; i++) {
+                const direction = is2DMode
+                    ? circleDirection(i, count)
+                    : fibonacciDirection(i, count);
+                const points = [];
+                for (let j = 0; j <= 32; j++) {
+                    const radius = startRadius + (endRadius - startRadius) * j / 32;
+                    points.push(source.position.clone().addScaledVector(direction, radius));
+                }
+                addFieldLine(points, source.q > 0);
+            }
+        }
+
+        function updateFieldLines() {
+            clearGroup(groups.lines);
+            if (charges.length === 0 || currentMode !== 'lines') return;
+
+            const sources = effectiveLineSources();
+            if (sources.length === 1) {
+                drawRadialLines(sources[0], lineBudget);
+                return;
+            }
+            const positives = sources.filter(c => c.q > 0);
+            const negatives = sources.filter(c => c.q < 0);
+            const positiveStrength = positives.reduce((sum, charge) => sum + Math.abs(charge.q), 0);
+            const negativeStrength = negatives.reduce((sum, charge) => sum + Math.abs(charge.q), 0);
+
+            const drawLinesFromSource = (source, count, asNegativeOnly = false) => {
+                const directionSign = source.q > 0 ? 1 : -1;
+                for (let i = 0; i < count; i++) {
+                    const dir = is2DMode
+                        ? circleDirection(i, count)
+                        : fibonacciDirection(i, count);
+                    const start = projectedPosition(source.position).add(dir.multiplyScalar(CHARGE_RADIUS * 1.18));
+                    const result = traceFieldLine(start, directionSign, sources);
+                    if (asNegativeOnly && result.hitSink) continue;
+                    if (result.hitSink && lineFullyInRange(result.points)) {
+                        addFieldLine(result.points, source.q > 0);
+                    } else {
+                        const segment = openLineInteriorSegment(result.points);
+                        if (segment.length) addFieldLine(segment, source.q > 0);
+                    }
+                }
+            };
+
+            if (positives.length > 0) {
+                for (const source of positives) {
+                    const count = Math.max(4, Math.round(lineBudget * Math.abs(source.q) / positiveStrength));
+                    drawLinesFromSource(source, count);
+                }
+            }
+
+            if (positives.length === 0 && negatives.length > 0) {
+                for (const source of negatives) {
+                    const count = Math.max(4, Math.round(lineBudget * Math.abs(source.q) / negativeStrength));
+                    drawLinesFromSource(source, count);
+                }
+            } else if (negativeStrength > positiveStrength && negatives.length > 0) {
+                const surplusFraction = (negativeStrength - positiveStrength) / negativeStrength;
+                const surplusBudget = Math.max(4, Math.round(lineBudget * surplusFraction));
+                for (const source of negatives) {
+                    const count = Math.max(2, Math.round(surplusBudget * Math.abs(source.q) / negativeStrength));
+                    drawLinesFromSource(source, count, true);
+                }
+            }
+        }
+
+        function deterministicUnitPoint(index, count = MAX_VECTOR_SAMPLES) {
+            const dir = vectorSphereDirection(index, count);
+            const radius = Math.cbrt(hash01(index * 41.53 + count * 0.19));
+            return dir.multiplyScalar(radius);
+        }
+
+        function deterministicDiskPoint(index, count = MAX_VECTOR_SAMPLES, radiusScale = SAMPLE_RADIUS) {
+            const radius = Math.sqrt(hash01(index * 37.21 + count * 0.11)) * radiusScale;
+            const angle = Math.PI * 2 * hash01(index * 53.77 + count * 0.47);
+            return new THREE.Vector3(
+                Math.cos(angle) * radius,
+                0,
+                Math.sin(angle) * radius
+            );
+        }
+
+        function nearChargePoint(charge, index, count) {
+            const cloudRadius = Math.min(7.2, SAMPLE_RADIUS * 0.24);
+            const local = is2DMode
+                ? deterministicDiskPoint(index, count, cloudRadius)
+                : deterministicUnitPoint(index, count).multiplyScalar(cloudRadius);
+            const strengthBoost = 1 + Math.min(1.2, Math.abs(charge.q) / 10);
+            local.multiplyScalar(strengthBoost);
+            return projectedPosition(charge.position).add(local);
+        }
+
+        function updateFieldVectors() {
+            clearGroup(groups.vectors);
+            if (charges.length === 0 || currentMode !== 'vectors') return;
+            const center = fieldCenter();
+            const globalBudget = Math.max(24, Math.round(vectorBudget * 0.42));
+            const nearBudget = Math.max(0, vectorBudget - globalBudget);
+            const nearPerCharge = charges.length ? Math.max(0, Math.floor(nearBudget / charges.length)) : 0;
+
+            const drawVectorAt = point => {
+                if (!pointInRange(point)) return;
+                if (charges.some(charge => point.distanceTo(projectedPosition(charge.position)) < CHARGE_RADIUS * 1.4)) return;
+                const eField = calculateEFieldAt(point);
+                if (!eField || eField.lengthSq() < 0.0025) return;
+                const rawMag = eField.length();
+                const length = Math.min(2.4, Math.max(0.55, 0.42 + Math.log1p(rawMag) * 0.58));
+                if (point.distanceTo(fieldCenter()) + length > fieldSize * 0.985) return;
+                const direction = eField.clone().normalize();
+                const arrowEnd = point.clone().add(direction.clone().multiplyScalar(length));
+                if (charges.some(charge => distanceToSegment(projectedPosition(charge.position), point, arrowEnd) < CHARGE_RADIUS * 1.55)) return;
+                const arrow = makeArrow(eField, point, length, colors.vector, 0.34, 0.21);
+                if (arrow) {
+                    arrow.cone.material.transparent = true;
+                    arrow.cone.material.opacity = 0.74;
+                    arrow.line.material.transparent = true;
+                    arrow.line.material.opacity = 0.74;
+                    groups.vectors.add(arrow);
+                }
+            };
+
+            if (is2DMode) {
+                for (let i = 0; i < globalBudget; i++) {
+                    const sampleIndex = Math.floor((i + 0.5) * MAX_VECTOR_SAMPLES / globalBudget);
+                    drawVectorAt(center.clone().add(deterministicDiskPoint(sampleIndex, MAX_VECTOR_SAMPLES)));
+                }
+            } else {
+                for (let i = 0; i < globalBudget; i++) {
+                    const sampleIndex = Math.floor((i + 0.5) * MAX_VECTOR_SAMPLES / globalBudget);
+                    const point = center.clone().add(deterministicUnitPoint(sampleIndex, MAX_VECTOR_SAMPLES).multiplyScalar(SAMPLE_RADIUS));
+                    drawVectorAt(point);
+                }
+            }
+
+            for (const charge of charges) {
+                const count = Math.min(MAX_VECTOR_NEAR_SAMPLES, nearPerCharge);
+                for (let i = 0; i < count; i++) {
+                    const sampleIndex = Math.floor((i + 0.5) * MAX_VECTOR_NEAR_SAMPLES / Math.max(1, count));
+                    drawVectorAt(nearChargePoint(charge, sampleIndex, MAX_VECTOR_NEAR_SAMPLES));
+                }
+            }
+        }
+
+        function updateVisualization() {
+            updateCenterMarker();
+            groups.lines.visible = currentMode === 'lines';
+            groups.vectors.visible = currentMode === 'vectors';
+            clearGroup(groups.lines);
+            clearGroup(groups.vectors);
+            if (currentMode === 'lines') updateFieldLines();
+            if (currentMode === 'vectors') updateFieldVectors();
+            if (testCharge) probeFieldAt(testCharge.position, false);
+        }
+
+        function selectedCharge() {
+            return charges.find(charge => charge.id === selectedChargeId) || charges[0] || null;
+        }
+
+        function refreshChargeSelect() {
+            chargeSelect.innerHTML = '';
+            for (const charge of charges) {
+                const option = document.createElement('option');
+                option.value = String(charge.id);
+                option.textContent = `q${charge.id} (${charge.q > 0 ? '+' : ''}${charge.q} nC)`;
+                chargeSelect.appendChild(option);
+            }
+            if (!selectedChargeId && charges.length) selectedChargeId = charges[0].id;
+            if (selectedChargeId) chargeSelect.value = String(selectedChargeId);
+            syncEditorFromSelected();
+        }
+
+        function renumberCharges() {
+            charges.forEach((charge, index) => {
+                charge.id = index + 1;
+                charge.mesh.userData.chargeId = charge.id;
+            });
+        }
+
+        function updateSelectedOptionLabel() {
+            const charge = selectedCharge();
+            if (!charge) return;
+            const option = Array.from(chargeSelect.options).find(item => Number(item.value) === charge.id);
+            if (option) option.textContent = `q${charge.id} (${charge.q > 0 ? '+' : ''}${charge.q} nC)`;
+        }
+
+        function syncEditorFromSelected() {
+            const charge = selectedCharge();
+            if (!charge) return;
+            chargeSlider.value = charge.q;
+            chargeValueDisplay.textContent = `${Number(charge.q).toFixed(1)} nC`;
+            document.getElementById('pos-x').value = charge.position.x.toFixed(1);
+            document.getElementById('pos-y').value = charge.position.z.toFixed(1);
+            document.getElementById('pos-z').value = charge.position.y.toFixed(1);
+        }
+
+        function applyEditorToSelected() {
+            const charge = selectedCharge();
+            if (!charge) return;
+            let q = Number(chargeSlider.value);
+            if (q === 0) q = charge.q < 0 ? -1 : 1;
+            const position = currentInputPosition();
+            if (!position) return;
+            charge.q = q;
+            charge.position.copy(position);
+            charge.mesh.position.copy(position);
+            charge.mesh.material.color.setHex(q > 0 ? colors.positive : colors.negative);
+            charge.mesh.material.emissive.setHex(q > 0 ? 0x071a3d : 0x3a050b);
+            chargeSlider.value = q;
+            chargeValueDisplay.textContent = `${Number(q).toFixed(1)} nC`;
+            updateSelectedOptionLabel();
+            updateVisualization();
+        }
+
+        function addCharge(q, position) {
+            const charge = { id: charges.length + 1, q, position: position.clone() };
+            charges.push(charge);
+
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(CHARGE_RADIUS, 28, 16),
+                new THREE.MeshStandardMaterial({
+                    color: q > 0 ? colors.positive : colors.negative,
+                    roughness: 0.45,
+                    emissive: q > 0 ? 0x071a3d : 0x3a050b
+                })
+            );
+            mesh.position.copy(position);
+            mesh.userData.chargeId = charge.id;
+            charge.mesh = mesh;
+            groups.charges.add(mesh);
+            selectedChargeId = charge.id;
+            renumberCharges();
+            refreshChargeSelect();
+            updateVisualization();
+        }
+
+        function addProbeMarker(position) {
+            clearGroup(groups.probe);
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(CHARGE_RADIUS * 0.62, 20, 12),
+                new THREE.MeshStandardMaterial({
+                    color: colors.probe,
+                    transparent: true,
+                    opacity: 0.88,
+                    emissive: 0x3a073d
+                })
+            );
+            sphere.position.copy(position);
+            groups.probe.add(sphere);
+            testCharge = sphere;
+        }
+
+        function addProbeVector(position, eField) {
+            if (!eField || eField.lengthSq() < 0.0001) return;
+            const length = Math.min(4.0, Math.max(0.8, 0.8 + Math.log1p(eField.length()) * 0.8));
+            const arrow = makeArrow(eField, projectedPosition(position), length, colors.probe, 0.55, 0.36);
+            if (arrow) groups.probe.add(arrow);
+        }
+
+        function probeFieldAt(position, showStatus = true) {
+            addProbeMarker(position);
+            const E = calculateEFieldAt(position);
+            addProbeVector(position, E);
+
+            if (!showStatus || !fieldProbeStatus) return;
+            if (!E) {
+                fieldProbeStatus.textContent = 'No field at this position (inside a source charge).';
+            } else {
+                fieldProbeStatus.textContent =
+                    `Electric field at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}, ${position.y.toFixed(1)}):\n` +
+                    `Magnitude: ${E.length().toFixed(2)} kV/m\n` +
+                    `Direction: (${E.x.toFixed(2)}, ${E.z.toFixed(2)}, ${E.y.toFixed(2)})`;
+            }
+            fieldProbeStatus.style.display = 'block';
+        }
+
+        function clearScene() {
+            charges = [];
+            testCharge = null;
+            selectedChargeId = null;
+            clearGroup(groups.charges);
+            clearGroup(groups.lines);
+            clearGroup(groups.vectors);
+            clearGroup(groups.probe);
+            clearGroup(groups.center);
+            refreshChargeSelect();
+        }
+
+        function clearConfiguration() {
+            charges = [];
+            testCharge = null;
+            selectedChargeId = null;
+            clearGroup(groups.charges);
+            clearGroup(groups.lines);
+            clearGroup(groups.vectors);
+            clearGroup(groups.probe);
+            clearGroup(groups.center);
+            chargeSelect.innerHTML = '';
+        }
+
+        function setActiveScenario(name) {
+            ['single', 'random', 'net-same', 'dipole'].forEach(key => {
+                const button = document.getElementById(`scenario-${key}`);
+                button?.classList.toggle('active', key === name);
+            });
+        }
+
+        function applyScenario(name) {
+            clearConfiguration();
+            setActiveScenario(name);
+
+            if (name === 'single') {
+                addCharge(5, new THREE.Vector3(0, 0, 0));
+                fieldSize = 18;
+                sizeSlider.value = 18;
+            } else if (name === 'random') {
+                addCharge(4, new THREE.Vector3(-4.2, 0, -2.4));
+                addCharge(-2, new THREE.Vector3(-1.4, 0, 2.6));
+                addCharge(3, new THREE.Vector3(1.2, 0, -1.6));
+                addCharge(-1, new THREE.Vector3(3.6, 0, 1.8));
+                addCharge(2, new THREE.Vector3(0.2, 0, 0.6));
+                fieldSize = 24;
+                sizeSlider.value = 24;
+            } else if (name === 'net-same') {
+                addCharge(-2, new THREE.Vector3(0, 0, 0));
+                addCharge(5, new THREE.Vector3(0, 0, 0));
+                fieldSize = 22;
+                sizeSlider.value = 22;
+            } else {
+                addCharge(5, new THREE.Vector3(-3.8, 0, 0));
+                addCharge(-5, new THREE.Vector3(3.8, 0, 0));
+                fieldSize = 24;
+                sizeSlider.value = 24;
+            }
+
+            updateDynamicParameters();
+            syncCameraToCenter(true);
+            updateVisualization();
+        }
+
+        function removeSelectedCharge() {
+            const charge = selectedCharge();
+            if (!charge) return;
+            const oldIndex = charges.indexOf(charge);
+            groups.charges.remove(charge.mesh);
+            charge.mesh.geometry?.dispose?.();
+            charge.mesh.material?.dispose?.();
+            charges = charges.filter(item => item.id !== charge.id);
+            renumberCharges();
+            selectedChargeId = charges[Math.min(oldIndex, charges.length - 1)]?.id || null;
+            refreshChargeSelect();
+            updateVisualization();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            Object.values(viewBtns).forEach(btn => btn.classList.remove('active'));
+            viewBtns[mode].classList.add('active');
+            updateVisualization();
+        }
+
+        function set2DMode(enabled) {
+            is2DMode = enabled;
+            updateDynamicParameters();
+            const btn = document.getElementById('view-2d-btn');
+            btn.textContent = is2DMode ? 'Exit 2D View' : 'Toggle 2D Top View';
+            btn.classList.toggle('active', is2DMode);
+            gridHelper.visible = !is2DMode;
+            controls.enableRotate = !is2DMode;
+            controls.mouseButtons.RIGHT = is2DMode ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+            controls.touches.TWO = is2DMode ? THREE.TOUCH.DOLLY_PAN : THREE.TOUCH.DOLLY_ROTATE;
+            document.getElementById('pos-z').classList.toggle('hidden-2d', is2DMode);
+
+            if (is2DMode) {
+                syncCameraToCenter(true);
+            } else {
+                syncCameraToCenter(true);
+            }
+            updateVisualization();
+        }
+
+        function currentInputPosition() {
+            const parseCoord = id => {
+                const raw = document.getElementById(id).value.trim().replace(',', '.');
+                return raw === '' ? NaN : Number(raw);
+            };
+            const x = parseCoord('pos-x');
+            const planeY = parseCoord('pos-y');
+            const zHeight = is2DMode ? 0 : parseCoord('pos-z');
+            const y = zHeight;
+            const z = planeY;
+            if ([x, y, z].some(Number.isNaN)) return null;
+            return new THREE.Vector3(x, y, z);
+        }
+
+        function updatePointer(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function chargeFromMesh(mesh) {
+            return charges.find(charge => charge.id === mesh.userData.chargeId) || null;
+        }
+
+        renderer.domElement.addEventListener('pointerdown', event => {
+            if (event.button === 2 && charges.length > 0) {
+                pivotCameraAroundCenter();
+            }
+        }, { capture: true });
+
+        renderer.domElement.addEventListener('pointerdown', event => {
+            if (event.button !== 0) return;
+            updatePointer(event);
+            raycaster.setFromCamera(pointer, camera);
+            const hit = raycaster.intersectObjects(charges.map(charge => charge.mesh), false)[0];
+            if (!hit) return;
+            draggingCharge = chargeFromMesh(hit.object);
+            if (!draggingCharge) return;
+            selectedChargeId = draggingCharge.id;
+            refreshChargeSelect();
+            dragPlane.normal.set(0, 1, 0);
+            dragPlane.constant = -projectedPosition(draggingCharge.position).y;
+            controls.enabled = false;
+            renderer.domElement.setPointerCapture(event.pointerId);
+        });
+
+        renderer.domElement.addEventListener('pointermove', event => {
+            if (!draggingCharge) return;
+            updatePointer(event);
+            raycaster.setFromCamera(pointer, camera);
+            if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
+            draggingCharge.position.x = dragPoint.x;
+            draggingCharge.position.z = dragPoint.z;
+            if (is2DMode) draggingCharge.position.y = 0;
+            draggingCharge.mesh.position.copy(draggingCharge.position);
+            syncEditorFromSelected();
+            updateVisualization();
+        });
+
+        renderer.domElement.addEventListener('pointerup', event => {
+            const wasDragging = !!draggingCharge;
+            draggingCharge = null;
+            controls.enabled = true;
+            if (wasDragging && renderer.domElement.hasPointerCapture(event.pointerId)) {
+                renderer.domElement.releasePointerCapture(event.pointerId);
+            }
+        });
+
+        renderer.domElement.addEventListener('pointercancel', event => {
+            draggingCharge = null;
+            controls.enabled = true;
+            if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+                renderer.domElement.releasePointerCapture(event.pointerId);
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        densitySlider.addEventListener('input', () => {
+            updateDynamicParameters();
+            updateVisualization();
+        });
+
+        sizeSlider.addEventListener('input', () => {
+            updateDynamicParameters();
+            updateVisualization();
+        });
+
+        chargeSlider.addEventListener('input', () => {
+            applyEditorToSelected();
+        });
+
+        ['pos-x', 'pos-y', 'pos-z'].forEach(id => {
+            document.getElementById(id).addEventListener('input', applyEditorToSelected);
+        });
+
+        chargeSelect.addEventListener('change', () => {
+            selectedChargeId = Number(chargeSelect.value);
+            syncEditorFromSelected();
+            updateVisualization();
+        });
+
+        document.getElementById('add-charge-btn').addEventListener('click', () => {
+            const position = currentInputPosition();
+            if (!position) return;
+            let q = Number(chargeSlider.value);
+            if (q === 0) q = 1;
+            addCharge(q, position);
+        });
+
+        document.getElementById('remove-charge-btn').addEventListener('click', removeSelectedCharge);
+
+        document.getElementById('view-2d-btn').addEventListener('click', () => set2DMode(!is2DMode));
+
+        document.getElementById('controls-toggle').addEventListener('click', event => {
+            const panel = document.getElementById('controls');
+            panel.classList.toggle('collapsed');
+            event.currentTarget.innerHTML = panel.classList.contains('collapsed') ? '&rarr;' : '&larr;';
+        });
+
+        const viewBtns = {
+            lines: document.getElementById('view-lines-btn'),
+            vectors: document.getElementById('view-vectors-btn'),
+            off: document.getElementById('view-off-btn')
+        };
+
+        Object.keys(viewBtns).forEach(mode => {
+            viewBtns[mode].addEventListener('click', () => setMode(mode));
+        });
+
+        ['single', 'random', 'net-same', 'dipole'].forEach(name => {
+            document.getElementById(`scenario-${name}`).addEventListener('click', () => applyScenario(name));
+        });
+
+        function resizeRenderer() {
+            const rect = stage.getBoundingClientRect();
+            const width = Math.max(1, rect.width);
+            const height = Math.max(1, rect.height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+
+        updateDynamicParameters();
+        applyScenario('single');
+        animate();
+    </script>
+<script defer data-offline-bundle src="electric_field.0.offline.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,262 @@
+[
+  {
+    "page": "ch3_3_div_curl_B_c0.html",
+    "bundles": 1
+  },
+  {
+    "page": "ch3_3_div_curl_B_c1.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ampere_law_h.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ampere_law_wires.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\atomic_stretching.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\battery_emf.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\boundary_conditions_mag.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\boundary_discontinuity.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\bound_currents_math.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_1_B_F_V_relation.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_1_lorentz_force_c0.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_1_lorentz_force_c1.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_1_lorentz_force_c2.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_1_ohms_details.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_1_right_hand_rule.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_2_biot_savart_c0.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_2_biot_savart_c1.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_2_biot_savart_c2.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_4_multipole_c0.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_4_vector_potential_c0.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_4_vector_potential_c1.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch3_4_vector_potential_c2.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch5_2_mutual_loops.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch6_2_polarization.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch6_2_wave_config.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch6_3_radiation_pressure.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\ch6_4_propagation_media.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\charge_densities_dark.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\conductor_cavity_diagram.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\conductor_properties_3d.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\coulombs_law_geometry.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\current_balance_junction.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\dd_derivation_boundary_conditions.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\dd_derivation_field_on_axis.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\diagram_arbitrary.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\diagram_cylinder.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\diagram_plate.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\diagram_rod.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\diagram_solid_sphere.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\diagram_sphere.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\divergence_visualizer.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\electric_field.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\electric_potential_landscape.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\example_infinite_straight_wire_c0.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\faraday_disk.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\flux_concept.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\flux_concept_diagram.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\gauss_arbitrary.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\gauss_for_plane.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\gauss_for_sphere.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\gauss_symmetry.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\induced_efield.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\inductance.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\magnetized_sphere_field.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\multipole_expansion_visualizer.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\sim_resistance_education.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\solenoid_induced_E.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\superposition_geometry.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\vector_potential_setup.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\volume_current_slab.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\wave_mechanics_sim2.html",
+    "bundles": 1
+  },
+  {
+    "page": "diagrams\\wire_insulation_visualizer.html",
+    "bundles": 1
+  },
+  {
+    "page": "inductor.html",
+    "bundles": 1
+  },
+  {
+    "page": "simulators\\electric-field-simulator-v3.html",
+    "bundles": 1
+  },
+  {
+    "page": "simulators\\polar_molecule_alignment.html",
+    "bundles": 1
+  }
+]

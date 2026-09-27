@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biot-Savart Law Simulation</title>
+
+    <!-- 1. Stylesheets -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+
+    <style>
+        /* Base Reset */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d1117;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #c9d1d9;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar UI */
+        #ui {
+            width: 300px;
+            background-color: #161b22;
+            padding: 16px;
+            border-right: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 10;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #58a6ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 8px;
+            margin: 0 0 10px 0;
+        }
+
+        .control-group {
+            margin-bottom: 5px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            color: #e6edf3;
+            margin-bottom: 4px;
+        }
+
+        .val-disp {
+            font-family: 'Courier New', Courier, monospace;
+            color: #79c0ff;
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #1f6feb;
+        }
+
+        /* Toggles */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #21262d;
+            cursor: pointer;
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        input[type=checkbox] {
+            width: 18px;
+            height: 18px;
+            accent-color: #238636;
+            cursor: pointer;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #8b949e;
+            line-height: 1.4;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        /* Legend */
+        .legend {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            font-size: 0.9rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+
+        /* Canvas */
+        #canvas-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            overflow: hidden;
+        }
+
+        /* Labels */
+        .math-label {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-shadow: 0 0 4px #000, 0 0 2px #000;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        @media (max-width: 700px) {
+            #container {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100dvh;
+                min-height: 0;
+            }
+
+            #canvas-wrapper {
+                grid-column: 1;
+                grid-row: 1;
+                min-height: 0;
+            }
+
+            #ui {
+                grid-column: 1;
+                grid-row: 2;
+                width: 100%;
+                box-sizing: border-box;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px 10px;
+                padding: 10px;
+                border-right: 0;
+                border-top: 1px solid #30363d;
+                overflow: hidden;
+            }
+
+            #ui > div {
+                min-width: 0;
+            }
+
+            h2 {
+                font-size: 0.72rem;
+                padding-bottom: 4px;
+                margin-bottom: 4px;
+            }
+
+            .label-row,
+            .toggle-row,
+            .legend,
+            .hint {
+                font-size: 0.72rem;
+            }
+
+            input[type=range] {
+                min-height: 28px;
+                margin: 0;
+            }
+        }
+    </style>
+
+    <!-- 2. Scripts -->
+    <!-- KaTeX Core -->
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="container">
+        <div id="ui">
+            <div>
+                <h2>Derivation Parameters</h2>
+
+                <div class="control-group">
+                    <div class="label-row">
+                        <span>Element Height <i>z</i></span>
+                        <span id="disp-z" class="val-disp">3.0</span>
+                    </div>
+                    <input type="range" id="slider-z" min="-8" max="8" step="0.1" value="3.0">
+                </div>
+
+                <div class="control-group">
+                    <div class="label-row">
+                        <span>Distance <i>s</i></span>
+                        <span id="disp-s" class="val-disp">5.0</span>
+                    </div>
+                    <input type="range" id="slider-s" min="2" max="10" step="0.1" value="5.0">
+                </div>
+
+                <label class="toggle-row">
+                    <span>Show Elements (dvec{l}', 𝓇⃗, dvec{B})</span>
+                    <input type="checkbox" id="chk-elements">
+                </label>
+                <div class="hint">
+                    Note: Magnitude of $d\vec{B}$ (Cyan) changes based on physics: $|d\vec{B}| \propto s / r^3$.
+                </div>
+            </div>
+
+            <div>
+                <h2>Global Field</h2>
+                <label class="toggle-row">
+                    <span>Show Field Lines ($\vec{B}$)</span>
+                    <input type="checkbox" id="chk-field" checked>
+                </label>
+
+                <label class="toggle-row">
+                    <span>Enable Interactive Probe</span>
+                    <input type="checkbox" id="chk-probe">
+                </label>
+                <div class="hint">Drag the <b>purple dot</b>. Vector scales with $1/s$.</div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="dot" style="background:#ff3333; box-shadow:0 0 5px red;"></div><span>Source
+                        d<b>l</b>'</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#00ff00;"></div><span>Vector 𝓇⃗</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#00ffff;"></div><span>Diff. Field d<b>B</b></span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background:#d2a8ff;"></div><span>Total Field <b>B</b></span>
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-wrapper"></div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- State & Config ---
+        let scene, camera, renderer, labelRenderer, controls;
+        let ui = { z: 3.0, s: 5.0 };
+        let labels = {}; // Store label objects
+
+        // Objects
+        let derivGroup, fieldGroup, probeGroup;
+        let dlArrow, rArrow, dbArrow, pointP, sLine, thetaArc;
+        let probeMesh, probeArrow, probeRing;
+
+        // Interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const planeXZ = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let isDragging = false;
+
+        window.onload = init;
+
+        function init() {
+            const container = document.getElementById('canvas-wrapper');
+
+            // 1. Scene
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0d1117, 0.02);
+
+            // 2. Camera
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(15, 12, 15);
+
+            // 3. Renderers
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(container.clientWidth, container.clientHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            labelRenderer.domElement.style.pointerEvents = 'none';
+            container.appendChild(labelRenderer.domElement);
+
+            // 4. Controls
+            controls = new OrbitControls(camera, container);
+            controls.enableDamping = true;
+
+            // 5. Light & Env
+            const amb = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(amb);
+            const dir = new THREE.DirectionalLight(0xffffff, 1);
+            dir.position.set(5, 10, 5);
+            scene.add(dir);
+
+            const grid = new THREE.GridHelper(50, 50, 0x30363d, 0x161b22);
+            scene.add(grid);
+
+            // --- Wire & Current ---
+            const wireGeo = new THREE.CylinderGeometry(0.15, 0.15, 100, 16);
+            const wireMat = new THREE.MeshPhongMaterial({ color: 0x8b949e, transparent: true, opacity: 0.4 });
+            scene.add(new THREE.Mesh(wireGeo, wireMat));
+
+            // Chevron Indicators for Current I
+            for (let y = -20; y <= 20; y += 5) {
+                const chevron = createChevron();
+                chevron.position.set(0, y, 0);
+                scene.add(chevron);
+            }
+            createMathLabel("I", new THREE.Vector3(0.5, 18, 0));
+
+            // --- Group 1: Derivation Elements ---
+            derivGroup = new THREE.Group();
+            scene.add(derivGroup);
+
+            // dl (Source) - Red Arrow
+            dlArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1.5, 0xff3333, 0.6, 0.3);
+            derivGroup.add(dlArrow);
+            labels['dl'] = createMathLabel("d\\vec{l}'", new THREE.Vector3());
+
+            // P (Point)
+            pointP = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            derivGroup.add(pointP);
+            labels['p'] = createMathLabel("P", new THREE.Vector3());
+
+            // rsep (Separation Vector) - Green
+            rArrow = new THREE.ArrowHelper(new THREE.Vector3(), new THREE.Vector3(), 1, 0x00ff00, 0.5, 0.3);
+            derivGroup.add(rArrow);
+            labels['r'] = createMathLabel("\\vecrsep", new THREE.Vector3());
+
+            // dB (Field Contribution) - Cyan
+            dbArrow = new THREE.ArrowHelper(new THREE.Vector3(), new THREE.Vector3(), 1, 0x00ffff, 0.5, 0.3);
+            derivGroup.add(dbArrow);
+            labels['db'] = createMathLabel("d\\vec{B}", new THREE.Vector3());
+
+            // s Line
+            sLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x58a6ff, dashSize: 0.5, gapSize: 0.3 }));
+            derivGroup.add(sLine);
+            labels['s'] = createMathLabel("s", new THREE.Vector3());
+
+            // Theta
+            thetaArc = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffff00 }));
+            derivGroup.add(thetaArc);
+            labels['theta'] = createMathLabel("\\theta", new THREE.Vector3());
+
+
+            // --- Group 2: Global Field Lines ---
+            fieldGroup = new THREE.Group();
+            scene.add(fieldGroup);
+            [3, 6, 9, 12].forEach(r => {
+                const ring = createRing(r, 0xd2a8ff, 0.15);
+                const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(r, 0, 0), 0.8, 0xd2a8ff, 0.5, 0.4);
+                fieldGroup.add(ring);
+                fieldGroup.add(arrow);
+            });
+
+            // --- Group 3: Probe ---
+            probeGroup = new THREE.Group();
+            scene.add(probeGroup);
+
+            probeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.35), new THREE.MeshStandardMaterial({ color: 0xd2a8ff, emissive: 0x5500aa }));
+            probeMesh.position.set(6, 0, 4);
+            probeGroup.add(probeMesh);
+
+            probeArrow = new THREE.ArrowHelper(new THREE.Vector3(), new THREE.Vector3(), 1, 0xd2a8ff, 0.6, 0.3);
+            probeGroup.add(probeArrow);
+            labels['probe'] = createMathLabel("\\vec{B}", new THREE.Vector3());
+
+            probeRing = createRing(1, 0xd2a8ff, 0.4);
+            probeGroup.add(probeRing);
+
+            // Events
+            window.addEventListener('resize', onResize);
+            setupUI();
+            animate();
+            updateSim();
+        }
+
+        function createChevron() {
+            const shape = new THREE.Shape();
+            shape.moveTo(-0.15, -0.2);
+            shape.lineTo(0, 0);
+            shape.lineTo(0.15, -0.2);
+            const geo = new THREE.BufferGeometry().setFromPoints(shape.getPoints());
+            const mat = new THREE.LineBasicMaterial({ color: 0xffffff });
+            return new THREE.Line(geo, mat);
+        }
+
+        function createRing(r, color, opacity) {
+            const pts = [];
+            for (let i = 0; i <= 64; i++) {
+                const t = (i / 64) * Math.PI * 2;
+                pts.push(new THREE.Vector3(Math.cos(t) * r, 0, Math.sin(t) * r));
+            }
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity });
+            return new THREE.Line(geo, mat);
+        }
+
+        function createMathLabel(str, pos) {
+            const div = document.createElement('div');
+            div.className = 'math-label';
+            // Fallback or render
+            div.textContent = str;
+            if (window.katex) {
+                try {
+                    div.innerHTML = katex.renderToString(str, {
+                        macros: {
+                            '\\rsep': '{\\text{𝓇}}',
+                            '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                            '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                        }
+                    });
+                } catch (e) { div.textContent = str; }
+            }
+            const obj = new CSS2DObject(div);
+            obj.position.copy(pos);
+            scene.add(obj);
+            return obj;
+        }
+
+        function updateSim() {
+            document.getElementById('disp-z').textContent = ui.z.toFixed(1);
+            document.getElementById('disp-s').textContent = ui.s.toFixed(1);
+
+            const P = new THREE.Vector3(ui.s, 0, 0);
+            const Source = new THREE.Vector3(0, ui.z, 0);
+
+            // 1. Point positions
+            pointP.position.copy(P);
+            labels['p'].position.copy(P).add(new THREE.Vector3(0.5, -0.5, 0));
+
+            dlArrow.position.copy(Source);
+            labels['dl'].position.copy(Source).add(new THREE.Vector3(-0.8, 0, 0));
+
+            // 2. r Vector
+            const vecR = new THREE.Vector3().subVectors(P, Source);
+            const distR = vecR.length();
+            rArrow.position.copy(Source);
+            rArrow.setDirection(vecR.clone().normalize());
+            rArrow.setLength(distR, 0.4, 0.3);
+            labels['r'].position.copy(Source).add(vecR.multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.6, 0));
+
+            // 3. dB Vector Calculation
+            // Direction: dl (0,1,0) x r (s, -z, 0) = (0, 0, -s) -> -Z direction.
+            const dbDir = new THREE.Vector3(0, 0, -1);
+
+            // Physics Magnitude: dB ~ s / r^3
+            const r3 = distR * distR * distR;
+            const dB_mag = (ui.s / r3) * 80;
+
+            dbArrow.position.copy(P);
+            dbArrow.setDirection(dbDir);
+            dbArrow.setLength(Math.max(0.1, dB_mag), 0.4 * Math.min(1, dB_mag), 0.2 * Math.min(1, dB_mag));
+            labels['db'].position.copy(P).add(new THREE.Vector3(0, 0.5, -Math.max(1, dB_mag) - 0.5));
+
+            // 4. S Line
+            sLine.geometry.setFromPoints([new THREE.Vector3(0, 0, 0), P]);
+            sLine.computeLineDistances();
+            labels['s'].position.set(ui.s / 2, -0.6, 0);
+
+            // 5. Theta
+            const theta = Math.atan2(ui.z, ui.s);
+            const arcPts = [];
+            const start = Math.PI;
+            const end = Math.PI - theta;
+            const rad = Math.min(ui.s * 0.3, 1.5);
+            for (let i = 0; i <= 24; i++) {
+                const a = start + (end - start) * (i / 24);
+                arcPts.push(new THREE.Vector3(ui.s + Math.cos(a) * rad, Math.sin(a) * rad, 0));
+            }
+            thetaArc.geometry.setFromPoints(arcPts);
+            labels['theta'].position.set(ui.s + Math.cos(Math.PI - theta / 2) * (rad + 0.6), Math.sin(Math.PI - theta / 2) * (rad + 0.6), 0);
+
+            // Visibility
+            const showElem = document.getElementById('chk-elements').checked;
+            derivGroup.visible = showElem;
+
+            // Explicit Label Visibility
+            ['dl', 'p', 'r', 'db', 's', 'theta'].forEach(k => labels[k].element.style.visibility = showElem ? 'visible' : 'hidden');
+
+            // Field Lines
+            fieldGroup.visible = document.getElementById('chk-field').checked;
+
+            // Probe Update
+            updateProbe();
+        }
+
+        function updateProbe() {
+            const enabled = document.getElementById('chk-probe').checked;
+            probeGroup.visible = enabled;
+            labels['probe'].element.style.visibility = enabled ? 'visible' : 'hidden';
+            if (!enabled) return;
+
+            const pos = probeMesh.position;
+            const dist = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
+
+            if (dist < 0.2) {
+                probeArrow.visible = false;
+                probeRing.visible = false;
+                return;
+            }
+
+            probeArrow.visible = true;
+            probeRing.visible = true;
+
+            // Direction: Tangent (z, 0, -x)
+            const dir = new THREE.Vector3(pos.z, 0, -pos.x).normalize();
+
+            // Magnitude: B ~ 1/s
+            const len = Math.max(0.5, Math.min(12 / dist, 10));
+
+            probeArrow.position.copy(pos);
+            probeArrow.setDirection(dir);
+            probeArrow.setLength(len, 0.6, 0.3);
+            labels['probe'].position.copy(pos).add(dir.multiplyScalar(len + 0.6));
+
+            // Ring
+            const pts = [];
+            for (let i = 0; i <= 64; i++) {
+                const t = (i / 64) * Math.PI * 2;
+                pts.push(new THREE.Vector3(Math.cos(t) * dist, 0, Math.sin(t) * dist));
+            }
+            probeRing.geometry.setFromPoints(pts);
+        }
+
+        function setupUI() {
+            // Sliders
+            document.getElementById('slider-z').addEventListener('input', (e) => { ui.z = parseFloat(e.target.value); updateSim(); });
+            document.getElementById('slider-s').addEventListener('input', (e) => { ui.s = parseFloat(e.target.value); updateSim(); });
+
+            // Toggles
+            document.getElementById('chk-elements').addEventListener('change', updateSim);
+            document.getElementById('chk-field').addEventListener('change', updateSim);
+            document.getElementById('chk-probe').addEventListener('change', updateSim);
+
+            // Dragging
+            const c = document.getElementById('canvas-wrapper');
+            c.addEventListener('mousedown', (e) => {
+                if (!document.getElementById('chk-probe').checked) return;
+                const rect = c.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                if (raycaster.intersectObject(probeMesh).length > 0) {
+                    isDragging = true;
+                    controls.enabled = false;
+                    c.style.cursor = 'grabbing';
+                }
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const rect = c.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const target = new THREE.Vector3();
+                raycaster.ray.intersectPlane(planeXZ, target);
+                if (target) {
+                    probeMesh.position.set(target.x, 0, target.z);
+                    updateSim();
+                }
+            });
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                controls.enabled = true;
+                c.style.cursor = 'auto';
+            });
+        }
+
+        function onResize() {
+            const c = document.getElementById('canvas-wrapper');
+            camera.aspect = c.clientWidth / c.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(c.clientWidth, c.clientHeight);
+            labelRenderer.setSize(c.clientWidth, c.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        function renderUI() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.getElementById('ui'), {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    macros: {
+                        '\\rsep': '{\\text{𝓇}}',
+                        '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                        '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                    }
+                });
+            }
+        }
+        setTimeout(renderUI, 500);
+    </script>
+<script defer data-offline-bundle src="example_infinite_straight_wire_c0.0.offline.js"></script>
+
+
+</body>
+
+</html>

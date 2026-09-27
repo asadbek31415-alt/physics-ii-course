@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volume Averaging Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: white;
+            display: grid;
+            grid-template-columns: clamp(220px, 27vw, 270px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            grid-column: 2;
+            grid-row: 1;
+            touch-action: none;
+        }
+
+        .overlay-ui {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            background: rgba(28, 39, 52, 0.9);
+            padding: 12px;
+            border-radius: 0;
+            border: 0;
+            border-right: 1px solid #2c3e50;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 2;
+        }
+
+        .control-row {
+            margin-bottom: 8px;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-row label {
+            display: block;
+            font-size: 0.75rem;
+            /* Smaller font */
+            color: #b0c4de;
+            margin-bottom: 3px;
+            font-weight: 600;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #3498db;
+            height: 4px;
+            cursor: pointer;
+        }
+
+        .stats {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #2c3e50;
+            padding-top: 8px;
+        }
+
+        .p-mag {
+            color: #22d3ee;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            .overlay-ui {
+                grid-column: 1;
+                grid-row: 1;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid #2c3e50;
+                overflow-y: auto;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <canvas id="avgCanvas"></canvas>
+
+    <div class="overlay-ui">
+        <div class="control-row">
+            <label>Alignment (Order)</label>
+            <input type="range" id="alignSlider" min="0" max="100" value="50">
+        </div>
+        <div class="control-row">
+            <label>Sampling Radius (ΔV)</label>
+            <input type="range" id="radiusSlider" min="10" max="150" value="60">
+        </div>
+        <div id="hint-text"
+            style="font-size: 0.7rem; color: #94a3b8; margin: 8px 0; font-style: italic; line-height: 1.3;">
+            Smaller ΔV shows microscopic fluctuations. Larger ΔV yields a consistent macroscopic average.
+        </div>
+        <div class="stats">
+            <span>Measured |P|:</span>
+            <span id="pVal" class="p-mag">0.00</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('avgCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const alignSlider = document.getElementById('alignSlider');
+        const radiusSlider = document.getElementById('radiusSlider');
+        const pValDisplay = document.getElementById('pVal');
+
+        let width, height;
+        let mouseX = -100, mouseY = -100;
+
+        let dipoles = [];
+        const gridSize = 25;
+        let alignment = 0.5;
+        let sampleRadius = 60;
+
+        function init() {
+            resize();
+            createDipoles();
+            // Start mouse in center for visibility
+            mouseX = width / 2;
+            mouseY = height / 2;
+        }
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            width = canvas.width = Math.max(1, Math.floor(rect.width));
+            height = canvas.height = Math.max(1, Math.floor(rect.height));
+        }
+
+        class Dipole {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.angle = Math.random() * Math.PI * 2;
+                this.baseAngle = this.angle;
+            }
+
+            update() {
+                if (alignment === 0) {
+                    this.angle = this.baseAngle;
+                } else {
+                    const bias = alignment;
+                    // Visual hack for alignment
+                    this.angle = this.baseAngle * (1 - bias);
+                }
+            }
+        }
+
+        function createDipoles() {
+            dipoles = [];
+            const cols = Math.ceil(width / gridSize) + 1;
+            const rows = Math.ceil(height / gridSize) + 1;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = c * gridSize;
+                    const y = r * gridSize;
+                    const jx = (Math.random() - 0.5) * 12;
+                    const jy = (Math.random() - 0.5) * 12;
+                    dipoles.push(new Dipole(x + jx, y + jy));
+                }
+            }
+        }
+
+        function drawDipole(d, alpha) {
+            const size = 10;
+            ctx.save();
+            ctx.translate(d.x, d.y);
+            ctx.rotate(d.angle);
+            ctx.globalAlpha = alpha;
+
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(-size / 2, 0);
+            ctx.lineTo(size / 2, 0);
+            ctx.stroke();
+
+            ctx.fillStyle = "#3b82f6";
+            ctx.beginPath(); ctx.arc(-size / 2, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath(); ctx.arc(size / 2, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawLargeArrow(x, y, vecX, vecY, color) {
+            const mag = Math.sqrt(vecX * vecX + vecY * vecY);
+            if (mag < 0.05) return;
+
+            const scale = 140;
+            const endX = x + vecX * scale;
+            const endY = y + vecY * scale;
+            const angle = Math.atan2(vecY, vecX);
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 5;
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            const headSize = 14;
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - headSize * Math.cos(angle - Math.PI / 6), endY - headSize * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - headSize * Math.cos(angle + Math.PI / 6), endY - headSize * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+
+            ctx.font = "bold 20px sans-serif";
+            ctx.fillText("P", endX + 10, endY + 10);
+
+            ctx.restore();
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, width, height);
+
+            alignment = parseInt(alignSlider.value) / 100;
+            sampleRadius = parseInt(radiusSlider.value);
+
+            let sumX = 0, sumY = 0, count = 0;
+
+            dipoles.forEach(d => {
+                d.update();
+                const dx = d.x - mouseX;
+                const dy = d.y - mouseY;
+                const distSq = dx * dx + dy * dy;
+
+                if (distSq < sampleRadius * sampleRadius) {
+                    drawDipole(d, 1.0);
+                    sumX += Math.cos(d.angle);
+                    sumY += Math.sin(d.angle);
+                    count++;
+                } else {
+                    drawDipole(d, 0.2);
+                }
+            });
+
+            if (mouseX > 0) {
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(mouseX, mouseY, sampleRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+                ctx.fill();
+
+                if (count > 0) {
+                    const avgX = sumX / count;
+                    const avgY = sumY / count;
+                    const mag = Math.sqrt(avgX * avgX + avgY * avgY);
+                    drawLargeArrow(mouseX, mouseY, avgX, avgY, "#22d3ee");
+                    pValDisplay.innerText = mag.toFixed(2);
+                } else {
+                    pValDisplay.innerText = "0.00";
+                }
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', () => { resize(); createDipoles(); });
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.touches[0].clientX - rect.left;
+            mouseY = e.touches[0].clientY - rect.top;
+        }, { passive: false });
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.touches[0].clientX - rect.left;
+            mouseY = e.touches[0].clientY - rect.top;
+        }, { passive: false });
+
+        init();
+        loop();
+    </script>
+</body>
+
+</html>

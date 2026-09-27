@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorentz Force Simulation</title>
+    
+    
+    <!-- CRITICAL FIX: This map tells the browser how to link the add-ons to the core library -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        /* Layout Reset */
+        * { box-sizing: border-box; }
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            min-height: 560px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            min-height: 560px;
+            background-color: #0d1117;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: clamp(248px, 30vw, 320px) minmax(0, 1fr);
+            align-items: stretch;
+        }
+
+        /* Canvas Container */
+        #scene-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: block;
+            overflow: hidden;
+        }
+
+        #scene-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* UI Sidebar */
+        #ui-sidebar {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: auto;
+            align-self: start;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            overflow: hidden;
+            border-right: 1px solid #30363d;
+            border-bottom: 1px solid #30363d;
+            background: rgba(13, 17, 23, 0.98);
+        }
+
+        .panel {
+            background: rgba(22, 27, 34, 0.95);
+            border: 1px solid #30363d;
+            border-radius: 0;
+            border-left: 0;
+            border-right: 0;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            color: #c9d1d9;
+            pointer-events: auto; /* Catch clicks */
+        }
+
+        h2 { margin: 0 0 15px 0; font-size: 1rem; color: #58a6ff; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+
+        .control-group { margin-bottom: 15px; }
+        label {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0;
+        }
+
+        .label-text {
+            white-space: nowrap;
+        }
+
+        .label-value {
+            min-width: 2.5ch;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #58a6ff; }
+        
+        select {
+            width: 100%;
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+
+        .btn-fire { background: #238636; color: white; border-color: #2ea043; }
+        .btn-fire:hover { background: #2ea043; transform: translateY(-1px); }
+        
+        .btn-view { background: #1f6feb; color: white; border-color: #1f6feb; }
+        .btn-view:hover { background: #388bfd; transform: translateY(-1px); }
+
+        /* Labels */
+        .label {
+            color: white;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .label-v { background: #f1c40f; color: black; }
+        .label-f { background: #ff3333; color: white; }
+
+        /* Legend */
+        .legend-row { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; margin-top: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(360px, 1fr) auto;
+            }
+
+            #scene-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            #ui-sidebar {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                align-self: stretch;
+                border-right: 0;
+                border-top: 1px solid #30363d;
+                border-bottom: 0;
+                overflow-y: visible;
+            }
+
+            .panel {
+                padding: 10px 12px;
+            }
+
+            .control-group {
+                margin-bottom: 9px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <!-- UI Sidebar -->
+    <div id="ui-sidebar">
+        <div class="panel">
+            <h2>Simulation Controls</h2>
+            
+            <div class="control-group">
+                <label>Field Type</label>
+                <select id="fieldType">
+                    <option value="into">Uniform Into Screen (×)</option>
+                    <option value="out">Uniform Out of Screen (⊙)</option>
+                    <option value="along">Along v (Parallel &rarr;)</option>
+                    <option value="opposite">Opposite v (Anti-Parallel &larr;)</option>
+                    <option value="curling">Curling (Vortex)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label><span class="label-text">Velocity (v):</span> <span id="val-v" class="label-value">10</span></label>
+                <input type="range" id="slider-v" min="5" max="25" value="10">
+            </div>
+
+            <div class="control-group">
+                <label><span class="label-text">Charge (q):</span> <span id="val-q" class="label-value">+1</span></label>
+                <input type="range" id="slider-q" min="-3" max="3" step="0.5" value="1">
+            </div>
+
+            <button class="btn-fire" id="btn-fire">Reset & Fire</button>
+            <button class="btn-view" id="btn-view">Toggle Top View (2D)</button>
+
+            <div style="margin-top: 20px; border-top: 1px solid #30363d; padding-top: 15px;">
+                <div class="legend-row"><div class="dot" style="background: #00ff88;"></div> Trajectory</div>
+                <div class="legend-row"><div class="dot" style="background: #f1c40f;"></div> Velocity (v)</div>
+                <div class="legend-row"><div class="dot" style="background: #ff3333;"></div> Force (F)</div>
+                <div class="legend-row"><div class="dot" style="background: #0088ff;"></div> Field (B)</div>
+            </div>
+        </div>
+        
+        <div class="panel" id="statusPanel" style="display:none; text-align: center; color: #8b949e; font-size: 0.9rem;">
+            Entering Field Region<br>
+            <span style="color: #ff3333; font-weight: bold;">F</span> = q(v &times; B)
+        </div>
+    </div>
+
+    <!-- 3D Scene Container -->
+    <div id="scene-container"></div>
+
+    <!-- Logic -->
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Constants ---
+        const CUBE_SIZE = 20;
+        const CUBE_CENTER = new THREE.Vector3(5, 10, 0); 
+        const START_POS = new THREE.Vector3(-25, 10, 0);
+        const SIMULATION_SPEED = 0.42;
+        const MAX_SUBSTEP = 0.08;
+        const MAGNETIC_RESPONSE = 0.1;
+        const VORTEX_CENTER = new THREE.Vector3(CUBE_CENTER.x + CUBE_SIZE / 2, CUBE_CENTER.y, CUBE_CENTER.z);
+        
+        // --- Globals ---
+        let scene, camera, renderer, labelRenderer, controls;
+        let particle, trailLine, vecV, vecF, labelVObj, labelFObj;
+        let fieldGroup;
+        let fieldBox;
+        
+        // State
+        let params = {
+            v: 10,
+            q: 1,
+            type: 'into',
+            view: '3d'
+        };
+        
+        let physics = {
+            active: false,
+            pos: new THREE.Vector3(),
+            vel: new THREE.Vector3(),
+            trailPoints: [],
+            trailIdx: 0
+        };
+
+        const MAX_TRAIL = 2000;
+        const trailPositions = new Float32Array(MAX_TRAIL * 3);
+
+        // --- Initialization ---
+        function init() {
+            const container = document.getElementById('scene-container');
+
+            // 1. Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d1117);
+
+            // 2. Camera
+            const { width, height } = getSceneSize();
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(-20, 30, 40);
+            camera.lookAt(0, 5, 0);
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 4. Label Renderer
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(width, height);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            labelRenderer.domElement.style.pointerEvents = 'none'; 
+            container.appendChild(labelRenderer.domElement);
+
+            // 5. Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(5, 10, 0);
+
+            // 6. Lights
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+            const sun = new THREE.DirectionalLight(0xffffff, 1);
+            sun.position.set(20, 50, 20);
+            scene.add(sun);
+
+            // 7. Environment
+            buildEnvironment();
+            
+            // 8. Particle System
+            buildParticleSystem();
+
+            // 9. Event Listeners
+            window.addEventListener('resize', onResize);
+            if ('ResizeObserver' in window) {
+                new ResizeObserver(onResize).observe(container);
+            }
+            setupUI();
+
+            // 10. Start Loop
+            animate();
+            
+            // 11. Initial Fire
+            resetAndFire();
+            requestAnimationFrame(onResize);
+            setTimeout(onResize, 100);
+        }
+
+        function buildEnvironment() {
+            // Floor Grid
+            const grid = new THREE.GridHelper(100, 50, 0x30363d, 0x161b22);
+            scene.add(grid);
+
+            // Field Cube (Visual)
+            const geo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+            const mat = new THREE.MeshBasicMaterial({ 
+                color: 0x0088ff, 
+                transparent: true, 
+                opacity: 0.1,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            fieldBox = new THREE.Mesh(geo, mat);
+            fieldBox.position.copy(CUBE_CENTER);
+            scene.add(fieldBox);
+
+            const edges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geo),
+                new THREE.LineBasicMaterial({ color: 0x0088ff, opacity: 0.4, transparent: true })
+            );
+            edges.position.copy(CUBE_CENTER);
+            scene.add(edges);
+
+            // Field Vectors Group
+            fieldGroup = new THREE.Group();
+            scene.add(fieldGroup);
+            rebuildFieldVectors();
+        }
+
+        function buildParticleSystem() {
+            // Particle Sphere
+            const geo = new THREE.SphereGeometry(0.6, 16, 16);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaaa });
+            particle = new THREE.Mesh(geo, mat);
+            scene.add(particle);
+
+            // Trail Line
+            const trailGeo = new THREE.BufferGeometry();
+            trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+            const trailMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
+            trailLine = new THREE.Line(trailGeo, trailMat);
+            trailLine.frustumCulled = false;
+            scene.add(trailLine);
+
+            // Vectors (Arrows)
+            // Velocity (Yellow) - Thicker head
+            vecV = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 5, 0xf1c40f, 1.5, 1.2);
+            scene.add(vecV);
+            
+            // Force (Red) - Thicker head
+            vecF = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 5, 0xff3333, 1.5, 1.2);
+            scene.add(vecF);
+
+            // Labels
+            const divV = document.createElement('div'); divV.className = 'label label-v'; divV.innerHTML = 'v';
+            labelVObj = new CSS2DObject(divV);
+            labelVObj.position.set(2, 2, 0);
+            particle.add(labelVObj);
+
+            const divF = document.createElement('div'); divF.className = 'label label-f'; divF.innerHTML = 'F';
+            labelFObj = new CSS2DObject(divF);
+            labelFObj.position.set(0, 3, 0);
+            particle.add(labelFObj);
+            labelFObj.visible = false;
+        }
+
+        // --- Field Logic ---
+
+        function createTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            if (type === 'cross') {
+                ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 8;
+                ctx.beginPath(); ctx.moveTo(10,10); ctx.lineTo(54,54); ctx.moveTo(54,10); ctx.lineTo(10,54); ctx.stroke();
+            } else {
+                ctx.fillStyle = '#0088ff'; ctx.beginPath(); ctx.arc(32,32,10,0,Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(32,32,26,0,Math.PI*2); ctx.stroke();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+        const texCross = createTexture('cross');
+        const texDot = createTexture('dot');
+
+        function rebuildFieldVectors() {
+            // Clear old
+            while(fieldGroup.children.length > 0) fieldGroup.remove(fieldGroup.children[0]);
+
+            const spacing = 5;
+            const half = CUBE_SIZE / 2;
+            
+            // Fill the volume
+            for(let x = -half + 2.5; x < half; x += spacing) {
+                for(let y = -half + 2.5; y < half; y += spacing) {
+                    for(let z = -half + 2.5; z < half; z += spacing) {
+                        
+                        const localPos = new THREE.Vector3(x, y, z);
+                        const worldPos = new THREE.Vector3().copy(CUBE_CENTER).add(localPos);
+
+                        // Determine direction based on type
+                        let dir = getFieldVector(worldPos);
+                        if (dir.lengthSq() === 0) continue; 
+
+                        const group = new THREE.Group();
+                        group.position.copy(worldPos);
+
+                        // 3D Arrow
+                        const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0,0,0), 2.5, 0x0088ff, 0.8, 0.6);
+                        group.add(arrow);
+
+                        // 2D Sprite
+                        let map = null;
+                        if (params.type === 'into') map = texCross;
+                        else if (params.type === 'out') map = texDot;
+                        
+                        if (map) {
+                            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: map, color: 0xffffff }));
+                            sprite.scale.set(2, 2, 2);
+                            sprite.visible = false; // Hidden by default
+                            group.userData = { isSprite: true, arrow: arrow, sprite: sprite };
+                            group.add(sprite);
+                        } else {
+                            group.userData = { isSprite: false, arrow: arrow };
+                        }
+
+                        fieldGroup.add(group);
+                    }
+                }
+            }
+            updateViewMode();
+        }
+
+        function getFieldVector(pos) {
+            // Check bounds
+            const half = CUBE_SIZE / 2;
+            if (pos.x < CUBE_CENTER.x - half || pos.x > CUBE_CENTER.x + half ||
+                pos.y < CUBE_CENTER.y - half || pos.y > CUBE_CENTER.y + half ||
+                pos.z < CUBE_CENTER.z - half || pos.z > CUBE_CENTER.z + half) {
+                return new THREE.Vector3(0,0,0);
+            }
+
+            if (params.type === 'into') return new THREE.Vector3(0, -1, 0);
+            if (params.type === 'out') return new THREE.Vector3(0, 1, 0);
+            if (params.type === 'along') return new THREE.Vector3(1, 0, 0);
+            if (params.type === 'opposite') return new THREE.Vector3(-1, 0, 0);
+            
+            // Curling around a downstream axis, so the visible field bends incoming positive charges upward
+            // instead of canceling the lift in the second half of the cube.
+            const relX = pos.x - VORTEX_CENTER.x;
+            const relZ = pos.z - VORTEX_CENTER.z;
+            const vec = new THREE.Vector3(-relZ, 0, relX);
+            if (vec.lengthSq() > 0.001) vec.normalize();
+            return vec;
+        }
+
+        function getLorentzForce(pos, vel) {
+            return new THREE.Vector3().crossVectors(vel, getFieldVector(pos)).multiplyScalar(params.q);
+        }
+
+        function advanceMagneticStep(dt) {
+            const B = getFieldVector(physics.pos);
+            if (B.lengthSq() === 0 || params.q === 0 || physics.vel.lengthSq() === 0) {
+                physics.pos.add(physics.vel.clone().multiplyScalar(dt));
+                return;
+            }
+
+            const t = B.clone().multiplyScalar(params.q * MAGNETIC_RESPONSE * dt * 0.5);
+            const tMagSq = t.lengthSq();
+            const s = t.clone().multiplyScalar(2 / (1 + tMagSq));
+            const vPrime = physics.vel.clone().add(new THREE.Vector3().crossVectors(physics.vel, t));
+            physics.vel.add(new THREE.Vector3().crossVectors(vPrime, s));
+            physics.pos.add(physics.vel.clone().multiplyScalar(dt));
+        }
+
+        function updateViewMode() {
+            const isTop = (params.view === '2d');
+            
+            // Update Camera
+            if (isTop) {
+                controls.enabled = false;
+                // Snap to top view
+                camera.position.set(CUBE_CENTER.x, 60, CUBE_CENTER.z);
+                camera.lookAt(CUBE_CENTER);
+                camera.up.set(0, 0, -1); // Orient so X is right, Z is down (screen Y)
+            } else {
+                controls.enabled = true;
+                camera.position.set(-20, 30, 40);
+                camera.lookAt(0, 5, 0);
+                camera.up.set(0, 1, 0);
+            }
+
+            // Update Field Visuals
+            fieldGroup.children.forEach(group => {
+                const data = group.userData;
+                if (data.isSprite) {
+                    data.sprite.visible = isTop;
+                    data.arrow.visible = !isTop;
+                } else {
+                    data.arrow.visible = true;
+                }
+            });
+        }
+
+        // --- Physics & Animation ---
+
+        function resetAndFire() {
+            physics.active = true;
+            physics.pos.copy(START_POS);
+            physics.vel.set(params.v * 0.1, 0, 0); // Scale down speed for visual
+            
+            // Reset Trail
+            physics.trailIdx = 0;
+            trailPositions.fill(0);
+            trailLine.geometry.attributes.position.needsUpdate = true;
+            
+            // Update Visuals immediately
+            particle.position.copy(physics.pos);
+            vecV.position.copy(physics.pos);
+            vecF.visible = false;
+            labelFObj.visible = false;
+            document.getElementById('statusPanel').style.display = 'none';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (physics.active) {
+                const stepCount = Math.max(1, Math.ceil(SIMULATION_SPEED / MAX_SUBSTEP));
+                const dt = SIMULATION_SPEED / stepCount;
+
+                for (let step = 0; step < stepCount; step++) {
+                    advanceMagneticStep(dt);
+                }
+                const displayB = getFieldVector(physics.pos);
+
+                // 5. Update Trail
+                if (physics.trailIdx < MAX_TRAIL) {
+                    const i = physics.trailIdx * 3;
+                    trailPositions[i] = physics.pos.x;
+                    trailPositions[i+1] = physics.pos.y;
+                    trailPositions[i+2] = physics.pos.z;
+                    physics.trailIdx++;
+                    trailLine.geometry.setDrawRange(0, physics.trailIdx);
+                    trailLine.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // 6. Visual Updates
+                particle.position.copy(physics.pos);
+                
+                // Velocity Vector
+                vecV.position.copy(physics.pos);
+                if (physics.vel.lengthSq() > 0) {
+                    vecV.setDirection(physics.vel.clone().normalize());
+                }
+
+                // Force Vector & UI
+                if (displayB.lengthSq() > 0) {
+                    document.getElementById('statusPanel').style.display = 'block';
+                    
+                    const pureF = getLorentzForce(physics.pos, physics.vel);
+                    if (pureF.lengthSq() > 0.01) {
+                        vecF.visible = true;
+                        labelFObj.visible = true;
+                        vecF.position.copy(physics.pos);
+                        vecF.setDirection(pureF.normalize());
+                    } else {
+                        vecF.visible = false;
+                        labelFObj.visible = false;
+                    }
+                } else {
+                    document.getElementById('statusPanel').style.display = 'none';
+                    vecF.visible = false;
+                    labelFObj.visible = false;
+                }
+
+                // Bounds check
+                if (physics.pos.length() > 100) physics.active = false;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        // --- UI Handling ---
+        function setupUI() {
+            const elV = document.getElementById('slider-v');
+            const elQ = document.getElementById('slider-q');
+            const elType = document.getElementById('fieldType');
+            const btnFire = document.getElementById('btn-fire');
+            const btnView = document.getElementById('btn-view');
+
+            function updateParams() {
+                params.v = parseFloat(elV.value);
+                params.q = parseFloat(elQ.value);
+                params.type = elType.value;
+                
+                document.getElementById('val-v').innerText = params.v;
+                document.getElementById('val-q').innerText = (params.q > 0 ? "+" : "") + params.q;
+                
+                rebuildFieldVectors(); // If type changed
+                resetAndFire();
+            }
+
+            elV.addEventListener('input', updateParams);
+            elQ.addEventListener('input', updateParams);
+            elType.addEventListener('change', updateParams);
+            btnFire.addEventListener('click', resetAndFire);
+            
+            btnView.addEventListener('click', () => {
+                params.view = (params.view === '3d') ? '2d' : '3d';
+                updateViewMode();
+            });
+        }
+
+        function onResize() {
+            const { width, height } = getSceneSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+            updateViewMode();
+        }
+
+        function getSceneSize() {
+            const container = document.getElementById('scene-container');
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+
+        // Start
+        init();
+
+    </script>
+<script defer data-offline-bundle src="ch3_1_B_F_V_relation.0.offline.js"></script>
+
+
+
+</body>
+</html>

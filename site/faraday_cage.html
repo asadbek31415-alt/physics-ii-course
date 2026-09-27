@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Faraday Cage Effect</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a; /* Slate 900 */
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #38bdf8; /* Sky 400 */
+            margin: 0;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        #status-box {
+            position: absolute;
+            bottom: 30px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #334155;
+            padding: 15px 25px;
+            border-radius: 12px;
+            backdrop-filter: blur(4px);
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .label { font-size: 0.75rem; text-transform: uppercase; color: #64748b; letter-spacing: 1px; }
+        .value { font-size: 1.5rem; font-weight: bold; font-family: monospace; }
+        
+        .safe { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
+        .danger { color: #f87171; }
+
+        canvas {
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h1>Faraday Cage Simulator</h1>
+        <p>Drag the High Voltage Source. Observe the cavity inside.</p>
+    </div>
+
+    <div id="status-box">
+        <div class="metric">
+            <span class="label">External Field</span>
+            <span class="value danger" id="val-ext">0.00</span>
+        </div>
+        <div class="metric">
+            <div style="width: 1px; height: 30px; background: #334155;"></div>
+        </div>
+        <div class="metric">
+            <span class="label">Cavity Field</span>
+            <span class="value safe" id="val-int">0.00</span>
+        </div>
+        <div class="metric">
+            <span class="label">Status</span>
+            <span class="value safe" id="status-text">SHIELDED</span>
+        </div>
+    </div>
+
+    <canvas id="simCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI Elements
+    const uiExt = document.getElementById('val-ext');
+    const uiInt = document.getElementById('val-int');
+    const uiStatus = document.getElementById('status-text');
+
+    let width, height, cx, cy;
+
+    // --- Configuration ---
+    const CAGE_R_OUT = 150;
+    const CAGE_R_IN = 100;
+    const SRC_R = 25;
+    
+    // Physics
+    const NUM_CHARGES = 60; // Surface charges on the outer ring
+    
+    // --- State ---
+    let source = {
+        x: 0, 
+        y: 0, 
+        dragging: false,
+        angle: 0 // Angle relative to center
+    };
+
+    let charges = []; // The induced charges on the cage surface
+    let sparks = []; // Visual lightning effects
+
+    function init() {
+        resize();
+        // Start source on the left
+        source.x = cx - 250;
+        source.y = cy;
+        updateSourceAngle();
+
+        // Initialize surface charges on the OUTER ring
+        charges = [];
+        for(let i=0; i<NUM_CHARGES; i++) {
+            charges.push({
+                angle: (i / NUM_CHARGES) * Math.PI * 2,
+                baseAngle: (i / NUM_CHARGES) * Math.PI * 2, // Their "lattice" position
+                q: 0 // Induced charge amount (-1 to 1)
+            });
+        }
+    }
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        cx = width / 2;
+        cy = height / 2;
+    }
+
+    function updateSourceAngle() {
+        source.angle = Math.atan2(source.y - cy, source.x - cx);
+    }
+
+    function update() {
+        // 1. Calculate Distance to Source
+        const dx = source.x - cx;
+        const dy = source.y - cy;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        // 2. Update Surface Charges (Induction)
+        // Electrons (-) want to move TOWARDS the positive source.
+        // Positive ions (+) are left behind (effectively) on the far side.
+        // We simulate this by calculating a "dipole" distribution on the ring.
+        
+        charges.forEach(c => {
+            // Calculate angle difference between charge and source
+            let diff = c.baseAngle - source.angle;
+            // Normalize -PI to PI
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            
+            // Induction strength falls off with distance
+            const strength = Math.min(10000 / (dist*dist), 1.5);
+            
+            // If the charge is facing the source (diff ~ 0), it becomes Negative
+            // If opposite (diff ~ PI), it becomes Positive
+            // We use Cosine for distribution
+            c.q = -Math.cos(diff) * strength;
+        });
+
+        // 3. UI Updates
+        // External field is strong near source
+        const extField = Math.min(50000 / (dist*dist), 100); 
+        uiExt.innerText = extField.toFixed(1) + " kV/m";
+        
+        // Internal field is ALWAYS zero (The Physics Principle)
+        uiInt.innerText = "0.00 kV/m";
+        
+        // 4. Generate Sparks if close
+        if(dist < CAGE_R_OUT + SRC_R + 40) {
+            if(Math.random() < 0.3) {
+                createSpark();
+            }
+        }
+        
+        // Update sparks
+        sparks = sparks.filter(s => s.life > 0);
+        sparks.forEach(s => s.life--);
+    }
+
+    function createSpark() {
+        // Find closest point on cage
+        const angle = Math.atan2(source.y - cy, source.x - cx);
+        // Add some jitter
+        const jit = (Math.random() - 0.5) * 0.5;
+        const tx = cx + Math.cos(angle + jit) * CAGE_R_OUT;
+        const ty = cy + Math.sin(angle + jit) * CAGE_R_OUT;
+        
+        // Start point (on source)
+        const sx = source.x - Math.cos(angle)*SRC_R;
+        const sy = source.y - Math.sin(angle)*SRC_R;
+
+        sparks.push({
+            sx: sx, sy: sy,
+            tx: tx, ty: ty,
+            life: 5 + Math.random() * 5,
+            points: generateLightningPoints(sx, sy, tx, ty)
+        });
+    }
+
+    function generateLightningPoints(x1, y1, x2, y2) {
+        const points = [{x:x1, y:y1}];
+        const steps = 6;
+        const dx = (x2 - x1) / steps;
+        const dy = (y2 - y1) / steps;
+        
+        for(let i=1; i<steps; i++) {
+            const mag = 15; // Jagginess
+            points.push({
+                x: x1 + dx*i + (Math.random()-0.5)*mag,
+                y: y1 + dy*i + (Math.random()-0.5)*mag
+            });
+        }
+        points.push({x:x2, y:y2});
+        return points;
+    }
+
+    // --- Drawing ---
+
+    function drawFieldLines() {
+        // We simulate field lines raycasting from source and stopping at the cage
+        const numLines = 24;
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.3)"; // Faint blue
+        ctx.lineWidth = 2;
+
+        for(let i=0; i<numLines; i++) {
+            const angleOffset = (i / numLines) * Math.PI * 2;
+            const angle = Math.atan2(source.y - cy, source.x - cx) + Math.cos(angleOffset); 
+            
+            // This is a visual hack to make lines look like they are attracted to the cage
+            // Real field line calculation is expensive.
+            // We draw Bezier curves from Source to Cage Surface.
+            
+            // Target point on cage
+            // We map the full circle of the source to the "facing" side of the cage
+            // This is purely for visual intuition of "Termination"
+            
+            // Simple Raycast visual
+            ctx.beginPath();
+            const startX = source.x;
+            const startY = source.y;
+            
+            // Check intersection with Cage Outer Circle
+            // Vector from source
+            const vAngle = (i / numLines) * Math.PI * 2;
+            const vx = Math.cos(vAngle);
+            const vy = Math.sin(vAngle);
+            
+            // Ray: P = S + t*V
+            // Intersection with (x-cx)^2 + (y-cy)^2 = R^2
+            // Simplification: just draw lines to the cage center but stop at radius
+            
+            // Better visual:
+            // Draw lines radially from source. If they hit the cage, stop.
+            // If they don't, fade out.
+            
+            const rayLen = 1000;
+            // Intersection logic
+            // |S + tV - C|^2 = R^2
+            // Let L = S - C
+            // |tV + L|^2 = R^2
+            // t^2 + 2t(V.L) + |L|^2 - R^2 = 0
+            
+            const Lx = startX - cx;
+            const Ly = startY - cy;
+            const b = 2 * (vx*Lx + vy*Ly);
+            const cVal = (Lx*Lx + Ly*Ly) - (CAGE_R_OUT*CAGE_R_OUT);
+            const disc = b*b - 4*cVal;
+            
+            let t = rayLen;
+            let hit = false;
+            
+            if(disc >= 0) {
+                const t1 = (-b - Math.sqrt(disc)) / 2;
+                const t2 = (-b + Math.sqrt(disc)) / 2;
+                // We want the smallest positive t
+                if(t1 > 0) t = t1;
+                else if(t2 > 0) t = t2;
+                if(t < rayLen) hit = true;
+            }
+            
+            // If the line is going away from the cage, don't draw infinite
+            if(!hit && Math.abs(vAngle - Math.atan2(-Ly, -Lx)) > Math.PI/2) {
+                // Fading lines away
+                 const grad = ctx.createLinearGradient(startX, startY, startX + vx*300, startY + vy*300);
+                 grad.addColorStop(0, "rgba(56, 189, 248, 0.3)");
+                 grad.addColorStop(1, "rgba(56, 189, 248, 0)");
+                 ctx.strokeStyle = grad;
+                 ctx.beginPath();
+                 ctx.moveTo(startX, startY);
+                 ctx.lineTo(startX + vx*300, startY + vy*300);
+                 ctx.stroke();
+            } else {
+                ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(startX + vx*t, startY + vy*t);
+                ctx.stroke();
+                
+                // If it hit, draw a little "termination" dot
+                if(hit) {
+                    ctx.fillStyle = "#38bdf8";
+                    ctx.beginPath();
+                    ctx.arc(startX + vx*t, startY + vy*t, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        drawFieldLines();
+
+        // 1. Draw Sparks (Underneath cage)
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "#38bdf8";
+        ctx.shadowBlur = 15;
+        sparks.forEach(s => {
+            ctx.beginPath();
+            ctx.moveTo(s.points[0].x, s.points[0].y);
+            for(let i=1; i<s.points.length; i++) {
+                ctx.lineTo(s.points[i].x, s.points[i].y);
+            }
+            ctx.stroke();
+        });
+        ctx.shadowBlur = 0;
+
+        // 2. Draw The Cage
+        // Outer Fill (Dark Metal)
+        ctx.beginPath();
+        ctx.arc(cx, cy, CAGE_R_OUT, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e293b";
+        ctx.fill();
+        
+        // The Mesh Pattern (Grid)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, CAGE_R_OUT, 0, Math.PI * 2);
+        ctx.clip(); // Clip to outer circle
+        
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.1)";
+        ctx.lineWidth = 1;
+        const gridSize = 20;
+        for(let x = cx - CAGE_R_OUT; x < cx + CAGE_R_OUT; x+=gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, cy - CAGE_R_OUT); ctx.lineTo(x, cy + CAGE_R_OUT); ctx.stroke();
+        }
+        for(let y = cy - CAGE_R_OUT; y < cy + CAGE_R_OUT; y+=gridSize) {
+            ctx.beginPath(); ctx.moveTo(cx - CAGE_R_OUT, y); ctx.lineTo(cx + CAGE_R_OUT, y); ctx.stroke();
+        }
+        ctx.restore();
+
+        // The Cavity (Hole)
+        ctx.beginPath();
+        ctx.arc(cx, cy, CAGE_R_IN, 0, Math.PI * 2);
+        ctx.fillStyle = "#0f172a"; // Match bg color (empty space)
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#475569"; // Inner rim
+        ctx.stroke();
+
+        // Outer Rim
+        ctx.beginPath();
+        ctx.arc(cx, cy, CAGE_R_OUT, 0, Math.PI * 2);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#94a3b8"; // Metal
+        ctx.stroke();
+
+        // 3. Draw Induced Charges on Outer Surface
+        charges.forEach(c => {
+            if(Math.abs(c.q) < 0.1) return;
+            
+            const x = cx + Math.cos(c.baseAngle) * (CAGE_R_OUT + 12);
+            const y = cy + Math.sin(c.baseAngle) * (CAGE_R_OUT + 12);
+            
+            ctx.font = "bold 14px sans-serif";
+            if(c.q < 0) {
+                // Negative (Blue)
+                ctx.fillStyle = `rgba(59, 130, 246, ${Math.abs(c.q)})`;
+                ctx.fillText("-", x-4, y+4);
+            } else {
+                // Positive (Red)
+                ctx.fillStyle = `rgba(239, 68, 68, ${Math.abs(c.q)})`;
+                ctx.fillText("+", x-4, y+4);
+            }
+        });
+
+        // 4. Draw the "Sensitive Chip" inside
+        ctx.fillStyle = "#222";
+        ctx.fillRect(cx - 15, cy - 15, 30, 30);
+        ctx.strokeStyle = "#4ade80"; // Green led color
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 15, cy - 15, 30, 30);
+        
+        // Chip Lines
+        ctx.beginPath();
+        ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+        ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+        ctx.stroke();
+        
+        // Safe Text
+        ctx.fillStyle = "#4ade80";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("SAFE", cx - 12, cy + 25);
+
+
+        // 5. Draw Source
+        ctx.beginPath();
+        ctx.arc(source.x, source.y, SRC_R, 0, Math.PI * 2);
+        // Gradient for glow
+        const grad = ctx.createRadialGradient(source.x, source.y, 5, source.x, source.y, SRC_R + 10);
+        grad.addColorStop(0, "#fff");
+        grad.addColorStop(0.3, "#facc15"); // Yellow
+        grad.addColorStop(1, "rgba(250, 204, 21, 0)");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        
+        ctx.fillStyle = "#a16207";
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillText("HV", source.x - 12, source.y + 6);
+
+    }
+
+    // --- Input ---
+    function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - r.left, y: clientY - r.top };
+    }
+
+    function onDown(e) {
+        const p = getPos(e);
+        const d = Math.hypot(p.x - source.x, p.y - source.y);
+        if(d < SRC_R * 2) {
+            source.dragging = true;
+            document.body.style.cursor = 'grabbing';
+        }
+    }
+
+    function onMove(e) {
+        const p = getPos(e);
+        if(source.dragging) {
+            source.x = p.x;
+            source.y = p.y;
+            updateSourceAngle();
+            
+            // Collision with cage (don't let it inside)
+            const d = Math.hypot(source.x - cx, source.y - cy);
+            const limit = CAGE_R_OUT + SRC_R + 5;
+            if(d < limit) {
+                const a = Math.atan2(source.y - cy, source.x - cx);
+                source.x = cx + Math.cos(a) * limit;
+                source.y = cy + Math.sin(a) * limit;
+            }
+        } else {
+             const d = Math.hypot(p.x - source.x, p.y - source.y);
+             document.body.style.cursor = d < SRC_R * 2 ? 'grab' : 'default';
+        }
+    }
+
+    function onUp() {
+        source.dragging = false;
+        document.body.style.cursor = 'default';
+    }
+
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchstart', onDown, {passive:false});
+    canvas.addEventListener('touchmove', (e)=>{e.preventDefault(); onMove(e)}, {passive:false});
+    window.addEventListener('touchend', onUp);
+    window.addEventListener('resize', resize);
+
+    init();
+    
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+    loop();
+
+</script>
+</body>
+</html>

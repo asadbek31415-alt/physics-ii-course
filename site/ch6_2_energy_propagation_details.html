@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Energy and Momentum</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false }
+                ]
+            });
+        });
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Energy &
+                Momentum
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Energy and Momentum</h1>
+
+        <section class="topic-section">
+            <h2>The Poynting Vector</h2>
+            <p>
+                Electromagnetic waves carry energy. The energy flux density (energy per unit area, per unit time) is
+                given by the <strong>Poynting vector</strong>, $\mathbf{S}$:
+            </p>
+            <div class="equation-box">
+                $$ \mathbf{S} = \frac{1}{\mu_0} (\mathbf{E} \times \mathbf{B}) $$
+            </div>
+            <p>
+                For a monochromatic plane wave traveling in vacuum, $\mathbf{E}$ and $\mathbf{B}$ are in phase and
+                perpendicular. The magnitude of the Poynting vector fluctuates rapidly at frequency $2\omega$.
+                Usually, we are interested in the <strong>intensity</strong> $I$, which is the time-averaged magnitude
+                of $\mathbf{S}$:
+            </p>
+            <div class="equation-box">
+                $$ I = \langle S \rangle = \frac{1}{2} c \epsilon_0 E_0^2 $$
+            </div>
+        </section>
+
+        <section class="interactive-diagram">
+            <h3 class="diagram-title">Interactive: Propagation in Media</h3>
+            <iframe src="" title="Propagation Simulation" class="diagram-frame"></iframe>
+            <div class="caption">
+                Visualizing energy flow and attenuation in conductive media.
+            </div>
+        </section>
+
+        <section class="topic-section">
+            <h2>Momentum and Radiation Pressure</h2>
+            <p>
+                Electromagnetic waves also carry momentum. The momentum density $\mathbf{g}$ stored in the fields is:
+            </p>
+            <div class="equation-box">
+                $$ \mathbf{g} = \mu_0 \epsilon_0 \mathbf{S} = \frac{1}{c^2} \mathbf{S} $$
+            </div>
+            <p>
+                When an electromagnetic wave strikes a surface, it transfers momentum, resulting in a force. This is the
+                origin of <strong>radiation pressure</strong> ($P$).
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">Absorber</span>
+                    <span class="def-text">For a black body surface: \(P = I/c\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Reflector</span>
+                    <span class="def-text">For a perfect mirror: \(P = 2I/c\).</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

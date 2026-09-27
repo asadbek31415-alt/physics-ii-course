@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potential of a Spherical Shell</title>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #121a23;
+            font-family: 'Inter', sans-serif;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px; /* Closer to bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 39, 52, 0.95);
+            padding: 10px 20px; /* Smaller padding */
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 260px; /* Narrower */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem; /* Smaller font */
+            color: #b0c4de;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3498db;
+            margin: 5px 0;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        
+        <div class="controls">
+            <div class="label-row">
+                <span>Test Point Distance (r)</span>
+                <span id="r-val">0.0 R</span>
+            </div>
+            <input type="range" id="rSlider" min="0" max="3.5" step="0.01" value="0">
+            <div style="font-size: 0.75rem; color: #888; text-align: center;">
+                Drag to move the test point
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('rSlider');
+        const rValDisplay = document.getElementById('r-val');
+
+        const R_sphere = 1; 
+        let r_test = 0;     
+
+        let width, height;
+        let centerX, centerY;
+        let graphX, graphY, graphW, graphH;
+
+        const col_sphere = "rgba(52, 152, 219, 0.2)";
+        const col_sphere_stroke = "#3498db";
+        const col_graph_line = "#2ecc71";
+        const col_axis = "#555";
+        const col_text = "#b0c4de";
+        const col_point = "#f1c40f";
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // --- LAYOUT ADJUSTMENTS ---
+            // Move everything UP to make room for controls
+            
+            // Left Side: Sphere
+            centerX = width * 0.25;
+            centerY = height * 0.4; // Moved up from 0.45
+
+            // Right Side: Graph
+            graphX = width * 0.55;
+            graphY = height * 0.15; // Moved up from 0.2
+            graphW = width * 0.4;
+            graphH = height * 0.5; // Keep height, but it ends at 0.65 now
+
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+
+        slider.addEventListener('input', (e) => {
+            r_test = parseFloat(e.target.value);
+            rValDisplay.innerText = r_test.toFixed(2) + " R";
+            draw();
+        });
+
+        function getV(r) {
+            if (r <= R_sphere) return 1.0;
+            return 1.0 / r;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. DRAW SCHEMATIC
+            const visualScale = Math.min(width, height) * 0.15; 
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, R_sphere * visualScale, 0, Math.PI * 2);
+            ctx.fillStyle = col_sphere;
+            ctx.fill();
+            ctx.strokeStyle = col_sphere_stroke;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = col_sphere_stroke;
+            ctx.font = "14px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText("Spherical Shell (+Q)", centerX, centerY - R_sphere * visualScale - 15);
+            ctx.fillStyle = "#fff";
+            ctx.fillText("R", centerX, centerY + 5);
+
+            const pointX = centerX + r_test * visualScale;
+            ctx.beginPath();
+            ctx.arc(pointX, centerY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = col_point;
+            ctx.fill();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if (r_test > 0.1) {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY + 20);
+                ctx.lineTo(pointX, centerY + 20);
+                ctx.strokeStyle = col_text;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = col_text;
+                ctx.fillText("r", (centerX + pointX)/2, centerY + 35);
+            }
+
+            // 2. DRAW GRAPH
+            const originX = graphX;
+            const originY = graphY + graphH;
+            
+            ctx.beginPath();
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX + graphW, originY);
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX, graphY);
+            ctx.strokeStyle = col_axis;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = col_text;
+            ctx.textAlign = "right";
+            ctx.fillText("Distance (r)", originX + graphW, originY + 20);
+            ctx.textAlign = "left";
+            ctx.fillText("Potential (V)", originX - 20, graphY - 10);
+            
+            const axisScaleX = graphW / 4.0; 
+            const axisScaleY = graphH / 1.2; 
+
+            const xR = originX + 1.0 * axisScaleX;
+            ctx.beginPath();
+            ctx.moveTo(xR, originY);
+            ctx.lineTo(xR, originY + 5);
+            ctx.strokeStyle = col_text;
+            ctx.stroke();
+            ctx.textAlign = "center";
+            ctx.fillText("R", xR, originY + 20);
+
+            ctx.beginPath();
+            ctx.moveTo(originX, originY - getV(0) * axisScaleY);
+            for(let r = 0; r <= 3.8; r += 0.05) {
+                const x = originX + r * axisScaleX;
+                const y = originY - getV(r) * axisScaleY;
+                ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = col_graph_line;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            const currGraphX = originX + r_test * axisScaleX;
+            const currGraphY = originY - getV(r_test) * axisScaleY;
+
+            ctx.beginPath();
+            ctx.moveTo(currGraphX, currGraphY);
+            ctx.lineTo(currGraphX, originY);
+            ctx.moveTo(currGraphX, currGraphY);
+            ctx.lineTo(originX, currGraphY);
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(currGraphX, currGraphY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = col_point;
+            ctx.fill();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.font = "16px Inter";
+            ctx.textAlign = "left";
+            let vText = "";
+            if (r_test <= 1.0) {
+                vText = "Inside: V = Constant";
+                ctx.fillStyle = "#2ecc71";
+            } else {
+                vText = "Outside: V ∝ 1/r";
+                ctx.fillStyle = "#3498db";
+            }
+            ctx.fillText(vText, originX + 20, graphY + 30);
+        }
+
+        resize();
+        slider.value = 0;
+        draw();
+
+    </script>
+</body>
+</html>

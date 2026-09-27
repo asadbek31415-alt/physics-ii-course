@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Closed Loop Force Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .label {
+            position: absolute;
+            color: white;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(12, 12, 12, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            color: #eee;
+            z-index: 10;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 0.8em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div id="controls">
+        <h3 style="margin: 0 0 10px 0; color: #00ffcc; font-size: 1rem;">Closed Loop in Uniform B</h3>
+        <p style="margin: 0; font-size: 0.85em; color: #bbb;">Net force is zero ($F_{net} = 0$), but torque may align
+            the loop.</p>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="dot" style="background: #2ecc71;"></div> Magnetic Field (B)
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background: #00ffcc;"></div> Current (I)
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background: #ef4444;"></div> Magnetic Force (F)
+        </div>
+    </div>
+
+    <div id="container"></div>
+
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script>
+        // --- Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        camera.position.set(8, 6, 8);
+        camera.lookAt(0, 0, 0);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // --- B-Field (Uniform) ---
+        const bDir = new THREE.Vector3(1, 0, 0); // Points along X
+        for (let y = -3; y <= 3; y += 1.5) {
+            for (let z = -3; z <= 3; z += 1.5) {
+                const arrow = new THREE.ArrowHelper(bDir, new THREE.Vector3(-4, y, z), 8, 0x2ecc71, 0.4, 0.2);
+                scene.add(arrow);
+            }
+        }
+
+        // --- The Current Loop (Rectangle) ---
+        const loopWidth = 4;
+        const loopHeight = 3;
+        const loopGroup = new THREE.Group();
+        scene.add(loopGroup);
+
+        const loopPoints = [
+            new THREE.Vector3(-loopWidth / 2, 0, -loopHeight / 2),
+            new THREE.Vector3(loopWidth / 2, 0, -loopHeight / 2),
+            new THREE.Vector3(loopWidth / 2, 0, loopHeight / 2),
+            new THREE.Vector3(-loopWidth / 2, 0, loopHeight / 2),
+            new THREE.Vector3(-loopWidth / 2, 0, -loopHeight / 2)
+        ];
+        const loopLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(loopPoints),
+            new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 })
+        );
+        loopGroup.add(loopLine);
+
+        // --- Force Arrows ---
+        // Side 1: (-2, 0, -1.5) -> (2, 0, -1.5) | dL = [1,0,0], B = [1,0,0] -> F = 0
+        // Side 2: (2, 0, -1.5) -> (2, 0, 1.5) | dL = [0,0,1], B = [1,0,0] -> F = dL x B = [0,1,0] x B? No, [0,0,1] x [1,0,0] = [0,1,0] (UP)
+        // Side 3: (2, 0, 1.5) -> (-2, 0, 1.5) | dL = [-1,0,0], B = [1,0,0] -> F = 0
+        // Side 4: (-2, 0, 1.5) -> (-2, 0, -1.5) | dL = [0,0,-1], B = [1,0,0] -> F = [0,0,-1] x [1,0,0] = [0,-1,0] (DOWN)
+
+        const fUp = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(loopWidth / 2, 0, 0), 1.5, 0xef4444, 0.3, 0.2);
+        const fDown = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(-loopWidth / 2, 0, 0), 1.5, 0xef4444, 0.3, 0.2);
+        loopGroup.add(fUp, fDown);
+
+        // --- Animation ---
+        let angle = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            angle += 0.01;
+            // Let the loop oscillate a bit to show 3D nature
+            loopGroup.rotation.y = Math.sin(angle * 0.5) * 0.5;
+            loopGroup.rotation.x = Math.cos(angle * 0.3) * 0.2;
+
+            // Update force vectors based on rotation
+            // F = I (dL x B)
+            // For a rectangular loop rotating around Y, B along X.
+            // But let's keep it simple: the vectors we drew are 
+            // the primary contributors to torque when loop is at an angle.
+            // Actually, in a UNIFORM field, F_total is ALWAYS 0 regardless of orientation.
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>

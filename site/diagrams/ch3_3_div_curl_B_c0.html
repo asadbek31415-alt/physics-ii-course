@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divergence Simulator: E vs B</title>
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0d1117; font-family: 'Segoe UI', sans-serif; color: #c9d1d9; display: flex; height: 100vh; }
+        
+        #ui-panel {
+            width: 340px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        h2 { margin: 0; color: #58a6ff; font-size: 1.3rem; }
+        p { font-size: 0.9rem; color: #8b949e; line-height: 1.4; margin: 5px 0; }
+        
+        .control-group { background: #21262d; padding: 15px; border-radius: 6px; border: 1px solid #30363d; }
+        .label-title { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 8px; color: #c9d1d9; }
+
+        button {
+            width: 100%; padding: 8px; margin-bottom: 5px;
+            background: #238636; color: white; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+        }
+        button:hover { background: #2ea043; }
+        button.active { background: #1f6feb; border-color: #1f6feb; }
+        button.secondary { background: #30363d; }
+        button.secondary:hover { background: #3f4650; }
+
+        .toggle-row { display: flex; gap: 5px; margin-bottom: 10px; }
+        .toggle-btn { flex: 1; }
+
+        #flux-readout {
+            font-family: monospace;
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 10px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: #7ee787;
+        }
+
+        /* Canvas */
+        #canvas-container { flex-grow: 1; position: relative; cursor: crosshair; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Legend */
+        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 0.85rem; }
+        .icon { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 1px solid #fff; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <div>
+            <h2>Divergence Visualizer</h2>
+            <p>Compare how Electric fields diverge vs. how Magnetic fields curl.</p>
+        </div>
+
+        <div class="control-group">
+            <span class="label-title">1. Select Field Type</span>
+            <div class="toggle-row">
+                <button class="toggle-btn active" id="btn-mode-elec" onclick="setMode('electric')">Electric (E)</button>
+                <button class="toggle-btn secondary" id="btn-mode-mag" onclick="setMode('magnetic')">Magnetic (B)</button>
+            </div>
+            <p id="mode-desc" style="font-size: 0.8rem; font-style: italic;">
+                Sources are Electric Charges. Field lines start (+) and end (-).
+            </p>
+        </div>
+
+        <div class="control-group">
+            <span class="label-title">2. Configuration (Multipoles)</span>
+            <button onclick="loadPreset('monopole')" id="btn-mono">Monopole (Single Source)</button>
+            <button onclick="loadPreset('dipole')">Dipole (North/South or +/-)</button>
+            <button onclick="loadPreset('quad')">Quadrupole</button>
+        </div>
+
+        <div class="control-group">
+            <span class="label-title">3. Flux Probe (Drag the Circle)</span>
+            <p>Measures Divergence ($\nabla \cdot \mathbf{F}$)</p>
+            <div id="flux-readout">Flux: 0.00</div>
+            <p style="font-size: 0.8rem; margin-top:5px;">
+                <span style="color:#ff7b72">Red</span> = Net Outflow (Source)<br>
+                <span style="color:#79c0ff">Blue</span> = Net Inflow (Sink)<br>
+                <span style="color:#8b949e">Gray</span> = Zero Net Flux
+            </p>
+        </div>
+        
+        <div style="font-size: 0.85rem; border-top: 1px solid #30363d; padding-top: 10px;">
+            <div id="math-eq"></div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <script>
+        // Init Math
+        document.addEventListener("DOMContentLoaded", () => {
+            katex.render("\\oint \\mathbf{F} \\cdot d\\mathbf{A}", document.getElementById('math-eq'));
+        });
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const readout = document.getElementById('flux-readout');
+
+        // State
+        let width, height, cx, cy;
+        let mode = 'electric'; // 'electric' or 'magnetic'
+        
+        // Probe State
+        let probe = { x: 0, y: 0, r: 80, dragging: false };
+        let fluxValue = 0;
+
+        // Sources
+        // Type: 1 = Pos Charge / Outward Current, -1 = Neg Charge / Inward Current
+        let sources = []; 
+
+        function resize() {
+            canvas.width = document.getElementById('canvas-container').clientWidth;
+            canvas.height = document.getElementById('canvas-container').clientHeight;
+            width = canvas.width;
+            height = canvas.height;
+            cx = width / 2;
+            cy = height / 2;
+            if(probe.x === 0) { probe.x = cx + 150; probe.y = cy; }
+        }
+        window.addEventListener('resize', resize);
+        
+        // --- Physics Engine ---
+
+        function getField(x, y) {
+            let Fx = 0;
+            let Fy = 0;
+            
+            for(let s of sources) {
+                let dx = x - s.x;
+                let dy = y - s.y;
+                let r2 = dx*dx + dy*dy;
+                let r = Math.sqrt(r2);
+                if(r < 1) r = 1; // singularity protect
+
+                if(mode === 'electric') {
+                    // Electric Field: Radial (k * q / r^2) * r_hat
+                    // F ~ q / r^2
+                    // Fx = (q/r^2) * (dx/r) = q*dx/r^3
+                    // Visual scaling factor used
+                    let mag = 5000 * s.val / (r*r2); // 1/r^2 falloff
+                    Fx += mag * dx;
+                    Fy += mag * dy;
+                } else {
+                    // Magnetic Field (Wire): Tangential
+                    // Biot-Savart for infinite wire: B ~ I / r
+                    // Direction is perpendicular to r
+                    // Bx = -I * dy / r^2
+                    // By =  I * dx / r^2
+                    // Note: This is 1/r falloff, not 1/r^2 like E-field.
+                    let mag = 200 * s.val / r2; 
+                    Fx += -mag * dy;
+                    Fy += mag * dx;
+                }
+            }
+            return { x: Fx, y: Fy };
+        }
+
+        // --- Flux Calculation ---
+        function calculateFlux() {
+            // Numerical integration around the probe circle
+            // Flux = Sum (F dot Normal) * dl
+            const steps = 60;
+            let sum = 0;
+            
+            for(let i=0; i<steps; i++) {
+                let theta = (i / steps) * Math.PI * 2;
+                
+                // Point on circle
+                let px = probe.x + probe.r * Math.cos(theta);
+                let py = probe.y + probe.r * Math.sin(theta);
+                
+                // Normal vector (outward radial)
+                let nx = Math.cos(theta);
+                let ny = Math.sin(theta);
+                
+                // Field at this point
+                let field = getField(px, py);
+                
+                // Dot product F . n
+                let dot = field.x * nx + field.y * ny;
+                sum += dot;
+            }
+            
+            fluxValue = sum;
+            
+            // UI Update
+            readout.innerText = `Flux: ${fluxValue.toFixed(1)}`;
+            
+            // Color Logic
+            if(Math.abs(fluxValue) < 0.5) {
+                readout.style.color = '#8b949e'; // Gray
+                readout.style.borderColor = '#30363d';
+            } else if(fluxValue > 0) {
+                readout.style.color = '#ff7b72'; // Red
+                readout.style.borderColor = '#ff7b72';
+            } else {
+                readout.style.color = '#79c0ff'; // Blue
+                readout.style.borderColor = '#79c0ff';
+            }
+        }
+
+        // --- Interaction ---
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btn-mode-elec').className = m === 'electric' ? 'toggle-btn active' : 'toggle-btn secondary';
+            document.getElementById('btn-mode-mag').className = m === 'magnetic' ? 'toggle-btn active' : 'toggle-btn secondary';
+            
+            let desc = document.getElementById('mode-desc');
+            let monoBtn = document.getElementById('btn-mono');
+
+            if(m === 'electric') {
+                desc.innerHTML = "Sources are <strong>Electric Charges</strong>. Field lines start (+) and end (-).";
+                monoBtn.disabled = false;
+                monoBtn.innerText = "Monopole (Single Source)";
+                loadPreset('dipole');
+            } else {
+                desc.innerHTML = "Sources are <strong>Currents</strong> (wires into/out of screen). Field lines form closed loops.";
+                monoBtn.disabled = true;
+                monoBtn.innerText = "Monopoles Don't Exist!";
+                // Automatically switch to dipole if in monopole mode, because magnetic monopole is physics violation
+                // But visually we can show a single wire (which looks like a monopole B field but curls)
+                // Actually, a single wire IS valid, it just has divergence 0.
+                // Let's re-enable single wire but call it "Single Wire"
+                monoBtn.disabled = false;
+                monoBtn.innerText = "Single Wire (Current)";
+                loadPreset('dipole');
+            }
+        }
+
+        function loadPreset(type) {
+            sources = [];
+            if(type === 'monopole') {
+                sources.push({x: cx, y: cy, val: 1});
+            } else if (type === 'dipole') {
+                sources.push({x: cx - 60, y: cy, val: 1});
+                sources.push({x: cx + 60, y: cy, val: -1});
+            } else if (type === 'quad') {
+                sources.push({x: cx - 50, y: cy - 50, val: 1});
+                sources.push({x: cx + 50, y: cy - 50, val: -1});
+                sources.push({x: cx + 50, y: cy + 50, val: 1});
+                sources.push({x: cx - 50, y: cy + 50, val: -1});
+            }
+        }
+
+        // Mouse Handling
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            // Check probe hit
+            let dx = mx - probe.x;
+            let dy = my - probe.y;
+            if(Math.sqrt(dx*dx + dy*dy) < probe.r) {
+                probe.dragging = true;
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if(probe.dragging) {
+                const rect = canvas.getBoundingClientRect();
+                probe.x = e.clientX - rect.left;
+                probe.y = e.clientY - rect.top;
+            }
+        });
+
+        window.addEventListener('mouseup', () => { probe.dragging = false; });
+
+
+        // --- Render Loop ---
+
+        function drawField() {
+            // Draw grid of vector segments ("Iron filings")
+            ctx.lineWidth = 1;
+            const spacing = 20;
+            
+            for(let y = 0; y < height; y += spacing) {
+                for(let x = 0; x < width; x += spacing) {
+                    
+                    let f = getField(x, y);
+                    let mag = Math.sqrt(f.x*f.x + f.y*f.y);
+                    
+                    if(mag > 0.01) {
+                        // Normalize
+                        let nx = f.x / mag;
+                        let ny = f.y / mag;
+                        
+                        // Opacity based on strength (clamp)
+                        let alpha = Math.min(mag * 5, 0.6);
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                        
+                        // Draw segment
+                        ctx.beginPath();
+                        ctx.moveTo(x - nx*6, y - ny*6);
+                        ctx.lineTo(x + nx*6, y + ny*6);
+                        ctx.stroke();
+
+                        // Arrowhead (randomly scattered or every Nth) to show direction
+                        if( (x/spacing + y/spacing) % 4 === 0 && alpha > 0.2) {
+                            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                            ctx.beginPath();
+                            let tipX = x + nx*6;
+                            let tipY = y + ny*6;
+                            ctx.arc(tipX, tipY, 2, 0, Math.PI*2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawSources() {
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for(let s of sources) {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, 12, 0, Math.PI*2);
+                
+                if(mode === 'electric') {
+                    // Charges
+                    ctx.fillStyle = s.val > 0 ? '#ff4757' : '#1e90ff';
+                    ctx.fill();
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(s.val > 0 ? '+' : '-', s.x, s.y);
+                } else {
+                    // Currents
+                    // Convention: Dot (out) = Positive, Cross (in) = Negative
+                    ctx.fillStyle = '#ffa502'; // Orange/Copper
+                    ctx.fill();
+                    ctx.fillStyle = 'black';
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 2;
+                    
+                    if(s.val > 0) {
+                        // Dot (Tip of arrow coming at you)
+                        ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, Math.PI*2); ctx.fill();
+                    } else {
+                        // Cross (Tail of arrow going away)
+                        ctx.beginPath(); 
+                        ctx.moveTo(s.x-4, s.y-4); ctx.lineTo(s.x+4, s.y+4);
+                        ctx.moveTo(s.x+4, s.y-4); ctx.lineTo(s.x-4, s.y+4);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawProbe() {
+            calculateFlux();
+
+            ctx.lineWidth = 3;
+            // Color based on flux
+            if(Math.abs(fluxValue) < 0.5) ctx.strokeStyle = '#8b949e'; // Gray
+            else if(fluxValue > 0) ctx.strokeStyle = '#ff4757'; // Red
+            else ctx.strokeStyle = '#1e90ff'; // Blue
+
+            // Draw Dashed Circle
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(probe.x, probe.y, probe.r, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Fill slightly
+            ctx.fillStyle = Math.abs(fluxValue) < 0.5 ? 'rgba(100,100,100,0.1)' : (fluxValue > 0 ? 'rgba(255, 71, 87, 0.1)' : 'rgba(30, 144, 255, 0.1)');
+            ctx.fill();
+
+            // Label
+            ctx.fillStyle = 'white';
+            ctx.font = '12px monospace';
+            ctx.fillText("Probe", probe.x, probe.y - probe.r - 10);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            drawField();
+            drawProbe();
+            drawSources();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Init
+        resize();
+        loadPreset('dipole');
+        animate();
+
+    </script>
+</body>
+</html>

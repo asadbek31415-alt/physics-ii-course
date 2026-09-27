@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Field of a Polarized Object</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\vec{l}",
+              dtau: "d\\tau"
+              /* Removed 'hat': '\\hat' to prevent infinite recursion loop */
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 3rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Definition List */
+        .def-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        .def-item {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            margin-bottom: 20px;
+            align-items: start;
+        }
+        .def-item:last-child { margin-bottom: 0; }
+        .def-symbol { font-size: 1.5rem; color: var(--warning-color); font-weight: bold; font-family: 'Times New Roman', serif; padding-top: 5px; }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Warning Box */
+        .warning-box {
+            background-color: rgba(231, 76, 60, 0.1);
+            border-left: 4px solid #e74c3c;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper { display: flex; justify-content: center; margin: 3rem auto; }
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <!-- FIXED LINK BELOW -->
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> > 
+                Field of Polarized Object
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>The Field of a Polarized Object</h1>
+        
+        <p>
+            We now define <strong>Polarization</strong> (\(\vec{P}\)) as the dipole moment per unit volume. Our goal is to calculate the electric potential produced by a polarized object without summing up billions of individual atomic dipoles.
+        </p>
+
+        <!-- SECTION 1: BOUND CHARGES -->
+        <section data-concept-title="Bound Charges" id="concept-1-bound-charges">
+            <h2>Bound Charges</h2>
+            <p>
+                It turns out that the field produced by a polarized object is mathematically identical to the field produced by a specific distribution of <strong>Bound Charges</strong>.
+            </p>
+            <p>
+                Instead of dealing with \(\vec{P}\) directly in an integral, we can replace the polarized material with two equivalent charge distributions:
+            </p>
+
+            <div class="def-box">
+                <div class="def-item">
+                    <span class="def-symbol">\(\sigma_b\)</span>
+                    <div>
+                        <strong>Surface Bound Charge:</strong>
+                        <br>
+                        \(\sigma_b = \vec{P} \cdot \hat{n}\)
+                        <p style="font-size: 0.9rem; margin-top: 5px;">If the polarization points <em>out</em> of the surface, positive charge accumulates there.</p>
+                    </div>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\rho_b\)</span>
+                    <div>
+                        <strong>Volume Bound Charge:</strong>
+                        <br>
+                        \(\rho_b = -\nabla \cdot \vec{P}\)
+                        <p style="font-size: 0.9rem; margin-top: 5px;">If the polarization is uniform (\(\nabla \cdot \vec{P} = 0\)), this term vanishes. Only <em>non-uniform</em> polarization creates net charge inside the volume.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \left( \oint_{\mathcal{S}} \frac{\sigma_b}{r} da' + \int_{\mathcal{V}} \frac{\rho_b}{r} d\tau' \right) $$
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_3_derivation_details.html?back=ch2_3_field_external.html%23concept-1-bound-charges"><span aria-hidden="true">+</span> Deep Dive: Deriving Bound Charges</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: PHYSICAL INTERPRETATION -->
+        <section data-concept-title="Physical Interpretation of Bound Charges" id="concept-2-physical-interpretation-of-bound-charges">
+            <h2>Physical Interpretation of Bound Charges</h2>
+            <p>
+                Are these "bound charges" real? Yes. They are perfectly genuine accumulations of charge.
+            </p>
+            <p>
+                Ideally, a dipole consists of a \(-q\) and a \(+q\). In a polarized material, the atomic dipoles align head-to-tail.
+            </p>
+            <ul>
+                <li>Inside the volume, the head of one dipole (\(+\)) sits next to the tail of its neighbor (\(-\)), canceling out.</li>
+                <li>At the surface, there is no neighbor to cancel the charge. The "heads" of the outermost layer form a sheet of positive charge.</li>
+            </ul>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/bound_charges_visualizer.html" title="Bound Charges Visualization"></iframe>
+            </div>
+            <p style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+                <em>Interactive: Toggle "Show Cancellation" to see how the internal charges neutralize, leaving only the surface charge \(\sigma_b\).</em>
+            </p>
+        </section>
+
+        <!-- SECTION 3: FIELD INSIDE -->
+        <section data-concept-title="The Field Inside a Dielectric" id="concept-3-the-field-inside-a-dielectric">
+            <h2>The Field Inside a Dielectric</h2>
+            <p>
+                Can we use these formulas for the field <em>inside</em> the material? It seems problematic: inside the material, you are bumping into individual atoms, where the field fluctuates wildly.
+            </p>
+            
+            <div class="warning-box">
+                <strong style="color: #e74c3c;">Important Distinction:</strong>
+                <p style="margin: 5px 0 0 0; color: var(--text-primary);">
+                    The "Field" we talk about in dielectrics is the <strong>Macroscopic Field</strong>. It is the average field over a region large enough to contain many atoms but small compared to the object.
+                </p>
+            </div>
+
+            <p>
+                The Macroscopic field "smoothes out" the atomic spikes. Amazingly, the macroscopic field produced by the atomic dipoles is <em>exactly</em> equal to the field produced by the bound charges \(\sigma_b\) and \(\rho_b\), both inside and outside the object.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

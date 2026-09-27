@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Capacitance & Energy</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #fff;
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        /* Step list styling */
+        .step-list {
+            counter-reset: step;
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-list li {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 20px;
+        }
+
+        .step-list li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 35px;
+            height: 35px;
+            background: var(--card-bg);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+        }
+
+        .sim-container {
+            background: #000;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin: 2rem 0;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 400px;
+            background: #0b1016;
+        }
+
+        .controls-panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .control-group input[type=range] {
+            width: 100%;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        .readout-panel {
+            grid-column: 2;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-val {
+            font-family: monospace;
+            font-size: 1.4rem;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .metric-unit {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="electric_field_in_matter_index.html">Electric Fields in Matter</a> &gt;
+                <a href="ch2_1_conductors.html">Conductors</a> &gt;
+                Capacitors
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Deep Dive: Capacitance & Energy</h1>
+
+        <p>
+            Deriving the Parallel Plate formula and calculating Energy Storage.
+        </p>
+
+        <section>
+            <h2>1. The Parallel Plate Capacitor</h2>
+            <p>
+                The most common capacitor geometry consists of two large parallel metal plates of area $A$, separated by
+                a small distance $d$. Let's calculate its capacitance $C = Q/V$ from first principles.
+            </p>
+
+            <ul class="step-list">
+                <li>
+                    <strong>Find the Electric Field ($E$)</strong>
+                    <p>From Gauss's Law, the field near a charged plane is $\sigma / 2\epsilon_0$. Since we have two
+                        plates (one $+Q$, one $-Q$), their fields add up in the middle:</p>
+                    <div class="formula-box">
+                        $$ E = \frac{\sigma}{2\epsilon_0} + \frac{\sigma}{2\epsilon_0} = \frac{\sigma}{\epsilon_0} =
+                        \frac{Q}{A\epsilon_0} $$
+                    </div>
+                </li>
+                <li>
+                    <strong>Find the Potential Difference ($V$)</strong>
+                    <p>The potential difference is the work per unit charge to move from one plate to the other. Since
+                        the field is uniform:</p>
+                    <div class="formula-box">
+                        $$ V = \int \vec{E} \cdot d\vec{l} = E \cdot d = \left( \frac{Q}{A\epsilon_0} \right) d $$
+                    </div>
+                </li>
+                <li>
+                    <strong>Calculate Capacitance ($C$)</strong>
+                    <p>Using the definition $C \equiv Q/V$:</p>
+                    <div class="formula-box">
+                        $$ C = \frac{Q}{ \left( \frac{Qd}{A\epsilon_0} \right) } = \frac{\epsilon_0 A}{d} $$
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <!-- INTERACTIVE SIMULATION -->
+        <section>
+            <h2>Interactive Lab: Geometry & Energy</h2>
+            <p>
+                Adjust the physical properties of the capacitor below. Observe how reducing the gap ($d$) or increasing
+                the area ($A$) drastically increases the Capacitance.
+            </p>
+
+            <div class="sim-container">
+                <canvas id="capCanvas"></canvas>
+                <div class="controls-panel">
+                    <!-- Sliders -->
+                    <div style="grid-column: 1;">
+                        <div class="control-group">
+                            <label>Plate Area (A)</label>
+                            <input type="range" id="sliderA" min="50" max="300" value="150">
+                        </div>
+                        <div class="control-group">
+                            <label>Separation Distance (d)</label>
+                            <input type="range" id="sliderD" min="20" max="120" value="60">
+                        </div>
+                        <div class="control-group">
+                            <label>Battery Voltage (V)</label>
+                            <input type="range" id="sliderV" min="0" max="100" value="50">
+                        </div>
+                    </div>
+
+                    <!-- Readouts -->
+                    <div class="readout-panel">
+                        <div class="metric">
+                            <div class="metric-label">Capacitance</div>
+                            <div class="metric-val" id="outC">0.00</div>
+                            <div class="metric-unit">pF</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Charge (Q)</div>
+                            <div class="metric-val" id="outQ" style="color:var(--accent-color)">0.00</div>
+                            <div class="metric-unit">pC</div>
+                        </div>
+                        <div class="metric"
+                            style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                            <div class="metric-label">Stored Energy</div>
+                            <div class="metric-val" id="outU" style="color:var(--warning-color)">0.00</div>
+                            <div class="metric-unit">pJ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>2. Energy Storage</h2>
+            <p>
+                To charge a capacitor, you must remove electrons from the positive plate and force them onto the
+                negative plate. The first electron is free, but subsequent electrons face repulsion. You have to do Work
+                against the Electric Field.
+            </p>
+            <p>
+                At any instant where the charge is $q$, the potential difference is $v = q/C$. The work $dW$ to move an
+                additional slice of charge $dq$ is:
+            </p>
+            <div class="formula-box">
+                $$ dW = v \cdot dq = \frac{q}{C} dq $$
+            </div>
+            <p>Integrating from $0$ to total charge $Q$:</p>
+            <div class="formula-box">
+                $$ W = \int_{0}^{Q} \frac{q}{C} dq = \frac{1}{C} \left[ \frac{q^2}{2} \right]_{0}^{Q} = \frac{Q^2}{2C}
+                $$
+            </div>
+            <p>Since $Q=CV$, we can rewrite this in the most famous form:</p>
+            <div class="formula-box" style="border-left: 4px solid var(--warning-color);">
+                $$ W = \frac{1}{2} C V^2 $$
+            </div>
+            <p>
+                This work is stored as potential energy in the electric field between the plates.
+            </p>
+        </section>
+
+    </div>
+
+    <footer></footer>
+
+    <!-- SIMULATION SCRIPT -->
+    <script>
+        const canvas = document.getElementById('capCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const sliderA = document.getElementById('sliderA');
+        const sliderD = document.getElementById('sliderD');
+        const sliderV = document.getElementById('sliderV');
+
+        const outC = document.getElementById('outC');
+        const outQ = document.getElementById('outQ');
+        const outU = document.getElementById('outU');
+
+        let width, height;
+        let A, d, V;
+        const eps0 = 0.885;
+
+        function init() {
+            resize();
+            updatePhysics();
+        }
+
+        function resize() {
+            width = canvas.width = canvas.parentElement.offsetWidth;
+            height = canvas.height = 400;
+        }
+
+        function updatePhysics() {
+            A = parseInt(sliderA.value);
+            d = parseInt(sliderD.value);
+            V = parseInt(sliderV.value);
+
+            const C = (eps0 * A / d);
+            const Q = C * V;
+            const U = 0.5 * C * V * V;
+
+            outC.innerText = C.toFixed(2);
+            outQ.innerText = Math.abs(Q).toFixed(1);
+            outU.innerText = Math.abs(U).toFixed(1);
+
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            const cx = width / 2;
+            const cy = height / 2;
+
+            const plateWidth = A * 1.5;
+            const plateHeight = 15;
+            const topY = cy - d / 2;
+            const botY = cy + d / 2;
+
+            ctx.fillStyle = "#94a3b8";
+            ctx.strokeStyle = "#cbd5e1";
+            ctx.lineWidth = 2;
+
+            ctx.fillRect(cx - plateWidth / 2, topY - plateHeight, plateWidth, plateHeight);
+            ctx.strokeRect(cx - plateWidth / 2, topY - plateHeight, plateWidth, plateHeight);
+
+            ctx.fillRect(cx - plateWidth / 2, botY, plateWidth, plateHeight);
+            ctx.strokeRect(cx - plateWidth / 2, botY, plateWidth, plateHeight);
+
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(cx, topY - plateHeight);
+            ctx.lineTo(cx, topY - plateHeight - 20);
+            ctx.lineTo(cx + plateWidth / 2 + 40, topY - plateHeight - 20);
+            ctx.lineTo(cx + plateWidth / 2 + 40, cy - 10);
+
+            ctx.moveTo(cx, botY + plateHeight);
+            ctx.lineTo(cx, botY + plateHeight + 20);
+            ctx.lineTo(cx + plateWidth / 2 + 40, botY + plateHeight + 20);
+            ctx.lineTo(cx + plateWidth / 2 + 40, cy + 10);
+            ctx.stroke();
+
+            ctx.beginPath();
+            const batX = cx + plateWidth / 2 + 40;
+            ctx.strokeStyle = V >= 0 ? "#f1c40f" : "#e74c3c";
+            ctx.moveTo(batX - 15, cy - 10); ctx.lineTo(batX + 15, cy - 10);
+            ctx.moveTo(batX - 8, cy + 10); ctx.lineTo(batX + 8, cy + 10);
+            ctx.stroke();
+
+            const fieldStrength = Math.abs(V) / d;
+            const numLines = Math.min(Math.floor(fieldStrength * A * 0.1), 50);
+
+            if (Math.abs(V) > 1) {
+                const color = V > 0 ? "rgba(255, 235, 59, 0.6)" : "rgba(231, 76, 60, 0.6)";
+                for (let i = 0; i < numLines; i++) {
+                    const x = (cx - plateWidth / 2) + (plateWidth * (i + 1) / (numLines + 1));
+                    if (V > 0) drawArrow(x, topY, x, botY, color);
+                    else drawArrow(x, botY, x, topY, color);
+                }
+            }
+
+            const numCharges = Math.min(Math.floor(Math.abs(outQ.innerText) / 10), 40);
+
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            for (let i = 0; i < numCharges; i++) {
+                const x = (cx - plateWidth / 2) + Math.random() * plateWidth;
+
+                if (V > 0) {
+                    ctx.fillStyle = "#ef4444";
+                    ctx.fillText("+", x, topY - plateHeight / 2);
+                    ctx.fillStyle = "#3b82f6";
+                    ctx.fillText("-", x, botY + plateHeight / 2);
+                } else if (V < 0) {
+                    ctx.fillStyle = "#3b82f6";
+                    ctx.fillText("-", x, topY - plateHeight / 2);
+                    ctx.fillStyle = "#ef4444";
+                    ctx.fillText("+", x, botY + plateHeight / 2);
+                }
+            }
+
+            ctx.fillStyle = "#666";
+            ctx.font = "12px sans-serif";
+            ctx.fillText("Vacuum Dielectric", cx - plateWidth / 2 - 60, cy);
+        }
+
+        function drawArrow(x1, y1, x2, y2, color) {
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            const headSize = 6;
+            ctx.beginPath();
+            if (y2 > y1) {
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(x2 - 4, y2 - headSize);
+                ctx.lineTo(x2 + 4, y2 - headSize);
+            } else {
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(x2 - 4, y2 + headSize);
+                ctx.lineTo(x2 + 4, y2 + headSize);
+            }
+            ctx.fill();
+        }
+
+        window.addEventListener('resize', () => { resize(); updatePhysics(); });
+        sliderA.addEventListener('input', updatePhysics);
+        sliderD.addEventListener('input', updatePhysics);
+        sliderV.addEventListener('input', updatePhysics);
+
+        init();
+
+    </script>
+</body>
+
+</html>

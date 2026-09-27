@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 1: The Electric Field</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                packages: { '[+]': ['ams'] },
+                macros: {
+                    rsep: "{\\text{𝓻}}",
+                    vecrsep: "{\\vec{\\text{𝓻}}}",
+                    hatrsep: "{\\hat{\\text{𝓻}}}"
+                }
+            }
+        };</script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .charge-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .charge-summary-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .charge-summary-card h3 {
+            margin: 0 0 0.5rem;
+            color: var(--accent-color);
+            font-size: 1rem;
+        }
+
+        .charge-summary-card p {
+            margin: 0;
+            font-size: 0.98rem;
+        }
+
+        .charge-facts {
+            margin: 1.5rem 0;
+            padding: 1.25rem 1.4rem;
+            border: 1px solid rgba(52, 152, 219, 0.35);
+            border-left: 4px solid var(--accent-color);
+            border-radius: 8px;
+            background: rgba(52, 152, 219, 0.08);
+        }
+
+        .charge-facts h3 {
+            margin: 0 0 0.65rem;
+            color: var(--accent-hover);
+            font-size: 1.05rem;
+        }
+
+        .charge-facts ul {
+            margin: 0;
+            padding-left: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        .charge-facts li {
+            margin-bottom: 0.45rem;
+        }
+
+        .charge-facts li:last-child {
+            margin-bottom: 0;
+        }
+
+        .deep-dive-note {
+            margin: 0.75rem auto 0;
+            max-width: 680px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > The Electric
+                Field
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Chapter 1: The Electric Field</h1>
+
+        <p>
+            The fundamental problem of electrostatics is to determine the force acting on a specific charge due to a
+            configuration of other stationary charges. This requires a precise understanding of how charges interact
+            across space.
+        </p>
+
+        <!-- SECTION 0: WHAT IS CHARGE -->
+        <section data-concept-title="0. What Is Charge?" id="concept-1-0-what-is-charge">
+            <h2>0. What Is Charge?</h2>
+            <p>
+                Electric charge is a fundamental property of matter, written \(q\) and measured in coulombs (C).
+                It tells us how matter participates in electric and magnetic interactions. In this lesson, charge is
+                the thing that creates electric forces, and also the thing that feels electric forces.
+            </p>
+            <p>
+                Charge comes in two signs: <strong>positive</strong> and <strong>negative</strong>. Charges with the
+                same sign repel each other, while charges with opposite signs attract. This sign rule is the physical
+                starting point behind Coulomb's law.
+            </p>
+
+            <div class="charge-facts">
+                <h3>Experimental facts about charge</h3>
+                <ul>
+                    <li>Electric charge is a scalar property: its value does not change when we describe the same
+                        object from a different inertial reference frame.</li>
+                    <li>In an isolated system, the total electric charge is conserved.</li>
+                    <li>Isolated observable charges come in integer multiples of the elementary charge
+                        \(e = 1.602 \times 10^{-19}\,\text{C}\).</li>
+                    <li>Charge is an independent property of a particle, not something determined by its mass.</li>
+                </ul>
+            </div>
+
+            <div class="charge-summary-grid">
+                <div class="charge-summary-card">
+                    <h3>Inside atoms</h3>
+                    <p>
+                        Protons carry positive charge, electrons carry negative charge, and neutrons carry no net
+                        charge.
+                    </p>
+                </div>
+                <div class="charge-summary-card">
+                    <h3>Neutral objects</h3>
+                    <p>
+                        An atom or object is neutral when its total positive charge and total negative charge cancel.
+                    </p>
+                </div>
+                <div class="charge-summary-card">
+                    <h3>Charged objects</h3>
+                    <p>
+                        An object becomes charged when there is an imbalance. In ordinary charging, electrons move while
+                        protons stay locked in nuclei.
+                    </p>
+                </div>
+            </div>
+
+            <p>
+                We often say that the <em>whole atom</em> or <em>whole object</em> is charged because from outside the
+                object, what matters is the net result after all positive and negative charges are added together:
+            </p>
+            <div class="math-block">
+                $$ q_{\text{net}} = (N_p - N_e)e $$
+            </div>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">\(N_p\)</span>
+                    <span class="def-text">Number of protons.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(N_e\)</span>
+                    <span class="def-text">Number of electrons.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(e\)</span>
+                    <span class="def-text">The elementary charge, \(e = 1.602 \times 10^{-19}\,\text{C}\).</span>
+                </div>
+            </div>
+            <p>
+                If \(N_p = N_e\), then \(q_{\text{net}} = 0\). If one electron leaves, then \(N_p > N_e\), so the
+                object has positive net charge. If an extra electron is added, then \(N_e > N_p\), so the object has
+                negative net charge.
+            </p>
+            <p>
+                We use the single symbol \(q_{\text{net}}\), or simply \(q\), because outside the atom or object the
+                detailed list of every proton and electron is usually unnecessary. Replacing many internal charges by
+                one net charge gives the same outside effect in many calculations, while making the problem much easier.
+            </p>
+
+            <p class="deep-dive-note">
+                This is the first optional deep dive in the course. Deep dives are for slower explanations, examples,
+                proofs, and extra context. The main lesson gives the ideas you need first; the deep dive lets you look
+                under the hood when you want more.
+            </p>
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_0_what_is_charge.html?back=ch1_1_electric_field.html%23concept-1-0-what-is-charge"><span aria-hidden="true">+</span> Deep Dive: Atomic Picture of Charge</a>
+            </div>
+        </section>
+
+        <!-- SECTION 1: COULOMB'S LAW -->
+        <section data-concept-title="1. The Interaction of Two Charges" id="concept-2-1-the-interaction-of-two-charges">
+            <h2>1. The Interaction of Two Charges</h2>
+            <p>
+                Consider a single <strong>Source Charge</strong> (\(q\)) situated at position \(\vec{r}'\) and a
+                <strong>Test Charge</strong> (\(Q\)) situated at position \(\vec{r}\).
+            </p>
+            <p>
+                The force exerted on the test charge is defined by <strong>Coulomb's Law</strong>:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{F}_Q = \frac{1}{4\pi\epsilon_0} \frac{q Q}{\rsep^2} \hatrsep $$
+            </div>
+
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">\(q\)</span>
+                    <span class="def-text">The <strong>Source Charge</strong>. The charge creating the force.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(Q\)</span>
+                    <span class="def-text">The <strong>Test Charge</strong>. The charge experiencing the force.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\vec{r}'\)</span>
+                    <span class="def-text">The <strong>source position vector</strong>. It locates the source charge
+                        \(q\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\vec{r}\)</span>
+                    <span class="def-text">The <strong>test position vector</strong>. It locates the test charge
+                        \(Q\), where the force is evaluated.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\epsilon_0\)</span>
+                    <span class="def-text"><strong>Permittivity of Free Space</strong>. A physical constant \(\approx
+                        8.85 \times 10^{-12} \, \text{C}^2/\text{N}\cdot\text{m}^2\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\vecrsep\)</span>
+                    <span class="def-text">The <strong>Separation Vector</strong> \(\vecrsep = \vec{r} -
+                        \vec{r}'\). It points from the source charge to the test charge.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\rsep\)</span>
+                    <span class="def-text">The <strong>magnitude</strong> (distance) between the charges:
+                        \(\rsep = |\vecrsep|\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\hatrsep\)</span>
+                    <span class="def-text">The <strong>unit vector</strong> defined as
+                        \(\hatrsep=\frac{\vecrsep}{\rsep}\). This specifies the direction of the force
+                        purely.</span>
+                </div>
+            </div>
+
+            <p>
+                This formula says that the force depends on three ideas at once: the two charge amounts \(q\) and \(Q\),
+                the distance \(\rsep\) between them, and the direction from the source charge to the test charge
+                \(\hatrsep\). Bigger charges make a bigger force, while larger separation weakens the force by the
+                inverse-square rule \(1/\rsep^2\). The constant \(\epsilon_0\) is the permittivity of
+                <strong>free space</strong>, meaning vacuum. Later, when charges interact inside materials instead of
+                vacuum, \(\epsilon_0\) is replaced by the material permittivity \(\epsilon\).
+            </p>
+            <p>
+                You can see each part of the formula in the simulator below: the charges \(q\) and \(Q\), the
+                separation vector \(\vecrsep\), its direction \(\hatrsep\), and the resulting force on each charge.
+            </p>
+
+            <!-- GEOMETRIC DIAGRAM: COULOMB -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/coulombs_law_geometry.html"
+                    title="Coulomb Law Geometry"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_1_2_coulombs_law_details.html?back=ch1_1_electric_field.html%23concept-2-1-the-interaction-of-two-charges"><span aria-hidden="true">+</span> Deep Dive: Coulomb's Law</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: SUPERPOSITION -->
+        <section data-concept-title="2. The Principle of Superposition" id="concept-3-2-the-principle-of-superposition">
+            <h2>2. The Principle of Superposition</h2>
+            <p>
+                In most physical situations, there is more than one source charge. Experiments confirm that the
+                electromagnetic force obeys the <strong>Principle of Superposition</strong>.
+            </p>
+            <p>
+                The total force on a test charge \(Q\) is the vector sum of the individual forces exerted by each source
+                charge \(q_i\):
+            </p>
+
+            <div class="math-block">
+                $$ \vec{F}_{net} = \vec{F}_1 + \vec{F}_2 + \dots + \vec{F}_n = \sum_{i=1}^n \vec{F}_i $$
+            </div>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/superposition_geometry.html"
+                    title="Superposition Diagram"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 3: ELECTRIC FIELD -->
+        <section data-concept-title="3. The Electric Field" id="concept-4-3-the-electric-field">
+            <h2>3. The Electric Field</h2>
+            <p>
+                If we examine the superposition equation, we observe that the test charge \(Q\) is a common factor in
+                every term. We can factor it out:
+            </p>
+            <div class="math-block">
+                $$ \vec{F} = Q \left[ \frac{1}{4\pi\epsilon_0} \sum_{i=1}^n \frac{q_i}{\rsep_i^2}
+                \hatrsep_i \right] $$
+            </div>
+            <p>
+                The quantity inside the brackets depends only on the distribution of the source charges and the position
+                in space. To measure it without significantly disturbing the source charges, we imagine a very small
+                positive test charge \(Q\). The resulting quantity is independent of the particular test charge used.
+                We define this vector field as the <strong>Electric Field</strong>, \(\vec{E}\).
+            </p>
+            <div class="math-block" style="border-color: var(--accent-color);">
+                $$ \vec{E}(\vec{r}) \equiv \frac{1}{4\pi\epsilon_0} \sum_{i=1}^n \frac{q_i}{\rsep_i^2}
+                \hatrsep_i $$
+            </div>
+            <p>
+                Thus, the force on any charge \(Q\) placed in an external electric field is simply \(\vec{F} =
+                Q\vec{E}\).
+            </p>
+            <p>
+                In the simulator below, choose a scenario to see how the source charges shape the electric field.
+                Field lines show the direction a positive test charge would be pushed, while vector samples show the
+                local direction and relative strength of \(\vec{E}\).
+            </p>
+
+            <!-- DIAGRAM REPLACEMENT: Vector Field Diagram (Height 500px) -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/electric_field.html" title="Electric Field Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_1_3_electric_field_details.html?back=ch1_1_electric_field.html%23concept-4-3-the-electric-field"><span aria-hidden="true">+</span> Deep Dive: Electric Field Visualizations</a>
+            </div>
+        </section>
+
+        <!-- SECTION 4: CONTINUOUS CHARGE -->
+        <section data-concept-title="4. Continuous Charge Distributions" id="concept-5-4-continuous-charge-distributions">
+            <h2>4. Continuous Charge Distributions</h2>
+            <p>
+                Macroscopic objects contain such a vast number of charge carriers that it is impractical to perform a
+                summation. Instead, we treat the charge as being spread continuously over the object.
+            </p>
+
+            <h3>From Summation to Integration</h3>
+            <p>
+                We divide the charged object into infinitesimal elements \(dq\). The sum becomes an integral. To perform
+                this integration, we must express \(dq\) in terms of geometry using <strong>Charge Density</strong>
+                (line charge \(\lambda\), surface charge \(\sigma\), or volume charge \(\rho\)).
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/continuous_distribution_dark.html"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_1_4_continuous_charge_details.html?back=ch1_1_electric_field.html%23concept-5-4-continuous-charge-distributions"><span aria-hidden="true">+</span> Deep Dive: Continuous Charge</a>
+            </div>
+        </section>
+
+        <!-- SECTION 5: INTEGRAL FORMULATION -->
+        <section data-concept-title="5. The General Integral Formulation" id="concept-6-5-the-general-integral-formulation">
+            <h2>5. The General Integral Formulation</h2>
+            <p>
+                Combining the concept of the electric field with continuous charge densities, the Electric Field at a
+                position \(\vec{r}\) generated by a continuous volume of charge is:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{E}(\vec{r}) = \frac{1}{4\pi\epsilon_0} \int_V \frac{\rho(\vec{r}')}{\rsep^2}
+                \hatrsep \, d\tau' $$
+            </div>
+
+            <p>
+                <strong>Note on vectors in integrals:</strong> The unit vector \(\hatrsep\) depends on the
+                position of the source element \(dq\). As you integrate over the volume, \(\hatrsep\) changes
+                direction. Therefore, it cannot be treated as a constant and must remain inside the integral.
+            </p>
+
+            <div class="dive-wrapper">
+                <!-- Updated Link to Multipole Expansion (ch1_5) -->
+                <a class="dive-btn deep-dive-link" href="ch1_5_E_integral.html?back=ch1_1_electric_field.html%23concept-6-5-the-general-integral-formulation"><span aria-hidden="true">+</span> Deep Dive: Calculating Fields: The Integral Method</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

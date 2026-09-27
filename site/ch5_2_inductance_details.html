@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Mutual & Self Inductance</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_2_electromagnetic_induction.html">Electromagnetic Induction</a> > Inductance
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Mutual & Self Inductance</h1>
+
+        <p class="intro-text">
+            Because the magnetic field is proportional to the current that creates it, the <strong>flux</strong> through
+            any nearby loop must also be proportional to that current. This proportionality constant encapsulates all
+            the complex geometry into a single number: <strong>Inductance</strong>.
+        </p>
+
+        <!-- SECTION 1: MUTUAL INDUCTANCE -->
+        <section>
+            <h2>1. Mutual Inductance ($M$)</h2>
+            <p>
+                Consider two loops of wire. Current $I_1$ flowing in the first loop produces a magnetic field
+                $\vec{B}_1$.
+                A portion of these field lines passes through the second loop, creating a magnetic flux $\Phi_{B,2}$.
+            </p>
+            <p>
+                Calculating $\vec{B}_1$ from the Biot-Savart law is hard. But we know one crucial fact: the field is
+                proportional to the current. Therefore:
+            </p>
+            <div class="math-block">
+                $$ \Phi_{B,2} = M_{21} I_1 $$
+            </div>
+            <p>
+                The constant $M_{21}$ is the <strong>Mutual Inductance</strong> of the two loops. It depends only on
+                their shapes, sizes, and relative positions.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ch5_2_mutual_loops.html"
+                    title="Mutual Inductance Visualization" scrolling="no"></iframe>
+            </div>
+
+            <h3>The Neumann Formula</h3>
+            <p>
+                By expressing the flux in terms of the vector potential $\vec{A}_1$, one can derive an elegant formula
+                that makes a remarkable fact obvious:
+            </p>
+            <div class="math-block">
+                $$ M_{21} = \frac{\mu_0}{4\pi} \oint_{loop1} \oint_{loop2} \frac{d\vec{l}_1 \cdot d\vec{l}_2}{|\vec{r}_1
+                - \vec{r}_2|} $$
+            </div>
+            <div class="highlight-box">
+                <p style="margin:0; text-align: center;">The integral is symmetric under swapping loop 1 and loop 2.
+                    Therefore:</p>
+                <div class="math-block" style="font-size: 1.5rem; margin: 10px 0; text-align: center;">
+                    $$ M_{21} = M_{12} \equiv M $$
+                </div>
+            </div>
+            <p>
+                This means: the flux through loop 2 when we run current $I$ through loop 1 is <em>identical</em> to the
+                flux through loop 1 when we run the same current $I$ through loop 2. We can drop the subscripts and
+                simply call it $M$.
+            </p>
+        </section>
+
+        <!-- SECTION 2: SELF INDUCTANCE -->
+        <section>
+            <h2>2. Self Inductance ($L$)</h2>
+            <p>
+                A changing current in loop 1 doesn't just induce an EMF in nearby loop 2—it also induces an EMF in
+                <strong>itself</strong>. The flux through a loop due to its own current is:
+            </p>
+            <div class="math-block">
+                $$ \Phi_B = L I $$
+            </div>
+            <p>
+                Where $L$ is the <strong>Self Inductance</strong> (or simply "inductance").
+            </p>
+
+            <h3>Origin of the Back EMF Formula</h3>
+            <p>
+                The formula for the back EMF comes directly from <strong>Faraday's Law</strong>. Since the induced EMF
+                is the negative rate of change of magnetic flux:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E} = -\frac{d\Phi_B}{dt} $$
+            </div>
+            <p>
+                Substituting the definition of self-inductance ($\Phi_B = LI$) into this equation:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E} = -\frac{d(LI)}{dt} = -L \frac{dI}{dt} $$
+            </div>
+            <p>
+                This confirms that the <strong>Back EMF</strong> always opposes the change in current (Lenz's Law).
+                Inductance is measured in <strong>Henries (H)</strong>.
+            </p>
+
+            <h3>Inductance as Electrical "Mass"</h3>
+            <p>
+                The back EMF means you must "fight" an inductor to change the current. The greater the $L$, the harder
+                it is to change the current—just like mass resists changes in velocity. This is why we call inductance
+                "electrical inertia."
+            </p>
+        </section>
+
+        <!-- SECTION 3: THE LR CIRCUIT -->
+        <section>
+            <h2>3. The LR Circuit</h2>
+            <p>
+                Consider a standard series circuit consisting of a battery $\mathcal{E}_0$, a resistor $R$, and an
+                inductor $L$. When
+                you close the switch, the inductor prevents the current from reaching its peak value instantly.
+            </p>
+            <p>
+                The total EMF is the battery minus the back EMF from the inductor. Applying Ohm's law:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E}_0 - L\frac{dI}{dt} = IR $$
+            </div>
+            <p>
+                This is a first-order differential equation. The solution (assuming $I(0) = 0$) is:
+            </p>
+            <div class="math-block">
+                $$ I(t) = \frac{\mathcal{E}_0}{R} \left[ 1 - e^{-t/\tau} \right] $$
+            </div>
+            <p>
+                Where $\tau = L/R$ is the <strong>time constant</strong>. It tells you how long it takes for the current
+                to reach roughly two-thirds of its final value $\mathcal{E}_0/R$.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ch5_2_lr_circuit.html" title="RL Circuit Simulation"
+                    scrolling="no"></iframe>
+            </div>
+
+            <ul class="key-points">
+                <li><strong>Small $\tau$ (Low $L$ or High $R$):</strong> Current jumps to steady-state almost
+                    instantly.</li>
+                <li><strong>Large $\tau$ (High $L$ or Low $R$):</strong> Current rises slowly, fighting against strong
+                    back EMF.</li>
+            </ul>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

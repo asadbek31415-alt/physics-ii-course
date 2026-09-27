@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear and Nonlinear Media</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['$$', '$$']],
+                macros: {
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    bfB: "\\mathbf{B}",
+                    bfH: "\\mathbf{H}",
+                    bfM: "\\mathbf{M}",
+                    bfE: "\\mathbf{E}",
+                    bfP: "\\mathbf{P}",
+                    bfD: "\\mathbf{D}"
+                    // Removed recursive macros (mu, epsilon, chi) to fix rendering error
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* Comparison Box */
+        .comparison-box {
+            background-color: rgba(155, 89, 182, 0.1);
+            border: 1px solid var(--purple-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-title {
+            color: var(--purple-color);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> >
+                Linear & Nonlinear Media
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Linear and Nonlinear Media</h1>
+
+        <p>
+            We have defined the magnetization \(\bfM\) and the auxiliary field \(\bfH\). In practical engineering and
+            physics, the crucial question is: <em>How does a specific material respond when I apply a magnetic
+                field?</em>
+        </p>
+        <p>
+            Does the material boost the field? Does it fight against it? Or does it do something more complex, like
+            remembering its past state? This distinction divides materials into <strong>Linear</strong> and
+            <strong>Nonlinear</strong> media.
+        </p>
+
+        <!-- SECTION 1: SUSCEPTIBILITY AND PERMEABILITY -->
+        <section data-concept-title="1. Magnetic Susceptibility and Permeability" id="concept-1-1-magnetic-susceptibility-and-permeability">
+            <h2>1. Magnetic Susceptibility and Permeability</h2>
+            <p>
+                For an enormous class of materials (diamagnets and paramagnets), the magnetization \(\bfM\) is directly
+                proportional to the applied auxiliary field \(\bfH\). These are called <strong>Linear Media</strong>.
+            </p>
+            <p>
+                We quantify this relationship with a dimensionless constant \(\chi_m\), called the <strong>Magnetic
+                    Susceptibility</strong>:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \bfM = \chi_m \bfH $$
+            </div>
+
+            <p>
+                This linear relationship allows us to rewrite the total magnetic field \(\bfB\) in terms of \(\bfH\)
+                alone. Since \(\bfB = \mu_0(\bfH + \bfM)\), we get:
+            </p>
+            <div class="math-block">
+                $$ \bfB = \mu_0(1 + \chi_m)\bfH = \mu \bfH $$
+            </div>
+            <p>
+                Here, \(\mu\) is the <strong>Permeability</strong> of the material. It encompasses the total magnetic
+                response of the medium.
+            </p>
+
+            <div class="comparison-box">
+                <div class="comparison-title">⚡ Electrostatic Analogy</div>
+                <p>
+                    <strong>Electric:</strong> \(\bfP = \epsilon_0 \chi_e \bfE\) and \(\bfD = \epsilon \bfE\). In
+                    dielectrics, \(\chi_e\) is always positive (material aligns with field).<br>
+                    <strong>Magnetic:</strong> \(\bfM = \chi_m \bfH\) and \(\bfB = \mu \bfH\). Here, \(\chi_m\) can be
+                    positive (Paramagnetic) OR negative (Diamagnetic).
+                </p>
+            </div>
+
+            <p>
+                This simple proportionality makes solving boundary value problems much easier, as the complex
+                microscopic currents are hidden inside the constant \(\mu\).
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_4_dive_examples.html?back=ch4_4_linear_media.html%23concept-1-1-magnetic-susceptibility-and-permeability"><span aria-hidden="true">+</span> Deep Dive: The Filled Solenoid</a>
+            </div>
+
+            <!-- SIMULATOR: LINEAR RESPONSE -->
+            <div class="iframe-container">
+                <iframe src="diagrams/material_response_plot.html" title="Linear Material Response"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_4_boundary_conditions.html?back=ch4_4_linear_media.html%23concept-1-1-magnetic-susceptibility-and-permeability"><span aria-hidden="true">+</span> Deep Dive: Boundary Conditions & Shielding</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: TEMPERATURE DEPENDENCE -->
+        <section data-concept-title="2. Temperature Dependence" id="concept-2-2-temperature-dependence">
+            <h2>2. Temperature Dependence</h2>
+            <p>
+                The magnetic behavior of materials is strongly temperature-dependent. Each material type responds
+                differently as thermal energy increases:
+            </p>
+
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 2rem 0;">
+                <div
+                    style="background: rgba(52, 152, 219, 0.1); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1.5rem;">
+                    <h3 style="color: var(--accent-color); margin-top: 0;">Diamagnets</h3>
+                    <p style="font-size: 1rem;">
+                        \(\chi_m < 0\) (small, ~\(10^{-5}\)) </p>
+                            <p style="font-size: 0.95rem;">
+                                <strong>Temperature Dependence:</strong> Essentially none. Diamagnetism arises from
+                                induced orbital currents, which are essentially independent of temperature. The effect
+                                persists even at absolute zero.
+                            </p>
+                </div>
+                <div
+                    style="background: rgba(46, 204, 113, 0.1); border: 1px solid var(--success-color); border-radius: 8px; padding: 1.5rem;">
+                    <h3 style="color: var(--success-color); margin-top: 0;">Paramagnets</h3>
+                    <p style="font-size: 1rem;">
+                        \(\chi_m > 0\) (small, ~\(10^{-3}\) to \(10^{-5}\))
+                    </p>
+                    <p style="font-size: 0.95rem;">
+                        <strong>Curie's Law:</strong> \(\chi_m = C/T\). Susceptibility is inversely proportional to
+                        temperature. At high T, thermal agitation randomizes the atomic dipoles, weakening the alignment
+                        with B.
+                    </p>
+                </div>
+                <div
+                    style="background: rgba(231, 76, 60, 0.1); border: 1px solid var(--danger-color); border-radius: 8px; padding: 1.5rem;">
+                    <h3 style="color: var(--danger-color); margin-top: 0;">Ferromagnets</h3>
+                    <p style="font-size: 1rem;">
+                        \(\chi_m \gg 1\) (can be \(10^3\) to \(10^6\))
+                    </p>
+                    <p style="font-size: 0.95rem;">
+                        <strong>Curie Temperature (T<sub>c</sub>):</strong> Above this critical temperature, the
+                        spontaneous alignment is destroyed. The ferromagnet becomes paramagnetic. (Iron: 770°C, Nickel:
+                        358°C)
+                    </p>
+                </div>
+            </div>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \chi_m^{(\text{para})} = \frac{C}{T} \quad \text{(Curie's Law)} $$
+            </div>
+        </section>
+
+        <!-- SECTION 3: FERROMAGNETISM -->
+        <section data-concept-title="3. Ferromagnetism: Domains & Magnetization" id="concept-3-3-ferromagnetism-domains-magnetization">
+            <h2>3. Ferromagnetism: Domains & Magnetization</h2>
+            <p>
+                Some materials, most notably Iron, Nickel, and Cobalt, are dramatically different. They are
+                <strong>Nonlinear</strong> and can become <strong>permanent magnets</strong>.
+            </p>
+
+            <h3>Why Isn't Every Piece of Iron a Magnet?</h3>
+            <p>
+                In a ferromagnet, atomic dipoles spontaneously align with one another due to quantum-mechanical
+                "exchange coupling"—even without an external field. If all the dipoles in a piece of iron were aligned,
+                it would produce a strong magnetic field \(\bfB\).
+            </p>
+            <p>
+                But in practice, the alignment occurs only in small patches called <strong>domains</strong>. Within each
+                domain, billions of dipoles point in the same direction. However, <em>different domains point in
+                    different directions</em>. Their magnetic fields largely cancel, so an ordinary piece of iron
+                appears unmagnetized.
+            </p>
+
+            <!-- DOMAIN VISUALIZATION -->
+            <div class="iframe-container" style="height: 550px;">
+                <iframe src="diagrams/permanent_magnet_zoom.html" title="Permanent Magnet Zoom Visualization"></iframe>
+            </div>
+            <p style="text-align: center; color: #888; font-size: 0.9rem;">
+                Zoom in to reveal the aligned atomic dipoles responsible for the magnet's field.
+            </p>
+
+            <h3>How to Magnetize a Material</h3>
+            <p>
+                To turn an ordinary piece of iron into a permanent magnet, you must align the domains. This is done by
+                applying a strong external magnetic field \(\bfH\).
+            </p>
+            <p>
+                When \(\bfH\) is applied:
+            </p>
+            <ol>
+                <li><strong>Domains aligned with the field grow</strong> at the expense of unfavorably aligned domains.
+                    Domain walls shift.</li>
+                <li>As \(\bfH\) increases further, domains rotate to align more closely with the field.</li>
+                <li>At very high fields, the material reaches <strong>saturation</strong>—nearly all dipoles point the
+                    same way, and the material produces a strong net \(\bfB\).</li>
+            </ol>
+
+            <div class="comparison-box" style="border-color: var(--danger-color); background: rgba(231, 76, 60, 0.08);">
+                <div class="comparison-title" style="color: var(--danger-color);">🧲 The Birth of a Permanent Magnet
+                </div>
+                <p>
+                    Crucially, when you turn <em>off</em> the external field (\(\bfH \to 0\)), the domain walls don't
+                    fully return to their original positions. Some alignment <strong>remains</strong>. This residual
+                    magnetization is called <strong>Remanence</strong>.
+                </p>
+                <p>
+                    The material now produces its own \(\bfB\) field even without an external source—it has become a
+                    <strong>permanent magnet</strong>.
+                </p>
+            </div>
+
+            <h3>Hysteresis: The Memory Effect</h3>
+            <p>
+                This irreversibility is called <strong>hysteresis</strong>. If you plot \(\bfB\) vs \(\bfH\), you don't
+                get a straight line. Instead, the path going "up" (increasing \(\bfH\)) differs from the path going
+                "down" (decreasing \(\bfH\)). The curve forms a loop.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--danger-color);">
+                $$ \bfB \neq \mu \bfH $$
+                <span style="font-size: 0.9rem; color: var(--text-secondary);">B depends on the <em>history</em> of H,
+                    not just its current value.</span>
+            </div>
+
+            <!-- HYSTERESIS LOOP -->
+            <div class="iframe-container">
+                <iframe src="diagrams/hysteresis_loop.html" title="Hysteresis Loop Visualization"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch4_4_ferromagnetism_details.html?back=ch4_4_linear_media.html%23concept-3-3-ferromagnetism-domains-magnetization"><span aria-hidden="true">+</span> Deep Dive: Ferromagnetism: Domains & Hysteresis</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

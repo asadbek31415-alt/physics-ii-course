@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Viz: Divergence vs Curl</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Layout */
+        #canvas-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            position: relative;
+        }
+
+        .view-port {
+            flex: 1;
+            position: relative;
+            border-right: 1px solid #333;
+            overflow: hidden;
+        }
+        
+        .view-port:last-child {
+            border-right: none;
+        }
+
+        /* Overlay Labels */
+        .label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-left: 4px solid #f0f; /* Magenta accent */
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .label h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .label p {
+            margin: 5px 0 0 0;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        
+        .math {
+            font-family: 'Courier New', monospace;
+            color: #0ff;
+        }
+
+        /* Controls Area */
+        #controls {
+            height: 120px;
+            background-color: #111;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 40%;
+        }
+
+        .control-label {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #f0f;
+        }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: #333;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0ff; /* Cyan thumb */
+            cursor: pointer;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        /* Instructions overlay */
+        .instruction {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #666;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+
+    </style>
+    <!-- Three.js CDN -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <!-- OrbitControls CDN -->
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <!-- Left View: Electric Field -->
+        <div id="view-electric" class="view-port">
+            <div class="label">
+                <h2>Electric Field (Divergence)</h2>
+                <p>Point Charge</p>
+                <p class="math">∇ · E = ρ/ε₀</p>
+            </div>
+            <div class="instruction">Left Click: Rotate | Right Click: Pan | Scroll: Zoom</div>
+        </div>
+
+        <!-- Right View: Magnetic Field -->
+        <div id="view-magnetic" class="view-port">
+            <div class="label">
+                <h2>Magnetic Field (Curl)</h2>
+                <p>Current Wire</p>
+                <p class="math">∇ × B = μ₀J</p>
+            </div>
+            <div class="instruction">Left Click: Rotate | Right Click: Pan | Scroll: Zoom</div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <span class="control-label">Charge Magnitude (Q)</span>
+            <input type="range" id="slider-q" min="-10" max="10" value="5" step="0.1">
+        </div>
+        <div class="control-group">
+            <span class="control-label">Current Direction (I)</span>
+            <input type="range" id="slider-i" min="-10" max="10" value="5" step="0.1">
+        </div>
+    </div>
+
+    <script>
+        // --- Shared Utilities ---
+        const CYAN = 0x00ffff;
+        const MAGENTA = 0xff00ff;
+        const LIME = 0x00ff00;
+        const WHITE = 0xffffff;
+
+        // --- Class to manage a Three.js Scene ---
+        class SimulationScene {
+            constructor(containerId, initCallback, animateCallback) {
+                this.container = document.getElementById(containerId);
+                this.width = this.container.clientWidth;
+                this.height = this.container.clientHeight;
+
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x000000);
+                // Add subtle fog for depth
+                this.scene.fog = new THREE.FogExp2(0x000000, 0.03);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(45, this.width / this.height, 0.1, 100);
+                this.camera.position.set(8, 5, 8);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(this.width, this.height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.container.appendChild(this.renderer.domElement);
+
+                // Controls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // Lighting (Basic)
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+                pointLight.position.set(10, 10, 10);
+                this.scene.add(pointLight);
+
+                // Grid Helper (Subtle)
+                const gridHelper = new THREE.GridHelper(20, 20, 0x222222, 0x111111);
+                this.scene.add(gridHelper);
+
+                // Initialization Logic specific to the physics
+                this.objects = initCallback(this.scene);
+                this.animateCallback = animateCallback;
+
+                // Bind resize
+                window.addEventListener('resize', () => this.onWindowResize(), false);
+
+                // Start Loop
+                this.animate();
+            }
+
+            onWindowResize() {
+                this.width = this.container.clientWidth;
+                this.height = this.container.clientHeight;
+                this.camera.aspect = this.width / this.height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.width, this.height);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                if (this.animateCallback) {
+                    this.animateCallback(this.objects, Date.now() * 0.001);
+                }
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // ==========================================
+        // SCENE 1: Electric Field (Divergence)
+        // ==========================================
+        
+        let chargeValue = 5; // Default from slider
+
+        const initElectric = (scene) => {
+            const arrows = [];
+            const count = 6; // Grid density
+            const range = 4;
+            const step = (range * 2) / count;
+
+            // 1. Create Central Point Charge (Sphere)
+            const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: MAGENTA, 
+                emissive: 0x440044,
+                shininess: 100 
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+
+            // 2. Create Field Arrows
+            // Generate points in a 3D grid, excluding the center
+            for (let x = -range; x <= range; x += step) {
+                for (let y = -range; y <= range; y += step) {
+                    for (let z = -range; z <= range; z += step) {
+                        if (Math.abs(x) < 0.1 && Math.abs(y) < 0.1 && Math.abs(z) < 0.1) continue;
+
+                        const origin = new THREE.Vector3(x, y, z);
+                        
+                        // Add some jitter so they aren't perfectly grid-aligned
+                        origin.x += (Math.random() - 0.5) * 0.5;
+                        origin.y += (Math.random() - 0.5) * 0.5;
+                        origin.z += (Math.random() - 0.5) * 0.5;
+
+                        // Initial dummy direction
+                        const dir = new THREE.Vector3(1, 0, 0); 
+                        
+                        const arrowHelper = new THREE.ArrowHelper(dir, origin, 1, CYAN);
+                        scene.add(arrowHelper);
+                        arrows.push({ helper: arrowHelper, pos: origin });
+                    }
+                }
+            }
+
+            return { sphere, arrows };
+        };
+
+        const updateElectric = (objects, time) => {
+            const { sphere, arrows } = objects;
+            
+            // Pulsate the sphere slightly based on charge
+            const scale = 0.8 + Math.abs(chargeValue) * 0.05 + Math.sin(time * 2) * 0.05;
+            sphere.scale.set(scale, scale, scale);
+
+            // Color update based on sign
+            const color = chargeValue > 0 ? MAGENTA : 0xff3333; // Pink for +, Red for - (or maintain style)
+            sphere.material.color.setHex(MAGENTA); 
+
+            // Update Arrows
+            arrows.forEach(item => {
+                const { helper, pos } = item;
+                
+                // Calculate E-field direction: r_hat
+                const dir = pos.clone().normalize();
+                
+                // If charge is negative, field points inward
+                if (chargeValue < 0) dir.negate();
+
+                // Magnitude visual
+                const distSq = pos.lengthSq();
+                const magnitude = Math.abs(chargeValue) / distSq;
+                
+                // Clamp length for visual clarity (don't want infinite arrows)
+                const arrowLength = Math.min(Math.max(magnitude * 2, 0.2), 1.5);
+
+                // Set
+                helper.setDirection(dir);
+                helper.setLength(arrowLength, arrowLength * 0.3, arrowLength * 0.2);
+                
+                // Adjust color intensity based on field strength
+                if (Math.abs(chargeValue) < 0.1) {
+                    helper.setColor(0x333333); // Off
+                } else {
+                    helper.setColor(CYAN);
+                }
+            });
+        };
+
+        // ==========================================
+        // SCENE 2: Magnetic Field (Curl)
+        // ==========================================
+
+        let currentValue = 5; // Default
+
+        const initMagnetic = (scene) => {
+            const arrows = [];
+            const range = 4;
+            const count = 6;
+            const step = (range * 2) / count;
+
+            // 1. Create Wire (Cylinder)
+            const geometry = new THREE.CylinderGeometry(0.1, 0.1, 12, 32);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: MAGENTA,
+                emissive: 0x220022 
+            });
+            const wire = new THREE.Mesh(geometry, material);
+            scene.add(wire);
+
+            // 2. Create Current Indicator (Arrow inside wire)
+            const currentDir = new THREE.Vector3(0, 1, 0);
+            const currentOrigin = new THREE.Vector3(0, 0, 0);
+            const currentHelper = new THREE.ArrowHelper(currentDir, currentOrigin, 3, WHITE, 0.5, 0.3);
+            scene.add(currentHelper);
+            
+            // 3. Field Arrows
+            // Generate points, but keep them away from Y-axis
+            for (let x = -range; x <= range; x += step) {
+                for (let y = -range; y <= range; y += step) {
+                    for (let z = -range; z <= range; z += step) {
+                        const r = Math.sqrt(x*x + z*z);
+                        if (r < 0.5) continue; // Skip inside wire
+
+                        const origin = new THREE.Vector3(x, y, z);
+                         // Jitter
+                        origin.x += (Math.random() - 0.5) * 0.5;
+                        origin.z += (Math.random() - 0.5) * 0.5;
+
+                        const dir = new THREE.Vector3(1, 0, 0);
+                        const arrowHelper = new THREE.ArrowHelper(dir, origin, 1, LIME);
+                        scene.add(arrowHelper);
+                        arrows.push({ helper: arrowHelper, pos: origin });
+                    }
+                }
+            }
+
+            return { wire, currentHelper, arrows };
+        };
+
+        const updateMagnetic = (objects, time) => {
+            const { currentHelper, arrows } = objects;
+
+            // Update Central Current Arrow
+            const iMag = Math.abs(currentValue);
+            const iDir = currentValue >= 0 ? 1 : -1;
+            
+            currentHelper.setDirection(new THREE.Vector3(0, iDir, 0));
+            currentHelper.setLength(3, 0.5, 0.3);
+            
+            if (iMag < 0.1) currentHelper.visible = false;
+            else currentHelper.visible = true;
+
+            // Update Field Arrows
+            arrows.forEach(item => {
+                const { helper, pos } = item;
+                
+                // B field around Y-axis wire:
+                // Tangent to circle in XZ plane.
+                // Cross product of Y-axis (0,1,0) and Position (x,0,z)
+                // Result direction: (z, 0, -x)
+                
+                const dir = new THREE.Vector3(pos.z, 0, -pos.x).normalize();
+                
+                // If current is negative (down), flip direction (Left hand rule / Right hand rule flip)
+                if (currentValue < 0) dir.negate();
+
+                // Magnitude: B ~ I / r
+                const r = Math.sqrt(pos.x*pos.x + pos.z*pos.z);
+                const magnitude = iMag / r;
+
+                // Visual scaling
+                const arrowLength = Math.min(Math.max(magnitude * 0.5, 0.2), 1.5);
+
+                helper.setDirection(dir);
+                helper.setLength(arrowLength, arrowLength*0.3, arrowLength*0.2);
+
+                if (iMag < 0.1) {
+                    helper.setColor(0x333333);
+                } else {
+                    helper.setColor(LIME);
+                }
+            });
+        };
+
+        // --- Initialization ---
+
+        // 1. Setup Scenes
+        const electricScene = new SimulationScene('view-electric', initElectric, updateElectric);
+        const magneticScene = new SimulationScene('view-magnetic', initMagnetic, updateMagnetic);
+
+        // 2. Setup DOM Listeners
+        const qSlider = document.getElementById('slider-q');
+        const iSlider = document.getElementById('slider-i');
+
+        qSlider.addEventListener('input', (e) => {
+            chargeValue = parseFloat(e.target.value);
+        });
+
+        iSlider.addEventListener('input', (e) => {
+            currentValue = parseFloat(e.target.value);
+        });
+
+    </script>
+</body>
+</html>

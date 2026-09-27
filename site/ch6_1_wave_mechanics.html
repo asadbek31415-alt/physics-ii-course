@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Fundamentals - Electrodynamics</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+    <style>
+        .law-reminder .def-item {
+            grid-template-columns: minmax(165px, 0.28fr) 1fr;
+            gap: 18px;
+        }
+
+        .law-reminder .def-symbol {
+            white-space: nowrap;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        .law-reminder .law-equation {
+            display: block;
+            margin-top: 0.45rem;
+            color: var(--text-primary);
+            font-size: 1.05rem;
+        }
+
+        @media (max-width: 640px) {
+            .law-reminder .def-item {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+        }
+    </style></head>
+
+<body>
+
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt;
+                Fundamentals
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Wave Fundamentals</h1>
+
+        <p class="intro-text">
+            In this section, we study the physics of <strong>waves in general</strong>. Understanding these
+            mechanics is essential before we move on to the specific nature of <strong>electromagnetic (EM)
+                waves</strong>
+            in the following chapters.
+        </p>
+
+        <section data-concept-title="0. The &quot;Leap-Frog&quot; Effect" id="concept-0-the-leap-frog-effect" class="topic-section">
+            <h2>0. The "Leap-Frog" Effect</h2>
+            <p>
+                Imagine a region of empty space. If you somehow create a changing electric field $\vec{E}$, what
+                happens?
+            </p>
+            <div class="def-list law-reminder">
+                <div class="def-item">
+                    <span class="def-symbol">Ampère-Maxwell</span>
+                    <div class="def-text">A time-varying \(\vec{E}\) is linked to a circulating \(\vec{B}\).
+                        <div class="law-equation">\[
+                            \nabla \times \vec{B} =
+                            \mu_0\epsilon_0 \frac{\partial \vec{E}}{\partial t}
+                        \]</div></div>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Faraday</span>
+                    <div class="def-text">A time-varying \(\vec{B}\) is linked to a circulating \(\vec{E}\).
+                        <div class="law-equation">\[
+                            \nabla \times \vec{E} =
+                            -\frac{\partial \vec{B}}{\partial t}
+                        \]</div></div>
+                </div>
+            </div>
+            <p>
+                These fields don't just "stay" where they are. They <strong>kick-start each other</strong>.
+                A time-varying $\vec{E}$ appears in the Ampère-Maxwell law as circulation of $\vec{B}$ in the
+                surrounding space. A time-varying $\vec{B}$ appears in Faraday's law as circulation of $\vec{E}$.
+                In a wave, the coupled curl equations pass the disturbance onward, forming a "leap-frog" through space.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_1_wave_eq_details.html?back=ch6_1_wave_mechanics.html%23concept-0-the-leap-frog-effect"><span aria-hidden="true">+</span> Deep Dive: The Wave Equation</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 1: THE 1-D WAVE EQUATION -->
+        <section data-concept-title="1. The 1-D Wave Equation" id="concept-1-1-the-1-d-wave-equation" class="topic-section">
+            <h2>1. The 1-D Wave Equation</h2>
+            <p>
+                The motion of any wave is governed by a <strong>second-order partial differential equation</strong>.
+                If $f(x,t)$ represents the displacement at position $x$ and time $t$:
+            </p>
+            <div class="math-block">
+                $$ \frac{\partial^2 f}{\partial x^2} = \frac{1}{v^2} \frac{\partial^2 f}{\partial t^2} $$
+            </div>
+            <p>
+                The most remarkable property of this equation is that <strong>any</strong> function of the form
+                $f(x,t) = g(x - vt) + h(x + vt)$ is a valid solution. This means any shape—whether a pulse, a square
+                wave,
+                or a complex signal—can propagate as long as its variables are coupled in this way.
+            </p>
+
+        </section>
+
+        <!-- CONCEPT 2: SINUSOIDAL WAVES -->
+        <section data-concept-title="2. Sinusoidal Waves" id="concept-2-2-sinusoidal-waves" class="topic-section">
+            <h2>2. Sinusoidal Waves</h2>
+            <p>
+                While the wave equation accepts any function, <strong>Sinusoidal Waves</strong> are the most popular
+                and useful type of solution. They are the building blocks for more complex disturbances and are
+                mathematically described as:
+            </p>
+            <div class="math-block">
+                $$ f(x,t) = A \cos(kx - \omega t + \delta) $$
+            </div>
+            <p>
+                Where the parameters are defined as:
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">\(A\)</span>
+                    <span class="def-text"><strong>Amplitude</strong>. The maximum displacement from equilibrium.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(k\)</span>
+                    <span class="def-text"><strong>Wave Number</strong>. Spatial frequency, given by
+                        \(2\pi/\lambda\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\omega\)</span>
+                    <span class="def-text"><strong>Angular Frequency</strong>. Temporal frequency, given by \(2\pi
+                        f\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">\(\delta\)</span>
+                    <span class="def-text"><strong>Phase constant</strong>. Determines the initial state/shift of the
+                        wave.</span>
+                </div>
+            </div>
+            <p>
+                The speed of the wave is given by the relation $v = \omega/k = \lambda f$.
+            </p>
+
+            <h3 class="diagram-title">Interactive: 1D Wave Propagation</h3>
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/wave_mechanics_sim.html" title="1D Wave Propagation"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_1_wave_mechanics_details.html?back=ch6_1_wave_mechanics.html%23concept-2-2-sinusoidal-waves"><span aria-hidden="true">+</span> Deep Dive: Mathematics of Waves</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>
+
+
+
+

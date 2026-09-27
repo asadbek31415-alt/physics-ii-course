@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Equations of Light</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > The Full Set
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: The Equations of Light</h1>
+
+        <p class="intro-text">
+            Maxwell's equations summarize all of classical electromagnetism in four elegant lines. They predict that
+            electric and magnetic fields can propagate through space as waves—moving at the speed of light.
+        </p>
+
+        <section>
+            <h2>The Four Equations (In Vacuum)</h2>
+            <div class="math-block">
+                $$
+                \begin{aligned}
+                \nabla \cdot \vec{E} &= \frac{\rho}{\epsilon_0} & \quad \text{(Gauss's Law)} \\
+                \nabla \cdot \vec{B} &= 0 & \quad \text{(No Magnetic Monopoles)} \\
+                \nabla \times \vec{E} &= -\frac{\partial \vec{B}}{\partial t} & \quad \text{(Faraday's Law)} \\
+                \nabla \times \vec{B} &= \mu_0 \vec{J} + \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t} & \quad
+                \text{(Ampère-Maxwell Law)}
+                \end{aligned}
+                $$
+            </div>
+        </section>
+
+        <section>
+            <h2>Symmetry and Duality</h2>
+            <p>
+                In empty space (where $\rho = 0$ and $\vec{J} = 0$), the equations take on a beautiful symmetry.
+            </p>
+            <div class="math-block">
+                $$
+                \begin{aligned}
+                \nabla \cdot \vec{E} &= 0 \\
+                \nabla \cdot \vec{B} &= 0 \\
+                \nabla \times \vec{E} &= -\frac{\partial \vec{B}}{\partial t} \\
+                \nabla \times \vec{B} &= \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t}
+                \end{aligned}
+                $$
+            </div>
+            <p>
+                If you swap $\vec{E} \rightarrow \vec{B}$ and $\vec{B} \rightarrow -\mu_0 \epsilon_0 \vec{E}$, the
+                equations remain structurally the same! This symmetry hints at the deep connection between electricity,
+                magnetism, and light.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/maxwell_symmetry.html"
+                    title="Maxwell Symmetry Visualization" scrolling="no"></iframe>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

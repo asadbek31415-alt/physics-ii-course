@@ -1,0 +1,14 @@
+right_hand.glb
+
+Source project: Hand-Math by bizzkoot
+https://github.com/bizzkoot/Hand-Math
+
+Original model credited by that project:
+Rigged Hand by Elena FF on Sketchfab
+https://sketchfab.com/3d-models/rigged-hand-eae97cc2a742413cb5338ab942b12c1e
+
+License: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+
+This course uses the right-hand GLB asset from the source project for the
+magnetostatics right-hand-rule grip visualization.

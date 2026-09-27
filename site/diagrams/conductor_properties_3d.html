@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Lab: Conductor Properties</title>
+    <style>
+        html, body { width: 100%; height: 100%; }
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; }
+        #lab {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+            background: #0f172a;
+            min-height: 0;
+        }
+        #stage {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+        }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+        
+        /* Control Panel */
+        #controls {
+            position: relative;
+            width: auto;
+            height: 100%;
+            box-sizing: border-box;
+            background: rgba(18, 22, 28, 0.94);
+            padding: 16px;
+            border-right: 1px solid #475569;
+            user-select: none;
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 0;
+            scrollbar-gutter: stable;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        h1 { font-size: 1.05rem; color: #38bdf8; margin: 0 0 0.8rem; }
+        h2 { font-size: 0.82rem; color: #94a3b8; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            min-height: 40px;
+            padding: 9px;
+            margin-bottom: 9px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn-reset { background: #ef4444; }
+        .btn-reset:hover { background: #dc2626; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 9px;
+            font-size: 0.86rem;
+        }
+        .toggle-row input { margin-right: 10px; transform: scale(1.2); }
+
+        /* Sensor Readout */
+        #readout {
+            position: static;
+            transform: none;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid #fbbf24;
+            text-align: center;
+            display: none; /* Hidden until probe active */
+            margin-top: 14px;
+        }
+        #readout-val { font-size: 1.7rem; font-family: monospace; font-weight: bold; color: #fbbf24; }
+        #readout-label { font-size: 0.8rem; color: #ccc; text-transform: uppercase; }
+        #location-status { font-size: 0.9rem; font-weight: bold; margin-top: 5px; }
+        .loc-inside { color: #4ade80; } /* Green */
+        .loc-outside { color: #f87171; } /* Red */
+
+        /* Instructions Overlay */
+        #guide {
+            position: static;
+            width: auto;
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            line-height: 1.34;
+            pointer-events: none;
+            margin-top: 12px;
+        }
+        .highlight { color: #fbbf24; font-weight: bold; }
+        @media (max-width: 900px) {
+            html,
+            body {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+            #lab {
+                height: 100%;
+                min-height: 0;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+            #stage {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            #controls {
+                grid-column: 1;
+                grid-row: 2;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 6px 8px;
+                height: auto;
+                max-height: none;
+                overflow: hidden;
+                border-right: 0;
+                border-top: 1px solid #475569;
+                border-bottom: 0;
+                padding: 8px 10px;
+            }
+            #controls h1,
+            #controls h2,
+            #controls > div[style*="height"],
+            #readout,
+            #guide {
+                grid-column: 1 / -1;
+            }
+            h1 {
+                font-size: 0.96rem;
+                margin-bottom: 0;
+            }
+            h2 {
+                font-size: 0.72rem;
+                margin-bottom: 0;
+            }
+            .btn {
+                min-height: 36px;
+                margin: 0;
+                padding: 7px;
+                font-size: 0.78rem;
+            }
+            .btn-reset {
+                grid-column: 1 / -1;
+            }
+            .toggle-row {
+                margin: 0;
+                font-size: 0.78rem;
+                line-height: 1.2;
+            }
+            #guide {
+                display: none;
+            }
+            #readout {
+                margin-top: 0;
+                padding: 8px;
+            }
+            #readout-val {
+                font-size: 1.2rem;
+            }
+        }
+
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="lab">
+        <div id="controls">
+            <h1>Basic Properties Lab</h1>
+            <h2>Equilibrium Controls</h2>
+            
+            <button class="btn" onclick="addCharges(5)">+ Inject 5 Excess + Charges</button>
+            <button class="btn" onclick="addCharges(20)">+ Inject 20 Excess + Charges</button>
+            <button class="btn btn-reset" onclick="resetLab()">Reset System</button>
+
+            <div style="height: 1px; background: #475569; margin: 15px 0;"></div>
+
+            <div class="toggle-row">
+                <input type="checkbox" id="chk-neutral" checked onchange="toggleNeutralMaterial()">
+                <label for="chk-neutral">Show neutral material</label>
+            </div>
+
+            <div class="toggle-row">
+                <input type="checkbox" id="chk-probe" onchange="toggleProbe()">
+                <label for="chk-probe">Enable Sensor Probe (Mouse)</label>
+            </div>
+            
+            <div class="toggle-row">
+                <input type="radio" name="mode" id="mode-e" checked onchange="setMode('E')">
+                <label for="mode-e">Measure E-Field</label>
+            </div>
+            <div class="toggle-row">
+                <input type="radio" name="mode" id="mode-v" onchange="setMode('V')">
+                <label for="mode-v">Measure Voltage (Potential)</label>
+            </div>
+
+            <div id="readout">
+                <div id="readout-val">0.00</div>
+                <div id="readout-label">Electric Field Magnitude</div>
+                <div id="location-status" class="loc-inside">INSIDE CONDUCTOR</div>
+            </div>
+
+            <div id="guide">
+                <strong>Observation Guide:</strong><br><br>
+                1. The faint red/blue dots are the neutral metal. Positive and negative charge balance in the interior, so they are not excess charge.<br><br>
+                2. Inject excess positive charge and wait for equilibrium. The red excess dots move until no field is left inside the metal.<br><br>
+                3. Use the probe to test the two main interior properties: <span class="highlight">E = 0</span> and one constant potential inside.<br><br>
+                4. Then check the boundary properties: net excess charge sits on the surface, and the yellow arrows show the outside field is normal to the surface.
+            </div>
+        </div>
+        <main id="stage"></main>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Configuration ---
+        const SPHERE_R = 4;
+        const K_CONST = 0.018; // Tuned for stable visual settling
+        const DAMPING = 0.78; // Friction to let charges settle
+        const MAX_CHARGES = 70;
+        const MAX_SPEED = 0.045;
+        const SURFACE_EPS = 0.08;
+        const NEUTRAL_PAIR_COUNT = 42;
+        
+        // --- State ---
+        let charges = []; // Excess positive charges: { mesh, velocity: Vector3 }
+        let isProbeActive = false;
+        let measureMode = 'E'; // 'E' or 'V'
+        let mouse = new THREE.Vector2();
+        let raycaster = new THREE.Raycaster();
+        
+        // --- Scene Setup ---
+        const stage = document.getElementById('stage');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        camera.position.set(0, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        stage.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x404040, 2));
+        const light = new THREE.DirectionalLight(0xffffff, 2);
+        light.position.set(5, 10, 5);
+        scene.add(light);
+
+        // The Conductor (Visual Boundary)
+        const conductorGeo = new THREE.SphereGeometry(SPHERE_R, 64, 64);
+        const conductorMat = new THREE.MeshPhysicalMaterial({
+            color: 0x6b7280,
+            metalness: 0.78,
+            roughness: 0.32,
+            clearcoat: 0.55,
+            clearcoatRoughness: 0.2,
+            opacity: 0.36,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        const conductor = new THREE.Mesh(conductorGeo, conductorMat);
+        scene.add(conductor);
+
+        // Wireframe helper to see depth better
+        const wireGeo = new THREE.WireframeGeometry(conductorGeo);
+        const wireMat = new THREE.LineBasicMaterial({ color: 0xd1d5db, transparent: true, opacity: 0.16 });
+        const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+        conductor.add(wireframe);
+
+        const neutralGroup = new THREE.Group();
+        scene.add(neutralGroup);
+
+        const ionMat = new THREE.MeshBasicMaterial({
+            color: 0xff6b6b,
+            transparent: true,
+            opacity: 0.34,
+            depthWrite: false
+        });
+        const electronMat = new THREE.MeshBasicMaterial({
+            color: 0x4dabf7,
+            transparent: true,
+            opacity: 0.42,
+            depthWrite: false
+        });
+        const ionGeo = new THREE.SphereGeometry(0.055, 10, 10);
+        const electronGeo = new THREE.SphereGeometry(0.07, 10, 10);
+
+        function volumePoint(index, total) {
+            const golden = Math.PI * (3 - Math.sqrt(5));
+            const y = 1 - (2 * (index + 0.5)) / Math.max(1, total);
+            const radius = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = index * golden;
+            const shell = Math.cbrt((index + 0.5) / total) * SPHERE_R * 0.72;
+            return new THREE.Vector3(
+                Math.cos(theta) * radius,
+                y,
+                Math.sin(theta) * radius
+            ).multiplyScalar(shell);
+        }
+
+        function createNeutralMaterial() {
+            for (let i = 0; i < NEUTRAL_PAIR_COUNT; i++) {
+                const base = volumePoint(i, NEUTRAL_PAIR_COUNT);
+                const offset = new THREE.Vector3(
+                    Math.sin(i * 1.7),
+                    Math.cos(i * 2.1),
+                    Math.sin(i * 0.9)
+                ).normalize().multiplyScalar(0.16);
+
+                const ion = new THREE.Mesh(ionGeo, ionMat);
+                ion.position.copy(base);
+                neutralGroup.add(ion);
+
+                const electron = new THREE.Mesh(electronGeo, electronMat);
+                electron.position.copy(base.clone().add(offset));
+                neutralGroup.add(electron);
+            }
+        }
+
+        createNeutralMaterial();
+
+        const surfaceMat = new THREE.LineBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.45 });
+        const surfaceRings = new THREE.Group();
+        [0, Math.PI / 2, Math.PI / 2].forEach((rotation, index) => {
+            const ring = new THREE.LineLoop(
+                new THREE.BufferGeometry().setFromPoints(
+                    Array.from({ length: 144 }, (_, i) => {
+                        const a = (i / 144) * Math.PI * 2;
+                        return new THREE.Vector3(Math.cos(a) * SPHERE_R, Math.sin(a) * SPHERE_R, 0);
+                    })
+                ),
+                surfaceMat
+            );
+            if (index === 1) ring.rotation.x = rotation;
+            if (index === 2) ring.rotation.y = rotation;
+            surfaceRings.add(ring);
+        });
+        scene.add(surfaceRings);
+
+        // Measurement Plane (Invisible, for mouse raycasting)
+        const planeGeo = new THREE.PlaneGeometry(40, 40);
+        const planeMat = new THREE.MeshBasicMaterial({ visible: false });
+        const mousePlane = new THREE.Mesh(planeGeo, planeMat);
+        mousePlane.rotation.x = -Math.PI / 2; // Horizontal plane
+        scene.add(mousePlane);
+
+        // Probe Visuals
+        const probeGroup = new THREE.Group();
+        scene.add(probeGroup);
+        probeGroup.visible = false;
+
+        // The probe dot
+        const probeDot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2),
+            new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+        );
+        probeGroup.add(probeDot);
+
+        // The probe arrow (for E-field direction)
+        const probeArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(1,0,0), 
+            new THREE.Vector3(0,0,0), 
+            2, 
+            0xfbbf24
+        );
+        probeGroup.add(probeArrow);
+
+        // --- Physics Logic ---
+
+        function surfacePoint(index, total) {
+            const golden = Math.PI * (3 - Math.sqrt(5));
+            const y = 1 - (2 * (index + 0.5)) / Math.max(1, total);
+            const radius = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = index * golden;
+            return new THREE.Vector3(
+                Math.cos(theta) * radius,
+                y,
+                Math.sin(theta) * radius
+            ).multiplyScalar(SPHERE_R);
+        }
+
+        function createCharge(targetPosition) {
+            const geo = new THREE.SphereGeometry(0.15, 16, 16);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xff4b4b, emissive: 0x5a1010 });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            mesh.position.copy(targetPosition);
+
+            // Field Vector Arrow (Visualizing Rule 5)
+            const arrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0,1,0),
+                new THREE.Vector3(0,0,0),
+                1.5,
+                0xfacc15 // Surface-normal cue
+            );
+            mesh.add(arrow);
+
+            scene.add(mesh);
+            
+            return {
+                mesh: mesh,
+                velocity: new THREE.Vector3(0,0,0),
+                arrow: arrow,
+                target: targetPosition.clone()
+            };
+        }
+
+        function retargetCharges() {
+            charges.forEach((charge, index) => {
+                charge.target = surfacePoint(index, charges.length);
+            });
+        }
+
+        window.addCharges = (count) => {
+            const allowed = Math.max(0, MAX_CHARGES - charges.length);
+            const toAdd = Math.min(count, allowed);
+            for(let i=0; i<toAdd; i++) {
+                const target = surfacePoint(charges.length + i, charges.length + toAdd);
+                const start = target.clone().multiplyScalar(0.12);
+                charges.push(createCharge(start));
+            }
+            retargetCharges();
+        };
+
+        window.resetLab = () => {
+            charges.forEach(c => scene.remove(c.mesh));
+            charges = [];
+        };
+
+        window.toggleNeutralMaterial = () => {
+            neutralGroup.visible = document.getElementById('chk-neutral').checked;
+        };
+
+        function updatePhysics() {
+            charges.forEach((charge, index) => {
+                if (!charge.target) charge.target = surfacePoint(index, charges.length);
+
+                charge.mesh.position.lerp(charge.target, 0.075);
+                if (charge.mesh.position.distanceToSquared(charge.target) < 0.000004) {
+                    charge.mesh.position.copy(charge.target);
+                }
+
+                const normal = charge.mesh.position.lengthSq() > 0.0001
+                    ? charge.mesh.position.clone().normalize()
+                    : charge.target.clone().normalize();
+
+                charge.arrow.setDirection(normal);
+                charge.arrow.visible = charge.mesh.position.length() > SPHERE_R * 0.55;
+            });
+        }
+
+        // --- Probe Logic ---
+
+        window.toggleProbe = () => {
+            isProbeActive = document.getElementById('chk-probe').checked;
+            probeGroup.visible = isProbeActive;
+            document.getElementById('readout').style.display = isProbeActive ? 'block' : 'none';
+        };
+
+        window.setMode = (m) => {
+            measureMode = m;
+            document.getElementById('readout-label').innerText = m === 'E' ? "Electric Field Magnitude" : "Electric Potential (V)";
+            probeArrow.visible = (m === 'E');
+        };
+
+        function updateProbe() {
+            if (!isProbeActive) return;
+
+            // Raycast to find mouse position on the horizontal plane
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(mousePlane);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                probeGroup.position.copy(point);
+
+                // Calculate E-Field or Potential at this point
+                let E = new THREE.Vector3(0,0,0);
+                let V = 0;
+
+                charges.forEach(c => {
+                    const rVec = new THREE.Vector3().subVectors(point, c.mesh.position);
+                    const r = rVec.length();
+                    if (r < 0.5) return; // Prevent singularity near charge
+
+                    // E = kQ/r^2
+                    const E_mag = 50 / (r*r); 
+                    const E_dir = rVec.normalize();
+                    E.add(E_dir.multiplyScalar(E_mag));
+
+                    // V = kQ/r
+                    V += 50 / r;
+                });
+
+                const distFromCenter = point.length();
+                const isInside = distFromCenter < SPHERE_R;
+
+                // UI Updates
+                const statusDiv = document.getElementById('location-status');
+                if (isInside) {
+                    statusDiv.innerText = "INSIDE CONDUCTOR";
+                    statusDiv.className = "loc-inside";
+                    E.set(0, 0, 0);
+                    V = charges.length ? 50 * charges.length / SPHERE_R : 0;
+                } else {
+                    statusDiv.innerText = "OUTSIDE CONDUCTOR";
+                    statusDiv.className = "loc-outside";
+                }
+
+                const valDiv = document.getElementById('readout-val');
+                
+                if (measureMode === 'E') {
+                    // Update Arrow
+                    if (E.length() > 0.1) {
+                        probeArrow.setDirection(E.clone().normalize());
+                        const arrowLen = Math.min(E.length() / 5, 3); // Scale visual
+                        probeArrow.setLength(arrowLen);
+                        probeArrow.visible = true;
+                    } else {
+                        probeArrow.visible = false;
+                    }
+                    valDiv.innerText = E.length().toFixed(2);
+                } else {
+                    valDiv.innerText = V.toFixed(2) + " V";
+                }
+            }
+        }
+
+        // --- Input Handling ---
+        window.addEventListener('mousemove', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        });
+
+        function resizeRenderer() {
+            const rect = stage.getBoundingClientRect();
+            const w = Math.max(1, rect.width);
+            const h = Math.max(1, rect.height);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+
+        // --- Main Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updatePhysics();
+            updateProbe();
+            controls.update();
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="conductor_properties_3d.0.offline.js"></script>
+
+
+</body>
+</html>

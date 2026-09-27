@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Atomic Picture of Charge</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        .particle-table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .particle-table th,
+        .particle-table td {
+            padding: 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .particle-table th {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--accent-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .particle-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .particle-name {
+            font-weight: 600;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot.electron {
+            background: #3498db;
+        }
+
+        .dot.proton {
+            background: #e74c3c;
+        }
+
+        .dot.neutron {
+            background: #94a3b8;
+        }
+
+        .note-card {
+            background: var(--card-bg);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            border-radius: 0 12px 12px 0;
+            margin: 2rem 0;
+        }
+
+        .charge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .charge-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.1rem;
+        }
+
+        .charge-card h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .equation-line {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> >
+                <a href="ch1_1_electric_field.html">The Electric Field</a> > Atomic Picture of Charge
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Atomic Picture of Charge</h1>
+
+        <p>
+            The main Electric Field lesson gives the essential meaning of charge. This deep dive slows down the atomic
+            picture: which particles carry charge, when an atom becomes charged, and why a whole atom or object can be
+            treated as charged.
+        </p>
+        <div class="note-card">
+            <p>
+                Keep the main idea simple: an object is charged when its positive and negative charges do not cancel.
+                At the atomic scale we explain that imbalance using protons and electrons. At the macroscopic scale we
+                usually replace all of those internal particles by one net charge, \(q_{\text{net}}\).
+            </p>
+        </div>
+
+        <section>
+            <h2>1. The Fundamental Property</h2>
+            <p>
+                Charge is a fundamental property of matter, much like mass. While mass determines how an object responds
+                to gravity, <strong>charge determines how it interacts with electromagnetic fields</strong>.
+            </p>
+            <p>
+                There are two types of charge: <strong>Positive (+)</strong> and <strong>Negative (-)</strong>. As
+                Benjamin Franklin famously discovered, like charges repel, and opposite charges attract.
+            </p>
+        </section>
+
+        <section>
+            <h2>2. The Subatomic Particles</h2>
+            <p>
+                In the macroscopic world, charge seems continuous. But on an atomic level, it is carried by discrete
+                particles. The atom consists of a dense nucleus containing <strong>Protons</strong> and
+                <strong>Neutrons</strong>, surrounded by a cloud of <strong>Electrons</strong>.
+            </p>
+
+            <table class="particle-table">
+                <thead>
+                    <tr>
+                        <th>Particle</th>
+                        <th>Charge (C)</th>
+                        <th>Mass (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="particle-name"><span class="dot proton"></span> Proton</div>
+                        </td>
+                        <td>\(+1.602 \times 10^{-19}\)</td>
+                        <td>\(1.673 \times 10^{-27}\)</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="particle-name"><span class="dot electron"></span> Electron</div>
+                        </td>
+                        <td>\(-1.602 \times 10^{-19}\)</td>
+                        <td>\(9.110 \times 10^{-31}\)</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="particle-name"><span class="dot neutron"></span> Neutron</div>
+                        </td>
+                        <td>\(0\)</td>
+                        <td>\(1.675 \times 10^{-27}\)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="note-card">
+                <p><strong>Interesting Fact:</strong> Protons and Neutrons are about 1,840 times heavier than
+                    Electrons! Despite this massive difference in mass, the Proton and Electron have <em>exactly</em>
+                    the same magnitude of electric charge.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>3. When Does an Atom Become Charged?</h2>
+            <p>
+                A normal atom is usually <strong>neutral</strong> because its number of protons equals its number of
+                electrons. The positive charge of the nucleus and the negative charge of the electron cloud cancel:
+            </p>
+            <p class="equation-line">
+                \(q_{\text{atom}} = (+N_p e) + (-N_e e) = (N_p - N_e)e\)
+            </p>
+            <p>
+                Here \(N_p\) is the number of protons and \(N_e\) is the number of electrons. In the simulator below,
+                the model atom starts with 6 protons, 6 neutrons, and 6 electrons, so its positive and negative charges
+                cancel.
+            </p>
+            <p>
+                Use the simulator as a bridge between the two views. On the microscopic side, watch electrons being
+                added or removed. On the macroscopic side, ignore the internal details and read the single net charge
+                of the whole atom or object.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/atom_model_3d.html"
+                    title="Atomic to Macroscopic Charge Simulator"></iframe>
+            </div>
+            <p class="caption">
+                Use the slider to move from the microscopic atom to the macroscopic net-charge picture. Add or remove
+                electrons to see why changing \(N_e\) changes the charge of the whole atom.
+            </p>
+
+            <div class="charge-grid">
+                <div class="charge-card">
+                    <h3>Loses an electron</h3>
+                    <p>
+                        If an atom loses one or more electrons, it has more protons than electrons. Its net charge is
+                        positive, so it becomes a <strong>positive ion</strong> or cation.
+                    </p>
+                </div>
+                <div class="charge-card">
+                    <h3>Gains an electron</h3>
+                    <p>
+                        If an atom gains one or more electrons, it has more electrons than protons. Its net charge is
+                        negative, so it becomes a <strong>negative ion</strong> or anion.
+                    </p>
+                </div>
+                <div class="charge-card">
+                    <h3>No imbalance</h3>
+                    <p>
+                        If the number of protons and electrons is the same, the atom can contain many charged particles
+                        internally but still have <strong>zero net charge</strong>.
+                    </p>
+                </div>
+            </div>
+
+            <div class="note-card">
+                <p>
+                    <strong>Why do we say the whole atom is charged?</strong> A single electron is always negative and a
+                    single proton is always positive. But an atom is a system made from many charges. From outside the
+                    atom, what matters is the <em>net</em> charge left after adding all proton and electron charges. If
+                    one electron leaves, the missing negative charge makes the <strong>whole atom</strong> behave as a
+                    \(+e\) object. If one extra electron attaches, the whole atom behaves as a \(-e\) object.
+                    Treating the atom by its net charge lets us avoid tracking every internal particle when the outside
+                    electric effect is essentially the same.
+                </p>
+            </div>
+
+            <p>
+                Charge appears in everyday objects for the same reason: electrons are transferred by rubbing, contact,
+                chemical bonding, strong electric fields, or other interactions. The protons stay locked in the nuclei
+                of atoms, while electrons are comparatively easier to move. So charging usually means
+                <strong>redistributing electrons</strong>, not creating charge from nothing.
+            </p>
+        </section>
+
+        <section>
+            <h2>4. Quantization and Conservation</h2>
+            <p>
+                Charge is <strong>Quantized</strong>. This means it only comes in chunks of a specific minimum size: the
+                elementary charge \(e = 1.6 \times 10^{-19} \, \text{C}\). You can have \(1e\), \(2e\), or \(1,000e\),
+                but you can't have \(1.5e\).
+            </p>
+            <p>
+                Charge is also <strong>Conserved</strong>. In any closed system, the total net charge remains constant.
+                You can move electrons from one object to another, but you cannot create or destroy net charge.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

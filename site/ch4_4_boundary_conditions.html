@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Boundary Conditions & Shielding</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            displayMath: [['$$', '$$']],
+            macros: {
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              bfB: "\\mathbf{B}",
+              bfH: "\\mathbf{H}",
+              bfM: "\\mathbf{M}",
+              bfK: "\\mathbf{K}"
+              // Removed 'mu' macro to prevent recursive error
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 3rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Derivation Step Box */
+        .step-box {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 3px solid var(--purple-color);
+        }
+        .step-title { color: var(--purple-color); font-weight: 700; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 0.5rem; }
+
+        /* Example Box */
+        .example-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--success-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Back Button */
+        .back-wrapper { margin-top: 4rem; text-align: center; }
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+            font-weight: 600;
+        }
+        .back-btn:hover { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> > 
+                <a href="ch4_4_linear_media.html">Linear Media</a> >
+                Boundary Conditions
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Boundary Conditions & Shielding</h1>
+        
+        <p>
+            When magnetic fields pass from one material to another (e.g., from air to iron), the fields change abruptly. To solve problems involving interfaces, we derive <strong>Boundary Conditions</strong> from the integral forms of Maxwell's Equations.
+        </p>
+
+        <!-- SECTION 1: THE RULES -->
+        <section>
+            <h2>1. The Rules of the Interface</h2>
+            
+            <div class="step-box">
+                <div class="step-title">1. Normal Component of B</div>
+                <p>
+                    From the divergence law \(\nabla \cdot \bfB = 0\), applying the Divergence Theorem to a small "pillbox" spanning the interface tells us that the magnetic flux entering must equal the flux leaving.
+                </p>
+                $$ B_{1}^{\perp} = B_{2}^{\perp} $$
+                <p>The perpendicular component of \(\bfB\) is <strong>continuous</strong>.</p>
+            </div>
+
+            <div class="step-box" style="border-left-color: var(--warning-color);">
+                <div class="step-title" style="color: var(--warning-color);">2. Tangential Component of H</div>
+                <p>
+                    From Ampere's Law for H: \(\oint \bfH \cdot d\mathbf{l} = I_{f,enc}\). Applying this to a small loop straddling the interface, assuming no <em>free</em> surface current (\(\bfK_f = 0\)):
+                </p>
+                $$ H_{1}^{\parallel} = H_{2}^{\parallel} $$
+                <p>The parallel component of \(\bfH\) is <strong>continuous</strong>.</p>
+            </div>
+
+            <p>
+                These seemingly simple rules have profound consequences. Since \(\bfB = \mu \bfH\), the condition \(H_{1}^{\parallel} = H_{2}^{\parallel}\) implies:
+                $$ \frac{B_{1}^{\parallel}}{\mu_1} = \frac{B_{2}^{\parallel}}{\mu_2} \implies B_{2}^{\parallel} = \frac{\mu_2}{\mu_1} B_{1}^{\parallel} $$
+                If Material 2 is highly permeable iron (\(\mu_2 \gg \mu_1\)), the parallel magnetic field inside the iron is huge! This "sucks" magnetic field lines into the material.
+            </p>
+
+            <!-- SIMULATOR: REFRACTION -->
+            <div class="iframe-container">
+                <iframe src="diagrams/boundary_refraction.html" title="Boundary Refraction"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 2: MAGNETIC SHIELDING -->
+        <section>
+            <h2>2. Example: Magnetic Shielding</h2>
+            
+            <div class="example-box">
+                <h3 style="color: var(--success-color); margin-top:0;">🛡️ The Problem</h3>
+                <p>
+                    Suppose we have a hollow spherical shell of high-permeability iron (\(\mu\)) placed in a uniform external magnetic field \(\bfB_0\). What is the field inside the empty cavity?
+                </p>
+                
+                <p><strong>Step 1: The Potential Method</strong></p>
+                <p>Since there are no free currents, we can use the magnetic scalar potential \(W\) (where \(\bfH = -\nabla W\)) satisfying Laplace's equation \(\nabla^2 W = 0\).</p>
+                
+                <p><strong>Step 2: Apply Boundary Conditions</strong></p>
+                <p>We match \(W\) at the inner radius \(a\) and outer radius \(b\) using the continuity rules derived above.</p>
+                
+                <p><strong>Step 3: The Result</strong></p>
+                <p>After significant algebra, the field inside the cavity \(\bfB_{in}\) is found to be uniform and parallel to the external field, but reduced by a factor:</p>
+                
+                <div class="math-block">
+                    $$ \bfB_{in} = \frac{9\mu_r}{(2\mu_r + 1)(\mu_r + 2) - 2(a/b)^3(\mu_r - 1)^2} \bfB_0 $$
+                </div>
+
+                <p>
+                    For high permeability (\(\mu_r \gg 1\)), this simplifies to:
+                    $$ \bfB_{in} \approx \frac{9}{2\mu_r (1 - (a/b)^3)} \bfB_0 $$
+                </p>
+            </div>
+
+            <p>
+                Because \(\mu_r\) is in the denominator and can be very large (e.g., 1000 for soft iron), the field inside is a tiny fraction of the external field. The iron shell captures the flux lines and routes them around the cavity, effectively <strong>shielding</strong> the interior.
+            </p>
+
+            <!-- SIMULATOR: SHIELDING VISUALIZATION -->
+            <div class="iframe-container">
+                <iframe src="diagrams/magnetic_shielding.html" title="Magnetic Shielding Simulation"></iframe>
+            </div>
+
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch4_4_linear_media.html" class="back-btn">← Back to Linear Media</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faraday Disk & Flux Rule</title>
+    
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; }
+        
+        #legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            color: #eee;
+            font-size: 12px;
+            pointer-events: none;
+            width: 200px;
+        }
+
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; display: inline-block; }
+        .line { width: 20px; height: 3px; margin-right: 10px; display: inline-block; }
+        
+        .label {
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            white-space: nowrap;
+            /* Text shadow for readability */
+            text-shadow: 0 0 3px black; 
+        }
+
+        .annotation-box {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #555;
+            color: #fbbf24;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+            max-width: 150px;
+            text-align: center;
+        }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="legend">
+        <div style="margin-bottom:10px; font-weight:600; color:#fbbf24;">FARADAY DISK</div>
+        <div class="legend-item"><span class="line" style="background:#4ade80"></span>B-Field (Up)</div>
+        <div class="legend-item"><span class="line" style="background:#ef4444"></span>Lorentz Force (Radial)</div>
+        <div class="legend-item"><span class="dot" style="background:#ffff00; opacity:0.5"></span>Swept Area (d&Phi;<sub>B</sub>/dt)</div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // === SCENE SETUP ===
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+
+        // Camera setup
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(15, 12, 15);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // === OBJECTS ===
+
+        const DISK_RADIUS = 4;
+        
+        // 1. Copper Disk
+        const diskGeo = new THREE.CylinderGeometry(DISK_RADIUS, DISK_RADIUS, 0.1, 64);
+        const diskMat = new THREE.MeshPhysicalMaterial({
+            color: 0xb87333, // Copper
+            metalness: 0.8,
+            roughness: 0.2,
+            clearcoat: 1.0
+        });
+        const disk = new THREE.Mesh(diskGeo, diskMat);
+        scene.add(disk);
+
+        // Axle
+        const axle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.2, 3, 16),
+            new THREE.MeshStandardMaterial({ color: 0x888888 })
+        );
+        scene.add(axle);
+
+        // 2. Magnetic Field (Arrows)
+        const arrowGroup = new THREE.Group();
+        const arrowColor = 0x4ade80;
+        const arrowLen = 1.5;
+        
+        for(let x = -3; x <= 3; x+=3) {
+            for(let z = -3; z <= 3; z+=3) {
+                // Skip center to not block view
+                if(x===0 && z===0) continue; 
+                
+                const dir = new THREE.Vector3(0, 1, 0);
+                const origin = new THREE.Vector3(x, -0.5, z);
+                const arrow = new THREE.ArrowHelper(dir, origin, arrowLen, arrowColor, 0.4, 0.3);
+                arrowGroup.add(arrow);
+            }
+        }
+        scene.add(arrowGroup);
+        
+        // Label for B-Field
+        const bDiv = document.createElement('div');
+        bDiv.className = 'label';
+        bDiv.style.color = '#4ade80';
+        bDiv.innerHTML = 'B Field';
+        const bLabel = new CSS2DObject(bDiv);
+        bLabel.position.set(3, 1, 3);
+        scene.add(bLabel);
+
+        // 3. The Circuit (Stationary)
+        // Wire from center axle up, over, down to rim brush
+        const circuitMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const points = [];
+        points.push(new THREE.Vector3(0, 1.5, 0)); // Top of axle
+        points.push(new THREE.Vector3(0, 3, 0));   // Up
+        points.push(new THREE.Vector3(DISK_RADIUS + 0.5, 3, 0)); // Out
+        points.push(new THREE.Vector3(DISK_RADIUS + 0.5, 0.2, 0)); // Down to brush
+        points.push(new THREE.Vector3(DISK_RADIUS, 0.2, 0)); // Contact
+
+        const circuitGeo = new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3(points), 64, 0.05, 8, false
+        );
+        const circuitMesh = new THREE.Mesh(circuitGeo, circuitMat);
+        scene.add(circuitMesh);
+
+        // Brushes
+        const brushGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const brushMat = new THREE.MeshStandardMaterial({color: 0x333333});
+        const rimBrush = new THREE.Mesh(brushGeo, brushMat);
+        rimBrush.position.set(DISK_RADIUS + 0.1, 0.1, 0);
+        scene.add(rimBrush);
+
+
+        // === VISUALIZATION ELEMENTS ===
+
+        // A. The Electron (Lorentz Force)
+        const electronGroup = new THREE.Group();
+        const electron = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 16, 16),
+            new THREE.MeshBasicMaterial({color: 0x3b82f6})
+        );
+        electronGroup.add(electron);
+        
+        // Force Arrow (Radial)
+        const forceArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(1,0,0), // Points radial out
+            new THREE.Vector3(0,0,0),
+            2.5,
+            0xef4444, // Red
+            0.5, 0.3
+        );
+        electronGroup.add(forceArrow);
+        
+        // Label for Force
+        const fDiv = document.createElement('div');
+        fDiv.className = 'label';
+        fDiv.style.color = '#ef4444';
+        fDiv.innerHTML = 'F = q(v x B)';
+        const fLabel = new CSS2DObject(fDiv);
+        fLabel.position.set(1.5, 0.5, 0);
+        electronGroup.add(fLabel);
+
+        // Place electron group on the disk
+        // We'll update its rotation in the loop
+        electronGroup.position.y = 0.2; // Slightly above disk
+        scene.add(electronGroup);
+
+
+        // B. The "Swept Area" (Flux Rule)
+        // We need a sector that grows. We can use a RingGeometry with variable thetaLength.
+        // However, updating geometry every frame is expensive. 
+        // Better: Use a pre-made circle and scale it? No, that's not a sector.
+        // We will just recreate the geometry every few frames or use a shader. 
+        // For simplicity in this demo, let's create a "Sweeper" object.
+        
+        const sweeperGroup = new THREE.Group();
+        scene.add(sweeperGroup);
+
+        // The Radius Line (The "Conductor" segment we are tracking)
+        const radiusLine = new THREE.Mesh(
+            new THREE.BoxGeometry(DISK_RADIUS, 0.05, 0.05),
+            new THREE.MeshBasicMaterial({color: 0xffaa00})
+        );
+        radiusLine.geometry.translate(DISK_RADIUS/2, 0, 0); // Pivot at center
+        sweeperGroup.add(radiusLine);
+
+        // The Sector (The Area)
+        // We will create a mesh that scales its scale.y (if we map circle to square?) 
+        // Let's stick to RingGeometry.
+        let sectorMesh;
+        
+        function updateSector(angle) {
+            if(sectorMesh) sweeperGroup.remove(sectorMesh);
+            
+            // Create a wedge from 0 to angle
+            // Note: ThetaStart needs to be negative angle to trail behind
+            const geo = new THREE.RingGeometry(0, DISK_RADIUS, 32, 1, -angle, angle);
+            const mat = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00, 
+                transparent: true, 
+                opacity: 0.3, 
+                side: THREE.DoubleSide 
+            });
+            sectorMesh = new THREE.Mesh(geo, mat);
+            sectorMesh.rotation.x = -Math.PI / 2;
+            sectorMesh.position.y = 0.06; // Just above disk
+            sweeperGroup.add(sectorMesh);
+        }
+
+        // Swept Area Label
+        const fluxDiv = document.createElement('div');
+        fluxDiv.className = 'annotation-box';
+        fluxDiv.innerHTML = "Area swept (dA)<br>creates EMF";
+        const fluxLabel = new CSS2DObject(fluxDiv);
+        fluxLabel.position.set(DISK_RADIUS/2, 0.5, 1);
+        sweeperGroup.add(fluxLabel);
+
+
+        // === ANIMATION ===
+        
+        let time = 0;
+        const speed = 0.01;
+        let sweepAngle = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // 1. Rotate the Physical Disk
+            disk.rotation.y -= speed;
+
+            // 2. Animate the Concept (Swept Area)
+            // We want to visualize a "slice" growing over time, then resetting
+            // This represents dA/dt
+            sweepAngle += speed;
+            
+            // Visualize the "sweeper" tracking a specific radius on the disk
+            sweeperGroup.rotation.y = disk.rotation.y; 
+            
+            // Draw the trail. 
+            // Since RingGeometry is static, we actually need to visualize the gap 
+            // between a "previous" time t and current time t+dt.
+            // For visual clarity: Let's make the sector pulsate.
+            // It grows to represent accumulated area, then resets to keep the visual clean.
+            
+            let displayAngle = (time * 2) % (Math.PI / 4); // Grow to 45 deg then snap back
+            updateSector(displayAngle);
+            
+            // Update labels and electron orientation
+            // The electron sits at a fixed radius on the disk
+            electronGroup.position.set(
+                Math.cos(disk.rotation.y) * (DISK_RADIUS * 0.6),
+                0.2,
+                -Math.sin(disk.rotation.y) * (DISK_RADIUS * 0.6)
+            );
+            // Rotate the group so the arrow always points radial OUT relative to the center
+            electronGroup.rotation.y = disk.rotation.y;
+
+            time += speed;
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="faraday_disk.0.offline.js"></script>
+
+
+</body>
+</html>

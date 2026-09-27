@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Maxwell-to-Waves Transition</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ],
+                macros: {
+                    "\\pd": "\\frac{\\partial #1}{\\partial #2}",
+                    "\\vec": "\\mathbf{#1}"
+                }
+            });
+        });
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Intuition
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Why Waves? The Necessity of Propagation</h1>
+
+        <p class="intro-text">
+            To an early physicist, electricity and magnetism were static, separate forces.
+            The leap to <strong>Electromagnetic Waves</strong> required two fundamental shifts:
+            one mathematical and one physical.
+        </p>
+
+        <section data-concept-title="1. The &quot;Leap-Frog&quot; Effect" id="concept-1-1-the-leap-frog-effect" class="topic-section">
+            <h2>1. The "Leap-Frog" Effect</h2>
+            <p>
+                Imagine a region of empty space. If you somehow create a changing electric field $\vec{E}$, what
+                happens?
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">Ampère-Maxwell</span>
+                    <span class="def-text">A time-varying \(\vec{E}\) is linked to a circulating \(\vec{B}\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Faraday</span>
+                    <span class="def-text">A time-varying \(\vec{B}\) is linked to a circulating \(\vec{E}\).</span>
+                </div>
+            </div>
+            <p>
+                These fields don't just "stay" where they are. They <strong>kick-start each other</strong>.
+                A time-varying $\vec{E}$ appears in the Ampère-Maxwell law as circulation of $\vec{B}$ in the
+                surrounding space. A time-varying $\vec{B}$ appears in Faraday's law as circulation of $\vec{E}$.
+                In a wave, the coupled curl equations pass the disturbance onward, forming a "leap-frog" through space.
+            </p>
+        </section>
+
+        <section data-concept-title="2. Maxwell's Missing Link" id="concept-2-2-maxwell-s-missing-link" class="topic-section">
+            <h2>2. Maxwell's Missing Link</h2>
+            <p>
+                Before Maxwell, Ampère's Law was incomplete. It lacked the term $\mu_0 \epsilon_0 \frac{\partial
+                \vec{E}}{\partial t}$ (the <strong>Displacement Current</strong>).
+            </p>
+            <div class="highlight-box">
+                Without this term, information couldn't travel in a vacuum. The equations would effectively say that
+                fields
+                at different points are independent. By adding the displacement current, Maxwell linked the "curl"
+                of one field to the "change in time" of another. This link is what makes the <strong>Wave
+                    Equation</strong> possible.
+            </div>
+        </section>
+
+        <section data-concept-title="3. Mathematical Emergence" id="concept-3-3-mathematical-emergence" class="topic-section">
+            <h2>3. Mathematical Emergence</h2>
+            <p>
+                In a source-free vacuum ($\rho=0, \vec{J}=0$), Maxwell's equations take their most symmetric form:
+            </p>
+            <div class="math-block">
+                $$ (1) \nabla \cdot \vec{E} = 0, \quad (2) \nabla \cdot \vec{B} = 0 $$
+                $$ (3) \nabla \times \vec{E} = -\pd{\vec{B}}{t}, \quad (4) \nabla \times \vec{B} = \mu_0 \epsilon_0
+                \pd{\vec{E}}{t} $$
+            </div>
+            <p>
+                To decouple them, we take the <strong>curl</strong> of equation (3):
+                $$ \nabla \times (\nabla \times \vec{E}) = \nabla \times \left(-\pd{\vec{B}}{t}\right) = -\pd{}{t}
+                (\nabla \times \vec{B}) $$
+            </p>
+            <p>
+                Next, we use a standard <strong>Vector Identity</strong> for the left side:
+                $$ \nabla \times (\nabla \times \vec{E}) = \nabla(\nabla \cdot \vec{E}) - \nabla^2 \vec{E} $$
+            </p>
+            <p>
+                Substituting the identity into our curl equation, and replacing $\nabla \times \vec{B}$ with equation
+                (4):
+                $$ \nabla(\nabla \cdot \vec{E}) - \nabla^2 \vec{E} = -\pd{}{t} \left( \mu_0 \epsilon_0 \pd{\vec{E}}{t}
+                \right) $$
+            </p>
+            <p>
+                Since $\nabla \cdot \vec{E} = 0$ in vacuum, the first term vanishes:
+                $$ - \nabla^2 \vec{E} = -\mu_0 \epsilon_0 \pd{^2 \vec{E}}{t^2} $$
+            </p>
+            <div class="math-block"
+                style="border: 2px solid var(--accent-color); background: rgba(var(--accent-rgb), 0.1);">
+                $$ \nabla^2 \vec{E} = \mu_0 \epsilon_0 \frac{\partial^2 \vec{E}}{\partial t^2} $$
+            </div>
+            <p>
+                Comparing this to the <strong>General Wave Equation</strong> ($\nabla^2 f = \frac{1}{v^2}
+                \frac{\partial^2 f}{\partial t^2}$), we identify the speed of propagation:
+                $$ \frac{1}{v^2} = \mu_0 \epsilon_0 \implies v = \frac{1}{\sqrt{\mu_0 \epsilon_0}} $$
+            </p>
+            <p>
+                This predicted speed $v$ is approximately <strong>$c \approx 3 \times 10^8$ m/s</strong>—the speed of
+                light—leading to the revolutionary realization that light is an electromagnetic wave.
+            </p>
+        </section>
+
+        <div class="highlight-box" style="border-left: 4px solid var(--success-color);">
+            <h3>In Summary</h3>
+            Waves are not "added" to Maxwell's equations. They are <strong>built-in</strong>. Any system that
+            obeys these four laws <em>must</em> support self-propagating electromagnetic disturbances.
+        </div>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

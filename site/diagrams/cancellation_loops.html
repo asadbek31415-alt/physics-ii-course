@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Loop Cancellation</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- UI Controls --- */
+        .ui-container {
+            width: 100%;
+            background: #121a23;
+            border-bottom: 1px solid #2c3e50;
+            padding: 15px 0;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .label-text {
+            font-size: 0.75rem;
+            color: #8899a6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .btn-wrapper {
+            background: rgba(28, 39, 52, 1);
+            padding: 4px;
+            border-radius: 30px;
+            border: 1px solid #2c3e50;
+            display: flex;
+        }
+
+        button {
+            background-color: transparent;
+            color: #b0c4de;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        button:hover { color: white; }
+
+        button.active {
+            background-color: #3498db;
+            color: white;
+            box-shadow: 0 2px 10px rgba(52, 152, 219, 0.3);
+        }
+        
+        button.view-btn.active {
+            background-color: #9b59b6;
+            box-shadow: 0 2px 10px rgba(155, 89, 182, 0.3);
+        }
+
+        /* --- Canvas Area --- */
+        #canvas-wrapper {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%; /* Fill remaining space */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #05080a;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            background: #080c10;
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            border: 1px solid #2c3e50;
+        }
+
+        .legend {
+            margin-top: 15px;
+            display: flex;
+            gap: 30px;
+            font-size: 0.9rem;
+            color: #888;
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+        
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="ui-container">
+        <div class="control-group">
+            <span class="label-text">Magnetization Distribution</span>
+            <div class="btn-wrapper">
+                <button id="btn-uniform" class="active" onclick="setMagMode('uniform')">Uniform</button>
+                <button id="btn-gradient" onclick="setMagMode('gradient')">Gradient</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <span class="label-text">Scale View</span>
+            <div class="btn-wrapper">
+                <button class="view-btn active" id="btn-micro" onclick="setViewMode('micro')">Microscopic</button>
+                <button class="view-btn" id="btn-macro" onclick="setViewMode('macro')">Macroscopic</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <canvas id="simCanvas"></canvas>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot" style="background: #5dade2;"></div>
+                <span>Atomic Loop</span>
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #f1c40f;"></div>
+                <span>Bound Current (Net)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+        
+        // State
+        let magMode = 'uniform'; 
+        let viewMode = 'micro';
+        
+        // Grid Config
+        const ROWS = 6;
+        const COLS = 10;
+        let CELL_SIZE = 50; 
+        
+        // Animation State
+        let offsetTime = 0;
+        let currentScale = 1.0; 
+        let targetScale = 1.0;
+        let blendFactor = 0; // 0 = Micro, 1 = Macro
+        
+        function resize() {
+            // Make canvas fit the wrapper with some padding
+            const w = wrapper.clientWidth;
+            const h = wrapper.clientHeight - 60; // Subtract space for legend/padding
+            
+            canvas.width = w * 0.95;
+            canvas.height = h * 0.95;
+            
+            // Calculate optimal cell size to fit the grid
+            const maxCellW = canvas.width / (COLS + 2); // +2 for margins
+            const maxCellH = canvas.height / (ROWS + 2);
+            
+            // Set cell size dynamically
+            CELL_SIZE = Math.min(60, Math.min(maxCellW, maxCellH));
+        }
+        
+        window.addEventListener('resize', resize);
+        resize();
+
+        function setMagMode(m) {
+            magMode = m;
+            document.getElementById('btn-uniform').classList.remove('active');
+            document.getElementById('btn-gradient').classList.remove('active');
+            document.getElementById('btn-' + m).classList.add('active');
+        }
+
+        function setViewMode(v) {
+            viewMode = v;
+            document.getElementById('btn-micro').classList.remove('active');
+            document.getElementById('btn-macro').classList.remove('active');
+            document.getElementById('btn-' + v).classList.add('active');
+            
+            // Set Targets for Animation
+            if (v === 'micro') {
+                targetScale = 1.0; // Normal fit
+            } else {
+                targetScale = 0.65; // Zoom Out to see "object" perspective
+            }
+        }
+
+        // --- PHYSICS MATH ---
+
+        function getM(col) {
+            if (col < 0 || col >= COLS) return 0;
+            if (magMode === 'uniform') return 1.0;
+            // Gradient: Weak Left -> Strong Right (0.2 to 1.2)
+            return 0.2 + (col / (COLS - 1)) * 1.0; 
+        }
+
+        // --- DRAWING HELPERS ---
+
+        function drawCCWRect(x, y, w, h, color, lineWidth, dashOffset, alpha) {
+            if (alpha <= 0.05) return;
+            
+            ctx.beginPath();
+            // Counter-Clockwise Path (Standard Physics M out of page)
+            // Bottom-Right -> Top-Right -> Top-Left -> Bottom-Left
+            // Canvas Y is down.
+            ctx.moveTo(x + w, y + h); 
+            ctx.lineTo(x + w, y);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x, y + h);
+            ctx.closePath();
+
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.setLineDash([8, 8]); 
+            ctx.lineDashOffset = -dashOffset; 
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawVerticalLine(x, yTop, yBot, color, lineWidth, dashOffset, alpha, direction) {
+            if (alpha <= 0.05) return;
+            if (Math.abs(lineWidth) < 0.5) return;
+
+            ctx.beginPath();
+            ctx.moveTo(x, direction > 0 ? yBot : yTop);
+            ctx.lineTo(x, direction > 0 ? yTop : yBot);
+
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.setLineDash([8, 8]);
+            ctx.lineDashOffset = -dashOffset;
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+
+        // --- MAIN RENDER LOOP ---
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Smooth Transition Logic
+            const speed = 0.05;
+            currentScale += (targetScale - currentScale) * speed;
+            const blendTarget = (viewMode === 'macro') ? 1 : 0;
+            blendFactor += (blendTarget - blendFactor) * speed;
+
+            // 2. Camera Transform
+            const gridW = COLS * CELL_SIZE;
+            const gridH = ROWS * CELL_SIZE;
+            
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(currentScale, currentScale);
+            ctx.translate(-gridW / 2, -gridH / 2);
+
+            // 3. Draw Microscopic Loops
+            const microAlpha = 1 - blendFactor; 
+            
+            if (microAlpha > 0.01) {
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        const x = c * CELL_SIZE;
+                        const y = r * CELL_SIZE;
+                        const m = getM(c);
+                        
+                        // Visual Scaling based on M strength
+                        // Opacity: 0.3 (weak) to 1.0 (strong)
+                        const loopAlpha = (0.3 + 0.7 * (m/1.2)) * microAlpha;
+                        
+                        // Width: 1.5px (weak) to 5px (strong)
+                        const loopWidth = 1.5 + 3.5 * (m/1.2);
+                        
+                        const gap = 6; 
+                        
+                        drawCCWRect(
+                            x + gap/2, y + gap/2, 
+                            CELL_SIZE - gap, CELL_SIZE - gap, 
+                            `rgba(93, 173, 226, 1)`, // Blue
+                            loopWidth, 
+                            offsetTime, 
+                            loopAlpha
+                        );
+                    }
+                }
+            }
+
+            // 4. Draw Macroscopic / Net Currents
+            const macroAlpha = blendFactor;
+            
+            if (macroAlpha > 0.01) {
+                
+                // A. Surface Current (Perimeter)
+                drawCCWRect(
+                    0, 0, 
+                    gridW, gridH, 
+                    '#f1c40f', // Gold
+                    6, 
+                    offsetTime, 
+                    macroAlpha
+                );
+
+                // B. Volume Current (Internal Vertical Lines)
+                for (let c = 1; c < COLS; c++) {
+                    const mLeft = getM(c - 1);
+                    const mRight = getM(c);
+                    
+                    // Net current flow logic:
+                    // Left loop edge (at c) flows UP (in canvas terms -y).
+                    // Right loop edge (at c) flows DOWN (in canvas terms +y).
+                    // If mRight > mLeft (Gradient), the DOWN component wins.
+                    
+                    const netCurrent = mLeft - mRight; 
+                    
+                    if (Math.abs(netCurrent) > 0.05) {
+                        const x = c * CELL_SIZE;
+                        const width = Math.abs(netCurrent) * 10;
+                        const color = '#e74c3c'; // Red
+                        
+                        // Direction: 1 = UP (-y), -1 = DOWN (+y)
+                        // Note: Our draw function interprets direction > 0 as bot->top
+                        const dir = netCurrent > 0 ? 1 : -1;
+                        
+                        drawVerticalLine(
+                            x, 0, gridH, 
+                            color, width, 
+                            offsetTime, macroAlpha, 
+                            dir
+                        );
+                    }
+                }
+            }
+
+            ctx.restore();
+
+            // 5. Text Annotations
+            ctx.fillStyle = `rgba(255, 255, 255, ${blendFactor})`;
+            ctx.font = "16px Inter, sans-serif";
+            ctx.textAlign = "center";
+            
+            let text = "";
+            if (magMode === 'gradient') {
+                text = "Cancellation is incomplete. Net Volume Current (Jb) flows downwards.";
+            } else {
+                text = "Internal currents cancel perfectly. Only Surface Current (Kb) remains.";
+            }
+            
+            if (blendFactor > 0.5) {
+                ctx.fillText(text, canvas.width/2, canvas.height - 20);
+            }
+
+            // Slow animation speed
+            offsetTime += 0.3;
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+    </script>
+</body>
+</html>

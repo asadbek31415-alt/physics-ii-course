@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D E vs B Field Simulation</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.85);
+            --accent-blue: #58a6ff;
+            --accent-red: #ff7b72;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Segoe UI', sans-serif; 
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 300px) minmax(0, 1fr);
+        }
+        
+        /* 3D CANVAS LAYER */
+        #canvas-container { 
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            width: 100%; 
+            height: 100%; 
+            z-index: 0;
+            display: block; 
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI OVERLAY LAYER */
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%; 
+            height: 100%;
+            z-index: 10;
+            pointer-events: auto;
+            display: flex; 
+            flex-direction: column;
+            gap: 12px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* CONTROLS (Top Bar) */
+        .controls {
+            display: flex; 
+            justify-content: center; 
+            gap: 8px;
+            padding: 0;
+            background: rgba(13, 17, 23, 0.9); 
+            border-bottom: 0;
+            pointer-events: auto; /* Re-enable clicks */
+            backdrop-filter: blur(5px);
+            flex-wrap: wrap;
+        }
+
+        button.mode-btn {
+            background: transparent; 
+            border: 1px solid var(--border-color); 
+            color: #8b949e;
+            padding: 8px 24px; 
+            font-weight: 600; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: 0.2s;
+        }
+        button.mode-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        
+        button.mode-btn.active-e { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(88, 166, 255, 0.15); }
+        button.mode-btn.active-b { border-color: var(--accent-red); color: var(--accent-red); background: rgba(255, 123, 114, 0.15); }
+
+        /* PANELS */
+        .panel {
+            position: relative;
+            background: var(--panel-bg); 
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color); 
+            border-radius: 8px; 
+            padding: 20px;
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        /* Left Info Box */
+        .info-box { 
+            top: 90px; 
+            left: 20px; 
+            width: 320px; 
+            border-left: 4px solid #555; 
+        }
+
+        /* Right Probe Controls */
+        .probe-controls { 
+            top: auto;
+            right: auto;
+            width: 100%;
+            text-align: left;
+            box-sizing: border-box;
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.1rem; color: #fff; }
+        p { font-size: 0.9rem; margin-bottom: 8px; color: #8b949e; line-height: 1.5; }
+        
+        .math-block { 
+            background: rgba(0,0,0,0.3); 
+            padding: 8px; 
+            border-radius: 6px; 
+            text-align: center; 
+            margin: 15px 0; 
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* PROBE BUTTONS */
+        .toggle-row { 
+            display: flex; 
+            flex-direction: column;
+            gap: 8px; 
+            margin-top: 15px; 
+        }
+        .probe-btn {
+            padding: 8px 12px; 
+            font-size: 0.85rem; 
+            background: #21262d; 
+            border: 1px solid #30363d; 
+            color: #c9d1d9; 
+            cursor: pointer; 
+            border-radius: 4px;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .probe-btn:hover { border-color: #8b949e; }
+        .probe-btn.active { background: #30363d; border-color: #fff; color: #fff; font-weight: bold; }
+
+        /* MEASUREMENT READOUT */
+        #readout {
+            position: relative;
+            bottom: auto;
+            left: auto;
+            transform: none;
+            background: rgba(0,0,0,0.85); 
+            padding: 12px 24px; 
+            border-radius: 30px;
+            border: 1px solid var(--border-color); 
+            font-family: 'Consolas', monospace; 
+            font-size: 1rem;
+            display: none; 
+            pointer-events: none;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-top: auto;
+        }
+
+        /* Dynamic Border Colors */
+        .active-e-ui .info-box { border-left-color: var(--accent-blue); }
+        .active-b-ui .info-box { border-left-color: var(--accent-red); }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid var(--border-color);
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            button.mode-btn {
+                flex: 1 1 110px;
+                padding: 8px 10px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body class="active-e-ui">
+
+    <!-- 3D Scene Container -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        
+        <!-- Controls -->
+        <div class="controls">
+            <button id="btn-e" class="mode-btn active-e" onclick="setMode('electro')">Electrostatics</button>
+            <button id="btn-b" class="mode-btn" onclick="setMode('magneto')">Magnetostatics</button>
+        </div>
+
+        <!-- Left Info Panel -->
+        <div class="info-box">
+            <h2 id="title">Electrostatics</h2>
+            <div id="desc">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+
+        <!-- Right Probe Panel -->
+        <div class="panel probe-controls">
+            <h2>Probe Tool</h2>
+            <p>Select geometric probe type:</p>
+            <div class="toggle-row">
+                <button class="probe-btn" id="btn-probe-flux" onclick="setProbe('flux')">Gaussian Surface (Flux)</button>
+                <button class="probe-btn active" id="btn-probe-loop" onclick="setProbe('loop')">Amperian Loop (Circulation)</button>
+            </div>
+            <p style="margin-top:15px; font-size:0.8rem; color:#666; font-style: italic;">
+                Move mouse to position probe
+            </p>
+        </div>
+
+        <!-- Floating Readout -->
+        <div id="readout">Value: 0</div>
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    const CONFIG = {
+        particleCount: 340,
+        trailLength: 15,
+        colors: {
+            e: 0x58a6ff,
+            b: 0xff7b72,
+            probeFlux: 0xffff00,
+            probeLoop: 0x00ff00
+        }
+    };
+
+    let state = {
+        mode: 'electro', 
+        probeType: 'loop', 
+        mouse: new THREE.Vector2(),
+        raycaster: new THREE.Raycaster(),
+        plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), 0) // Invisible plane at Z=0 for raycasting
+    };
+
+    // --- THREE.JS SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+
+    // Fixed Camera
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.set(0, 0, 18); 
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    function resizeRenderer() {
+        const rect = container.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(rect.width));
+        const height = Math.max(1, Math.floor(rect.height));
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+    }
+
+    // --- SCENE OBJECTS ---
+    const objects = {
+        charge: null,
+        wire: null,
+        particles: [],
+        probeMesh: null
+    };
+
+    // 1. Source: Point Charge (Electro)
+    const chargeGeo = new THREE.SphereGeometry(0.5/2, 32, 32);
+    const chargeMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.e });
+    objects.charge = new THREE.Mesh(chargeGeo, chargeMat);
+    // Glow effect
+    const glowGeo = new THREE.SphereGeometry(0.6, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.e, transparent: true, opacity: 0.2 });
+    objects.charge.add(new THREE.Mesh(glowGeo, glowMat));
+    scene.add(objects.charge);
+
+    // 2. Source: Wire (Magneto)
+    const wireGeo = new THREE.CylinderGeometry(0.15, 0.15, 20, 16);
+    const wireMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.b });
+    objects.wire = new THREE.Mesh(wireGeo, wireMat);
+    objects.wire.rotation.x = Math.PI / 2; // Orient along Z-axis (visualized as a dot/cylinder end)
+    scene.add(objects.wire);
+
+    // 3. Probes
+    // Geometries
+    const loopGeo = new THREE.TorusGeometry(1.5, 0.05, 32, 100);
+    const fluxGeo = new THREE.SphereGeometry(1.5, 32, 32);
+    // Material
+    const probeMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff, 
+        wireframe: true, 
+        transparent: true, 
+        opacity: 0.5 
+    });
+    objects.probeMesh = new THREE.Mesh(loopGeo, probeMat);
+    scene.add(objects.probeMesh);
+
+    // --- PARTICLE SYSTEM ---
+    class TrailParticle {
+        constructor() {
+            this.pos = new THREE.Vector3();
+            this.history = [];
+            
+            // Create Line Geometry
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(CONFIG.trailLength * 3);
+            const colors = new Float32Array(CONFIG.trailLength * 3);
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.LineBasicMaterial({ 
+                vertexColors: true, 
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthTest: false // Ensure trails don't clip weirdly
+            });
+            
+            this.mesh = new THREE.Line(geometry, material);
+            scene.add(this.mesh);
+            
+            this.reset();
+        }
+
+        reset() {
+            // Start randomly
+            const range = 20;
+            this.pos.set(
+                (Math.random() - 0.5) * range,
+                (Math.random() - 0.5) * range,
+                (Math.random() - 0.5) * 4 // Flattened Z
+            );
+            
+            // If Electro, bias towards center to show divergence
+            if (state.mode === 'electro' && Math.random() > 0.4) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 0.5 + Math.random() * 0.5;
+                this.pos.set(Math.cos(angle)*r, Math.sin(angle)*r, (Math.random()-0.5));
+            }
+
+            // Reset history
+            this.history = [];
+            for(let i=0; i<CONFIG.trailLength; i++) {
+                this.history.push(this.pos.clone());
+            }
+        }
+
+        update(dt) {
+            const r = Math.sqrt(this.pos.x**2 + this.pos.y**2);
+            const speed = 5.0 * dt;
+
+            if (state.mode === 'electro') {
+                // Diverge: Radial Velocity
+                const safeR = r === 0 ? 0.001 : r;
+                const dir = this.pos.clone().normalize();
+                this.pos.add(dir.multiplyScalar(speed));
+                
+                if (r > 12) this.reset();
+            } else {
+                // Curl: Tangential Velocity (CCW)
+                const angSpeed = speed / (r + 0.1);
+                const x = this.pos.x;
+                const y = this.pos.y;
+                this.pos.x = x * Math.cos(angSpeed) - y * Math.sin(angSpeed);
+                this.pos.y = x * Math.sin(angSpeed) + y * Math.cos(angSpeed);
+                
+                // Keep Z somewhat stable but jittery for effect
+                this.pos.z += (Math.random() - 0.5) * 0.05;
+            }
+
+            // Update History
+            this.history.pop();
+            this.history.unshift(this.pos.clone());
+
+            // Update Mesh Attributes
+            const positions = this.mesh.geometry.attributes.position.array;
+            const colors = this.mesh.geometry.attributes.color.array;
+            const baseColor = new THREE.Color(state.mode === 'electro' ? CONFIG.colors.e : CONFIG.colors.b);
+
+            for(let i=0; i<CONFIG.trailLength; i++) {
+                const p = this.history[i];
+                positions[i*3] = p.x;
+                positions[i*3+1] = p.y;
+                positions[i*3+2] = p.z;
+
+                // Fading tail
+                const alpha = Math.pow(1 - (i / CONFIG.trailLength), 2); // Exponential fade
+                colors[i*3] = baseColor.r * alpha;
+                colors[i*3+1] = baseColor.g * alpha;
+                colors[i*3+2] = baseColor.b * alpha;
+            }
+            this.mesh.geometry.attributes.position.needsUpdate = true;
+            this.mesh.geometry.attributes.color.needsUpdate = true;
+        }
+    }
+
+    // Init Particles
+    for(let i=0; i<CONFIG.particleCount; i++) {
+        objects.particles.push(new TrailParticle());
+    }
+
+    // --- INTERACTION ---
+    function setMode(mode) {
+        state.mode = mode;
+        
+        // 1. Toggle UI Classes
+        document.body.className = mode === 'electro' ? 'active-e-ui' : 'active-b-ui';
+        document.getElementById('btn-e').className = `mode-btn ${mode==='electro'?'active-e':''}`;
+        document.getElementById('btn-b').className = `mode-btn ${mode==='magneto'?'active-b':''}`;
+
+        // 2. Toggle Scene Objects
+        objects.charge.visible = (mode === 'electro');
+        objects.wire.visible = (mode === 'magneto');
+
+        // 3. Update Text Content
+        const desc = document.getElementById('desc');
+        const title = document.getElementById('title');
+        
+        if (mode === 'electro') {
+            title.innerText = "Electrostatics";
+            desc.innerHTML = `
+                <p><strong>Source:</strong> Point Charge ($q$)</p>
+                <div class="math-block">$$ \\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\epsilon_0} $$</div>
+                <p>The field <strong>diverges</strong> radially from the source. It has a beginning and an end.</p>
+            `;
+        } else {
+            title.innerText = "Magnetostatics";
+            desc.innerHTML = `
+                <p><strong>Source:</strong> Current ($I$) out of (screen) Z-axis</p>
+                <div class="math-block">$$ \\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} $$</div>
+                <p>The field <strong>curls</strong> tangentially around the source. Lines form closed loops.</p>
+            `;
+        }
+
+        // 4. Trigger LaTeX Render
+        renderMathInElement(desc, {
+            delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+
+        // 5. Reset Particles for visual clarity
+        objects.particles.forEach(p => p.reset());
+    }
+
+    function setProbe(type) {
+        state.probeType = type;
+        
+        // Update Mesh Geometry
+        objects.probeMesh.geometry.dispose();
+        if (type === 'flux') {
+            objects.probeMesh.geometry = fluxGeo;
+            objects.probeMesh.material.color.setHex(CONFIG.colors.probeFlux);
+            document.getElementById('btn-probe-flux').classList.add('active');
+            document.getElementById('btn-probe-loop').classList.remove('active');
+        } else {
+            objects.probeMesh.geometry = loopGeo;
+            objects.probeMesh.material.color.setHex(CONFIG.colors.probeLoop);
+            document.getElementById('btn-probe-flux').classList.remove('active');
+            document.getElementById('btn-probe-loop').classList.add('active');
+        }
+    }
+
+    // Pointer Tracking for Probe
+    function updatePointer(clientX, clientY) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        state.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        state.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    renderer.domElement.addEventListener('mousemove', (e) => updatePointer(e.clientX, e.clientY));
+    renderer.domElement.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    renderer.domElement.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    // --- ANIMATION LOOP ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+
+        // 1. Update Particles
+        objects.particles.forEach(p => p.update(dt));
+
+        // 2. Update Probe Logic
+        state.raycaster.setFromCamera(state.mouse, camera);
+        const intersects = new THREE.Vector3();
+        state.raycaster.ray.intersectPlane(state.plane, intersects);
+        
+        if (intersects) {
+            objects.probeMesh.position.copy(intersects);
+            updateReadout(intersects);
+        }
+
+        // 3. Render
+        renderer.render(scene, camera);
+    }
+
+    function updateReadout(pos) {
+        const readout = document.getElementById('readout');
+        const r = Math.sqrt(pos.x**2 + pos.y**2);
+        
+        let header = "";
+        let math = "";
+        let color = "#fff";
+
+        if (state.probeType === 'flux') {
+            // GAUSSIAN SURFACE
+            if (state.mode === 'electro') {
+                if (r < 1.5) {
+                    header = "Flux Detected!";
+                    math = "∮E⋅da = q/ε₀";
+                    color = "#58a6ff";
+                } else {
+                    header = "Zero Net Flux";
+                    math = "∮E⋅da = 0 (Empty Space)";
+                    color = "#888";
+                }
+            } else {
+                header = "Zero Flux";
+                math = "∮B⋅da = 0 (No Monopoles)";
+                color = "#ff7b72"; // Red to show "Warning/Magnetic Property"
+            }
+        } else {
+            // AMPERIAN LOOP
+            if (state.mode === 'magneto') {
+                // Assume loop encloses origin if center is close enough
+                if (r < 2.0) {
+                    header = "Circulation Detected!";
+                    math = "∮B⋅dl = μ₀I";
+                    color = "#ff7b72";
+                } else {
+                    header = "Zero Circulation";
+                    math = "Outside Wire";
+                    color = "#888";
+                }
+            } else {
+                header = "Zero Circulation";
+                math = "Conservative Field (∇×E=0)";
+                color = "#58a6ff";
+            }
+        }
+
+        readout.style.display = 'block';
+        readout.style.borderColor = color;
+        readout.innerHTML = `<div style="color:${color}; font-weight:bold">${header}</div><div style="font-size:0.85em; opacity:0.8; margin-top:4px">${math}</div>`;
+    }
+
+    // --- INITIALIZATION ---
+    // Wait for DOM to load fully just in case
+    window.addEventListener('load', () => {
+        setMode('electro');
+        setProbe('loop');
+        animate();
+    });
+
+    // Handle Window Resize
+    window.addEventListener('resize', () => {
+        resizeRenderer();
+    });
+    resizeRenderer();
+
+</script>
+</body>
+</html>

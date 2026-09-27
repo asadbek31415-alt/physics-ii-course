@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --patch-color: #f1c40f;   /* Yellow */
+            --other-color: #3498db;   /* Blue */
+            --total-color: #2ecc71;   /* Green */
+            --force-color: #e67e22;   /* Orange */
+            --border-color: #2c3e50;
+        }
+
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        button.active {
+            background: #34495e;
+            border-color: var(--text-primary);
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            height: 420px;
+            background: #0d131a;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        svg { width: 100%; height: 100%; }
+
+        .vec {
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+            stroke-width: 4;
+        }
+
+        .label {
+            font-size: 14px;
+            transition: opacity 0.4s ease, transform 0.6s ease;
+            pointer-events: none;
+            font-weight: 500;
+        }
+
+        .region-label {
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            fill: #5d6d7e;
+            opacity: 0.8;
+        }
+
+        .origin-dot { fill: white; stroke: var(--bg-color); stroke-width: 2; z-index: 5; }
+        
+        .explanation-text {
+            margin-top: 15px;
+            text-align: center;
+            max-width: 600px;
+            font-size: 0.95rem;
+            color: #b0c4de;
+            line-height: 1.5;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="controls">
+        <button onclick="setMode('patch')" id="btn-patch">1. Patch Field</button>
+        <button onclick="setMode('other')" id="btn-other">2. Other Charges</button>
+        <button onclick="setMode('decomp')" id="btn-decomp">3. Decomposition</button>
+        <button onclick="setMode('total')" id="btn-total">4. Sum (Total Field)</button>
+        <button onclick="setMode('force')" id="btn-force" style="border-color: var(--force-color)">5. Mechanical Force</button>
+    </div>
+
+    <div class="canvas-container">
+        <svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="arr-p" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--patch-color)"/></marker>
+                <marker id="arr-o" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--other-color)"/></marker>
+                <marker id="arr-t" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--total-color)"/></marker>
+                <marker id="arr-f" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--force-color)"/></marker>
+            </defs>
+
+            <!-- Region Labels -->
+            <text x="30" y="45" class="region-label">Vacuum (Outside)</text>
+            <text x="30" y="375" class="region-label">Conductor (Inside)</text>
+
+            <!-- Conductor Body -->
+            <path d="M 0 200 Q 300 195 600 200 L 600 400 L 0 400 Z" fill="#1c2734" />
+            <path d="M 0 200 Q 300 195 600 200" stroke="#5d6d7e" stroke-width="2" fill="none" stroke-dasharray="5,5" />
+            
+            <!-- Patch -->
+            <path d="M 270 198 Q 300 196 330 198" stroke="var(--patch-color)" stroke-width="6" stroke-linecap="round" fill="none" />
+            <circle cx="300" cy="197" r="5" class="origin-dot" />
+
+            <!-- Field Vectors -->
+            <line id="v-p-up" x1="300" y1="197" x2="300" y2="137" class="vec" stroke="var(--patch-color)" marker-end="url(#arr-p)" />
+            <text id="l-p-up" x="310" y="150" class="label" fill="var(--patch-color)">E_patch</text>
+
+            <line id="v-p-dn" x1="300" y1="197" x2="300" y2="257" class="vec" stroke="var(--patch-color)" marker-end="url(#arr-p)" />
+            <text id="l-p-dn" x="310" y="245" class="label" fill="var(--patch-color)">E_patch</text>
+
+            <line id="v-o-up" x1="300" y1="197" x2="300" y2="137" class="vec" stroke="var(--other-color)" marker-end="url(#arr-o)" />
+            <text id="l-o-up" x="240" y="150" class="label" fill="var(--other-color)">E_other</text>
+
+            <line id="v-o-dn" x1="300" y1="257" x2="300" y2="197" class="vec" stroke="var(--other-color)" marker-end="url(#arr-o)" />
+            <text id="l-o-dn" x="240" y="245" class="label" fill="var(--other-color)">E_other</text>
+
+            <!-- Resultant -->
+            <line id="v-total" x1="300" y1="197" x2="300" y2="77" class="vec" stroke="var(--total-color)" marker-end="url(#arr-t)" style="opacity:0; stroke-width:6" />
+            <text id="l-total-out" x="315" y="100" class="label" fill="var(--total-color)" style="opacity:0; font-weight:bold">E_total = σ/ε₀</text>
+            <text id="l-total-in" x="285" y="245" class="label" fill="#ff7675" style="opacity:0; font-weight:bold">E = 0</text>
+
+            <!-- Force -->
+            <line id="v-force" x1="300" y1="180" x2="300" y2="110" class="vec" stroke="var(--force-color)" marker-end="url(#arr-f)" style="opacity:0; stroke-width:8" />
+            <text id="l-force" x="315" y="125" class="label" fill="var(--force-color)" style="opacity:0; font-weight:bold">Force (f)</text>
+        </svg>
+    </div>
+
+    <div id="explanation" class="explanation-text"></div>
+
+    <script>
+        let currentMode = 'patch';
+        const els = {
+            vp_up: document.getElementById('v-p-up'), vp_dn: document.getElementById('v-p-dn'),
+            vo_up: document.getElementById('v-o-up'), vo_dn: document.getElementById('v-o-dn'),
+            vt: document.getElementById('v-total'), vf: document.getElementById('v-force'),
+            lp_up: document.getElementById('l-p-up'), lp_dn: document.getElementById('l-p-dn'),
+            lo_up: document.getElementById('l-o-up'), lo_dn: document.getElementById('l-o-dn'),
+            lt_out: document.getElementById('l-total-out'), lt_in: document.getElementById('l-total-in'),
+            lf: document.getElementById('l-force')
+        };
+
+        function hideAll() {
+            Object.values(els).forEach(el => { 
+                el.style.opacity = 0; 
+                el.style.transform = "translateX(0)";
+            });
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        }
+
+        function setMode(newMode) {
+            const comingFromDecomp = (currentMode === 'decomp' && newMode === 'total');
+            const prevMode = currentMode;
+            currentMode = newMode;
+            
+            document.getElementById('btn-' + newMode).classList.add('active');
+            const exp = document.getElementById('explanation');
+
+            if (newMode === 'total' && comingFromDecomp) {
+                // Perform Summing Animation
+                // 1. Slide together
+                els.vp_up.style.transform = "translateX(0)";
+                els.vo_up.style.transform = "translateX(0)";
+                els.vp_dn.style.transform = "translateX(0)";
+                els.vo_dn.style.transform = "translateX(0)";
+                els.lp_up.style.transform = "translateX(0)";
+                els.lo_up.style.transform = "translateX(0)";
+
+                // 2. Fade into total
+                setTimeout(() => {
+                    els.vp_up.style.opacity = 0; els.vo_up.style.opacity = 0;
+                    els.vp_dn.style.opacity = 0; els.vo_dn.style.opacity = 0;
+                    els.lp_up.style.opacity = 0; els.lp_dn.style.opacity = 0;
+                    els.lo_up.style.opacity = 0; els.lo_dn.style.opacity = 0;
+                    els.vt.style.opacity = 1; els.lt_out.style.opacity = 1; els.lt_in.style.opacity = 1;
+                }, 500);
+            } else {
+                hideAll();
+                document.getElementById('btn-' + newMode).classList.add('active');
+                
+                if (newMode === 'patch') {
+                    els.vp_up.style.opacity = 1; els.vp_dn.style.opacity = 1;
+                    els.lp_up.style.opacity = 1; els.lp_dn.style.opacity = 1;
+                    exp.innerHTML = "<b>Patch Field:</b> The local charge alone creates a field pointing away on both sides.";
+                } 
+                else if (newMode === 'other') {
+                    els.vo_up.style.opacity = 1; els.vo_dn.style.opacity = 1;
+                    els.lo_up.style.opacity = 1; els.lo_dn.style.opacity = 1;
+                    exp.innerHTML = "<b>Other Field:</b> All other charges create a field that must point UP to cancel the patch field inside.";
+                }
+                else if (newMode === 'decomp') {
+                    els.vp_up.style.opacity = 1; els.vp_dn.style.opacity = 1;
+                    els.vo_up.style.opacity = 1; els.vo_dn.style.opacity = 1;
+                    els.lp_up.style.opacity = 1; els.lp_dn.style.opacity = 1;
+                    els.lo_up.style.opacity = 1; els.lo_dn.style.opacity = 1;
+                    
+                    els.vp_up.style.transform = "translateX(18px)";
+                    els.vp_dn.style.transform = "translateX(18px)";
+                    els.lp_up.style.transform = "translateX(18px)";
+                    els.lp_dn.style.transform = "translateX(18px)";
+                    
+                    els.vo_up.style.transform = "translateX(-18px)";
+                    els.vo_dn.style.transform = "translateX(-18px)";
+                    els.lo_up.style.transform = "translateX(-18px)";
+                    els.lo_dn.style.transform = "translateX(-18px)";
+                    exp.innerHTML = "<b>Decomposition:</b> Yellow and Blue cancel inside ($E=0$) but add together outside.";
+                }
+                else if (newMode === 'total') {
+                    els.vt.style.opacity = 1; els.lt_out.style.opacity = 1; els.lt_in.style.opacity = 1;
+                    exp.innerHTML = "<b>Total Field:</b> The superposition of all fields results in a single vector outside.";
+                }
+                else if (newMode === 'force') {
+                    els.vo_up.style.opacity = 0.3;
+                    els.vf.style.opacity = 1; els.lf.style.opacity = 1;
+                    exp.innerHTML = "<b>Force:</b> The patch is pushed by the field of 'Other' charges. $f = \\sigma E_{other}$.";
+                }
+            }
+        }
+
+        setMode('patch');
+    </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Shielding</title>
+    <style>
+        :root {
+            --bg: #000;
+            --grid: rgba(148, 163, 184, 0.18);
+            --field: #38bdf8;
+            --shell: rgba(148, 163, 184, 0.35);
+            --shell-edge: rgba(226, 232, 240, 0.72);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #facc15;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .caption {
+            position: absolute;
+            left: 18px;
+            bottom: 14px;
+            color: var(--muted);
+            font-size: 13px;
+            max-width: 360px;
+            line-height: 1.45;
+            pointer-events: none;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="caption">High-permeability material guides most field lines through the shell, leaving the cavity with a much weaker magnetic field.</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
+            canvas.width = Math.round(canvas.clientWidth * dpr);
+            canvas.height = Math.round(canvas.clientHeight * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            draw();
+        }
+
+        function line(points, color, width, arrowAtEnd = true) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+            ctx.stroke();
+
+            if (arrowAtEnd && points.length > 1) {
+                const a = points[points.length - 2];
+                const b = points[points.length - 1];
+                const ang = Math.atan2(b.y - a.y, b.x - a.x);
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                ctx.lineTo(b.x - 10 * Math.cos(ang - 0.45), b.y - 10 * Math.sin(ang - 0.45));
+                ctx.lineTo(b.x - 10 * Math.cos(ang + 0.45), b.y - 10 * Math.sin(ang + 0.45));
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawGrid(w, h) {
+            ctx.strokeStyle = 'rgba(148,163,184,0.08)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= w; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= h; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+        }
+
+        function draw() {
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h);
+            drawGrid(w, h);
+
+            const cx = w * 0.52;
+            const cy = h * 0.50;
+            const outer = Math.min(w, h) * 0.28;
+            const inner = outer * 0.56;
+
+            const rows = 9;
+            for (let i = 0; i < rows; i++) {
+                const t = (i - (rows - 1) / 2) / ((rows - 1) / 2);
+                const y = cy + t * outer * 1.08;
+                const bend = Math.sqrt(Math.max(0, 1 - t * t));
+                const top = t < 0 ? -1 : 1;
+                const route = Math.abs(t) < 0.22 ? inner * 1.15 : outer * bend;
+
+                const points = [
+                    { x: 20, y },
+                    { x: cx - outer * 1.25, y },
+                    { x: cx - outer * 0.82, y: cy + top * route },
+                    { x: cx + outer * 0.82, y: cy + top * route },
+                    { x: cx + outer * 1.25, y },
+                    { x: w - 24, y }
+                ];
+                line(points, 'rgba(56,189,248,0.58)', Math.abs(t) < 0.22 ? 1.1 : 2.0);
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, outer, 0, Math.PI * 2);
+            ctx.arc(cx, cy, inner, 0, Math.PI * 2, true);
+            ctx.fillStyle = 'rgba(148,163,184,0.30)';
+            ctx.fill('evenodd');
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(226,232,240,0.65)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, outer, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, inner, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.88)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, inner - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#22c55e';
+            ctx.font = '700 18px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('weak B', cx, cy);
+            ctx.restore();
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '700 14px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('high-permeability shell', cx, cy - outer - 18);
+            ctx.fillStyle = '#facc15';
+            ctx.fillText('field lines prefer the shell', cx, cy + outer + 28);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+    </script>
+</body>
+
+</html>

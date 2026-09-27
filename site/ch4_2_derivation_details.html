@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Derivation & Example</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            displayMath: [['$$', '$$']],
+            macros: {
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\mathbf{l}",
+              dtau: "d\\tau'",
+              bfJ: "\\mathbf{J}",
+              bfK: "\\mathbf{K}",
+              bfM: "\\mathbf{M}",
+              bfP: "\\mathbf{P}",
+              bfA: "\\mathbf{A}",
+              bfB: "\\mathbf{B}",
+              vecr: "\\mathbf{r}",
+              vecrp: "\\mathbf{r}'",
+              rhat: "\\mathbf{\\hat{r}}",
+              nhat: "\\mathbf{\\hat{n}}",
+              zhat: "\\mathbf{\\hat{z}}",
+              phihat: "\\boldsymbol{\\hat{\\phi}}",
+              thetahat: "\\boldsymbol{\\hat{\\theta}}"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        h3 { color: var(--text-primary); font-size: 1.3rem; margin-top: 2rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); font-weight: 600; }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Derivation Step Box */
+        .derivation-step {
+            background-color: rgba(52, 152, 219, 0.05);
+            border-left: 3px solid var(--accent-color);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .step-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+            display: block;
+            font-weight: 700;
+        }
+
+        /* Variable Definition Box */
+        .variable-box {
+            display: grid;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+        .variable-item strong { color: var(--warning-color); font-family: 'Times New Roman', serif; font-size: 1.1rem; }
+
+        /* Strategy Box */
+        .strategy-box {
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.1), rgba(39, 174, 96, 0.1));
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Back Button */
+        .back-wrapper { margin-top: 4rem; text-align: center; }
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+            font-weight: 600;
+        }
+        .back-btn:hover { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> > 
+                <a href="ch4_2_field_object.html">Field of Magnetized Object</a> >
+                Derivation & Example
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Derivation & Example</h1>
+        
+        <p>
+            This page details the mathematical transformation from the dipole potential integral to the concept of Bound Currents.
+        </p>
+
+        <!-- SECTION 1: DERIVATION -->
+        <section>
+            <h2>1. Deriving Bound Currents</h2>
+            <p>
+                To understand where the integral comes from, we must first visualize the coordinate system. We are summing up the contributions of infinitesimal dipoles \(\bfM d\tau'\) located at source points \(\vecrp\).
+            </p>
+
+            <!-- SIMULATOR 1: CALCULATION DIAGRAM -->
+            <div class="iframe-container">
+                <iframe src="diagrams/vector_potential_setup.html" title="Integration Setup Diagram"></iframe>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 1: The Potential Integral</span>
+                <p>The vector potential \(\bfA\) at observation point \(\vecr\) is the sum (integral) of the potentials produced by dipoles in the volume:</p>
+                $$ \bfA(\vecr) = \frac{\mu_0}{4\pi} \int \frac{\bfM(\vecrp) \times \rhat}{r^2} \dtau $$
+                <div class="variable-box">
+                    <div class="variable-item"><strong>\(\vecr\)</strong> : Observation point.</div>
+                    <div class="variable-item"><strong>\(\vecrp\)</strong> : Source point inside the material.</div>
+                    <div class="variable-item"><strong>\(r\)</strong> : Separation distance \(|\vecr - \vecrp|\).</div>
+                    <div class="variable-item"><strong>\(\rhat\)</strong> : Unit vector pointing from \(\vecrp\) to \(\vecr\).</div>
+                </div>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 2: Vector Calculus Identity</span>
+                <p>We use the identity \(\nabla' (1/r) = \rhat/r^2\) to rewrite the integrand:</p>
+                $$ \frac{\bfM \times \rhat}{r^2} = \bfM \times \left( \nabla' \frac{1}{r} \right) $$
+                <p>Using the product rule \(\nabla' \times (f\mathbf{v}) = f(\nabla' \times \mathbf{v}) - \mathbf{v} \times \nabla' f\), we expand:</p>
+                $$ \bfM \times \nabla' \left(\frac{1}{r}\right) = \frac{1}{r} (\nabla' \times \bfM) - \nabla' \times \left( \frac{\bfM}{r} \right) $$
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 3: Resulting Bound Currents</span>
+                <p>Substituting this back into the integral, we use the Divergence Theorem on the second term to convert it to a surface integral:</p>
+                $$ \bfA(\vecr) = \frac{\mu_0}{4\pi} \int_V \frac{\nabla' \times \bfM}{r} \dtau + \frac{\mu_0}{4\pi} \oint_S \frac{\bfM \times \nhat}{r} da' $$
+                <p>Comparing this to the standard potentials for currents, we identify the terms:</p>
+                <div class="math-block" style="border-left-color: var(--success-color);">
+                    $$ \bfJ_b = \nabla \times \bfM $$
+                    $$ \bfK_b = \bfM \times \nhat $$
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: SPHERE EXAMPLE -->
+        <section>
+            <h2>2. Example: Uniformly Magnetized Sphere</h2>
+            
+            <div class="strategy-box">
+                <h3 style="margin-top:0; color:var(--success-color);">💡 The Strategy</h3>
+                <p>
+                    Instead of trying to evaluate the complex integral for \(\bfA(\vecr)\) directly, we use the result derived above.
+                </p>
+                <ol>
+                    <li>Calculate the bound currents \(\bfJ_b\) and \(\bfK_b\).</li>
+                    <li>Treat these currents as real physical sources.</li>
+                    <li>Calculate \(\bfB\) using standard Ampere's Law or Biot-Savart methods.</li>
+                </ol>
+            </div>
+
+            <p>
+                <strong>Problem:</strong> Find the magnetic field of a sphere of radius \(R\) with uniform magnetization \(\bfM = M \zhat\).
+            </p>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 1: Calculate Bound Currents</span>
+                <p>Choosing the \(z\) axis along the direction of \(\bfM\) (\(\bfM = M\zhat\)):</p>
+                $$ \bfJ_b = \nabla \times \bfM = 0 $$
+                <p>Since \(\bfM\) is constant. Now for the surface current \(\bfK_b\), with \(\nhat = \rhat\):</p>
+                $$ \bfK_b = \bfM \times \nhat = (M\zhat) \times \rhat = M \sin\theta \phihat $$
+            </div>
+            
+            <div class="derivation-step">
+                <span class="step-label">Step 2: Analogy to Rotating Shell</span>
+                <p>Recall that a rotating spherical shell of uniform surface charge \(\sigma\) has a surface current density:</p>
+                $$ \bfK = \sigma \mathbf{v} = \sigma \omega R \sin\theta \phihat $$
+                <p>Comparing the two expressions, we see they are identical if we make the identification \(\sigma R \omega \rightarrow M\).</p>
+            </div>
+            
+            <div class="derivation-step">
+                <span class="step-label">Step 3: The Result</span>
+                <p>Therefore, the field of a uniformly magnetized sphere is identical to that of a spinning spherical shell. Concluding from that known problem:</p>
+                <div class="math-block" style="border-left-color: var(--warning-color); text-align: left; padding-left: 2rem;">
+                    $$ \text{Inside } (r < R): \quad \bfB = \frac{2}{3} \mu_0 \bfM $$
+                    $$ \text{Outside } (r > R): \quad \bfB \text{ is a perfect dipole field with } \mathbf{m} = \frac{4}{3}\pi R^3 \bfM $$
+                </div>
+                <p>Notice that the internal field is <em>uniform</em>, like the electric field inside a uniformly polarized sphere (\(\bf{E} = -\frac{1}{3\epsilon_0}\bfP\)), although the coefficients (\(2/3\) vs \(-1/3\)) are different.</p>
+            </div>
+
+            <!-- SIMULATOR 2: SPHERE FIELD -->
+            <div class="iframe-container">
+                <iframe src="diagrams/magnetized_sphere_field.html" title="Sphere Field Visualization"></iframe>
+            </div>
+
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch4_2_field_object.html" class="back-btn">← Back to Overview</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Ampere's Law:</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-svg.js">
+    </script>
+
+    <style>
+        .comparison-table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+            vertical-align: top;
+        }
+        .comparison-table th {
+            background: rgba(15, 23, 42, 0.8);
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            width: 50%;
+        }
+        .comparison-table td {
+            color: #e2e8f0;
+        }
+        .callout {
+            background: rgba(56, 189, 248, 0.1);
+            border-left: 4px solid #38bdf8;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warning-box {
+            background: rgba(248, 113, 113, 0.1);
+            border-left: 4px solid #f87171;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                <a href="ch3_3_div_curl_B.html">Divergence and Curl</a> >
+                Ampere's Law
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Ampere's Law:</h1>
+        
+        <p class="intro-text">
+            Ampere's Law is the magnetic equivalent of Gauss's Law. While Gauss's Law relates electric flux to charge, Ampere's Law relates magnetic <strong>circulation</strong> to current. It tells us that magnetic fields tend to "curl" around the electric currents that create them.
+        </p>
+
+        <section>
+            <h2>1. The Physical Intuition: Circulation</h2>
+            <p>
+                In electrostatics, the electric field is conservative ($\nabla \times \mathbf{E} = 0$). This means if you walk in a closed loop, the net work done by the field is zero.
+            </p>
+            <p>
+                In magnetostatics, this is not true. The magnetic field has a "swirl." If you walk in a circle around a wire carrying current, the magnetic field pushes you along the path the entire time. By the time you return to your starting point, you have accumulated a non-zero value. This accumulation is called <strong>Circulation</strong>.
+            </p>
+            <div class="math-block">
+                $$ \text{Circulation} = \oint \mathbf{B} \cdot d\mathbf{l} $$
+            </div>
+            <p>
+                Ampere's Law simply states: <em>The amount of magnetic circulation is directly proportional to the amount of electric current punching through the loop.</em>
+            </p>
+        </section>
+
+        <section>
+            <h2>2. Connecting the Forms: Stokes' Theorem</h2>
+            <p>
+                Students often ask: "How are the differential and integral forms related?" The bridge between them is <strong>Stokes' Theorem</strong>.
+            </p>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Differential Form (Microscopic)</th>
+                        <th>Integral Form (Macroscopic)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="math-block" style="margin: 0; background: transparent;">
+                                $$ \nabla \times \mathbf{B} = \mu_0 \mathbf{J} $$
+                            </div>
+                        </td>
+                        <td>
+                            <div class="math-block" style="margin: 0; background: transparent;">
+                                $$ \oint \mathbf{B} \cdot d\mathbf{l} = \mu_0 I_{\text{enc}} $$
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>Input:</strong> Current Density $\mathbf{J}$ (Current per unit area at a specific point).<br><br>
+                            <strong>Meaning:</strong> At any specific point inside a conductor, the magnetic field has a local "spin" or curl proportional to the current density there.
+                        </td>
+                        <td>
+                            <strong>Input:</strong> Total Enclosed Current $I_{\text{enc}}$.<br><br>
+                            <strong>Meaning:</strong> The total magnetic field accumulating around a large loop depends on the total current passing through the surface of that loop.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>The Derivation</h3>
+            <p>Start with the differential form and integrate both sides over an open surface $S$:</p>
+            <div class="math-block">
+                $$ \int_S (\nabla \times \mathbf{B}) \cdot d\mathbf{A} = \int_S (\mu_0 \mathbf{J}) \cdot d\mathbf{A} $$
+            </div>
+            <p>
+                <strong>Left Side (Stokes' Theorem):</strong> The sum of all the little "curls" inside the surface equals the total circulation around the boundary edge.
+                $$ \int_S (\nabla \times \mathbf{B}) \cdot d\mathbf{A} \longrightarrow \oint_{\text{boundary}} \mathbf{B} \cdot d\mathbf{l} $$
+            </p>
+            <p>
+                <strong>Right Side:</strong> The integral of current density $\mathbf{J}$ over an area is simply the total current $I$.
+                $$ \mu_0 \int_S \mathbf{J} \cdot d\mathbf{A} \longrightarrow \mu_0 I_{\text{enc}} $$
+            </p>
+            <p>
+                Equating them gives the Integral Form: $\oint \mathbf{B} \cdot d\mathbf{l} = \mu_0 I_{\text{enc}}$.
+            </p>
+        </section>
+
+        <section>
+            <h2>3. The Sign Convention (Right-Hand Rule)</h2>
+            <div class="warning-box">
+                <strong>Crucial Detail:</strong> How do you know if current is positive or negative?
+            </div>
+            <p>
+                The direction of the "Amperian Loop" integration determines the positive direction for the current.
+            </p>
+            <ol style="line-height: 1.8; color: #cbd5e1; margin-left: 20px;">
+                <li>Curl the fingers of your <strong>right hand</strong> in the direction you are integrating along the loop ($d\mathbf{l}$).</li>
+                <li>Your <strong>thumb</strong> points in the direction of the surface normal vector ($d\mathbf{A}$).</li>
+                <li>Any current flowing in the direction of your thumb is <strong>Positive ($+I$)</strong>.</li>
+                <li>Any current flowing opposite to your thumb is <strong>Negative ($-I$)</strong>.</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>4. When to use which?</h2>
+            <div class="callout">
+                <strong>Use the Integral Form when:</strong> You have high symmetry (Infinite Wire, Solenoid, Toroid). This allows you to pull $|\mathbf{B}|$ out of the integral, turning a calculus problem into an algebra problem: $B \cdot (\text{Length}) = \mu_0 I$.
+            </div>
+            <div class="callout">
+                <strong>Use the Differential Form when:</strong> You are dealing with complex current distributions where symmetry doesn't apply, or when you need to find the field behavior at a specific point (like inside a plasma or a thick conductor).
+            </div>
+        </section>
+
+    </main>
+    <footer></footer>
+</body>
+</html>

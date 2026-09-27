@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Wave Equation</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ],
+                macros: {
+                    "\\pd": "\\frac{\\partial #1}{\\partial #2}",
+                    "\\vec": "\\mathbf{#1}"
+                }
+            });
+        });
+    </script>
+    <style>
+        .def-item {
+            grid-template-columns: 120px 1fr !important;
+            margin-bottom: 20px;
+        }
+
+        .def-symbol {
+            font-size: 1.1rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt;
+                <a href="ch6_2_vacuum_waves.html">Waves in Vacuum</a> &gt; Wave Equation
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: The Wave Equation</h1>
+
+        <section class="topic-section">
+            <h2>Derivation from Maxwell's Equations</h2>
+            <p>
+                In a source-free vacuum ($\rho = 0, \mathbf{J} = 0$), we start with Maxwell's Equations:
+            </p>
+            <div class="equation-box" style="font-size: 1.1rem;">
+                $$ (i) \nabla \cdot \vec{E} = 0 \quad (ii) \nabla \cdot \vec{B} = 0 $$
+                $$ (iii) \nabla \times \vec{E} = -\pd{\vec{B}}{t} \quad (iv) \nabla \times \vec{B} = \mu_0 \epsilon_0
+                \pd{\vec{E}}{t} $$
+            </div>
+            <p>
+                To decouple these, take the <strong>curl of Faraday's Law</strong> (iii):
+                $$ \nabla \times (\nabla \times \vec{E}) = \nabla \times \left(-\pd{\vec{B}}{t}\right) = -\pd{}{t}
+                (\nabla \times \vec{B}) $$
+            </p>
+            <p>
+                Applying the vector identity $\nabla \times (\nabla \times \vec{A}) = \nabla(\nabla \cdot \vec{A}) -
+                \nabla^2 \vec{A}$ to the left side:
+                $$ \nabla(\nabla \cdot \vec{E}) - \nabla^2 \vec{E} = -\pd{}{t} \left( \mu_0 \epsilon_0 \pd{\vec{E}}{t}
+                \right) $$
+            </p>
+            <p>
+                Since $\nabla \cdot \vec{E} = 0$ in vacuum, the first term vanishes, leaving:
+            </p>
+            <div class="equation-box"
+                style="border: 2px solid var(--accent-color); background: rgba(var(--accent-rgb), 0.05);">
+                $$ \nabla^2 \vec{E} = \mu_0 \epsilon_0 \frac{\partial^2 \vec{E}}{\partial t^2} $$
+            </div>
+            <p>
+                This matches the standard 3D wave equation $\nabla^2 f = \frac{1}{v^2}\frac{\partial^2 f}{\partial t^2}$
+                where the speed is $c = 1/\sqrt{\mu_0\epsilon_0} \approx 3 \times 10^8$ m/s.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>The Transverse Nature</h2>
+            <p>
+                Consider a monochromatic plane wave propagating in the $z$-direction:
+                $$ \tilde{\mathbf{E}}(z, t) = \tilde{\mathbf{E}}_0 e^{i(kz - \omega t)}, \quad \tilde{\mathbf{B}}(z, t)
+                = \tilde{\mathbf{B}}_0 e^{i(kz - \omega t)} $$
+                Applying $\nabla \cdot \mathbf{E} = 0$ (Gauss's Law):
+                $$ \frac{\partial E_x}{\partial x} + \frac{\partial E_y}{\partial y} + \frac{\partial E_z}{\partial z} =
+                0 \implies i k \tilde{E}_{0z} e^{i(kz-\omega t)} = 0 \implies \tilde{E}_{0z} = 0 $$
+            </p>
+            <p>
+                This proves that <strong>electromagnetic waves are transverse</strong>: the field oscillates
+                perpendicular to the direction of propagation.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>Phase and Amplitude Relationships</h2>
+            <p>
+                Faraday's Law ($\nabla \times \mathbf{E} = -\pd{\mathbf{B}}{t}$) imposes a strict relationship between
+                the magnitudes and phases of the fields. For a wave in the $+\hat{z}$ direction:
+                $$ \nabla \times \mathbf{E} = \left| \begin{matrix} \hat{x} & \hat{y} & \hat{z} \\ 0 & 0 & \pd{}{z} \\
+                E_x & E_y & 0 \end{matrix} \right| = -\pd{E_y}{z}\hat{x} + \pd{E_x}{z}\hat{y} $$
+                Substituting the exponential forms:
+                $$ -ik\tilde{E}_{0y}\hat{x} + ik\tilde{E}_{0x}\hat{y} = -(-i\omega)\tilde{\mathbf{B}}_0 \implies
+                \tilde{\mathbf{B}}_0 = \frac{k}{\omega} (\hat{z} \times \tilde{\mathbf{E}}_0) $$
+            </p>
+            <div class="highlight-box"
+                style="background: rgba(var(--accent-rgb), 0.02); border-left: 4px solid var(--accent-color); padding: 1.5rem; margin-top: 2rem;">
+                <h3 style="margin-top: 0; color: var(--accent-color); font-size: 1.2rem; margin-bottom: 1.5rem;">Core
+                    Relationships</h3>
+                <div class="def-list" style="background: transparent; padding: 0; border: none;">
+                    <div class="def-item">
+                        <span class="def-symbol">$\vec{E} \perp \vec{B}$</span>
+                        <span class="def-text"><strong>Perpendicularity</strong>. The electric and magnetic fields are
+                            mutually perpendicular AND both are perpendicular to the direction of travel
+                            ($\hat{k}$).</span>
+                    </div>
+                    <div class="def-item">
+                        <span class="def-symbol">In Phase</span>
+                        <span class="def-text">Both fields reach their peaks and zeros at identical locations and
+                            times.</span>
+                    </div>
+                    <div class="def-item">
+                        <span class="def-symbol">$E_0 = c B_0$</span>
+                        <span class="def-text"><strong>Amplitude Ratio</strong>. The magnitude of the electric field is
+                            always $c$ times larger than that of the magnetic field.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

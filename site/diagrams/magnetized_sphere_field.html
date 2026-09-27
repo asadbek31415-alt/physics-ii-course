@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field of a Magnetized Sphere</title>
+    
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; }
+        
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(18, 26, 35, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #2c3e50;
+            color: #e0e0e0;
+            width: 300px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.1rem; color: #3498db; border-bottom: 1px solid #34495e; padding-bottom: 5px; }
+        
+        .mode-toggle {
+            display: flex;
+            background: #2c3e50;
+            border-radius: 20px;
+            padding: 3px;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #bdc3c7;
+            padding: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-radius: 18px;
+            transition: 0.3s;
+        }
+
+        .mode-btn.active {
+            background: #3498db;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .info-panel { font-size: 0.9rem; line-height: 1.5; color: #b0c4de; }
+        .legend-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+        .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #3498db; font-size: 1.2rem;
+        }
+    </style>
+    
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>Field Inside Matter</h2>
+        
+        <div class="mode-toggle">
+            <button class="mode-btn active" onclick="setMode('magnetic')" id="btn-mag">Magnetic ($\mathbf{M}$)</button>
+            <button class="mode-btn" onclick="setMode('electric')" id="btn-elec">Electric ($\mathbf{P}$)</button>
+        </div>
+
+        <div id="info-magnetic" class="info-panel">
+            <strong>Analogy:</strong> Rotating Spherical Shell ($\sigma R \omega \to M$).<br>
+            <div class="legend-row">
+                <span class="color-dot" style="background: #f1c40f;"></span> Surface Current $\mathbf{K}_b$
+            </div>
+            <div class="legend-row">
+                <span class="color-dot" style="background: #e74c3c;"></span> Field $\mathbf{B}$
+            </div>
+            <p style="margin-top: 10px; border-top: 1px solid #34495e; padding-top:5px;">
+                Inside field is <strong>Uniform</strong> and <strong>Parallel</strong> to $\mathbf{M}$.<br>
+                $\mathbf{B} = \frac{2}{3}\mu_0 \mathbf{M}$
+            </p>
+        </div>
+
+        <div id="info-electric" class="info-panel" style="display: none;">
+            <strong>Analogy:</strong> Two overlapping charged spheres.<br>
+            <div class="legend-row">
+                <span class="color-dot" style="background: linear-gradient(to right, #e74c3c, #3498db);"></span> Surface Charge $\sigma_b$
+            </div>
+            <div class="legend-row">
+                <span class="color-dot" style="background: #e74c3c;"></span> Field $\mathbf{E}$
+            </div>
+            <p style="margin-top: 10px; border-top: 1px solid #34495e; padding-top:5px;">
+                Inside field is <strong>Uniform</strong> but <strong>Opposite</strong> to $\mathbf{P}$.<br>
+                $\mathbf{E} = -\frac{1}{3\epsilon_0} \mathbf{P}$
+            </p>
+        </div>
+    </div>
+
+    <div id="loading">Loading Simulation...</div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let sphereMesh, currentGroup, fieldLinesGroup;
+        let mode = 'magnetic';
+        let time = 0;
+
+        const R = 3; // Radius of sphere
+
+        function init() {
+            document.getElementById('loading').style.display = 'none';
+            const container = document.body;
+
+            // 1. Setup Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(8, 5, 12);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.0;
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambient);
+            const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+            sun.position.set(5, 10, 5);
+            scene.add(sun);
+
+            // 2. Objects
+            createSphere();
+            createBoundSources(); // currents or charges
+            createFieldLines();
+            
+            // Init Mode
+            updateVisuals();
+            
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function createSphere() {
+            const geometry = new THREE.SphereGeometry(R, 32, 32);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x2c3e50,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide,
+                shininess: 60
+            });
+            sphereMesh = new THREE.Mesh(geometry, material);
+            scene.add(sphereMesh);
+        }
+
+        function createBoundSources() {
+            currentGroup = new THREE.Group();
+            scene.add(currentGroup);
+
+            // Create Surface Current Rings (Magnetic Mode)
+            const ringCount = 12;
+            for (let i = 1; i < ringCount; i++) {
+                const theta = (i / ringCount) * Math.PI; 
+                const y = R * Math.cos(theta);
+                const r_ring = R * Math.sin(theta);
+                
+                const curve = new THREE.EllipseCurve(0, 0, r_ring, r_ring, 0, 2 * Math.PI, false, 0);
+                const points = curve.getPoints(64);
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                
+                geometry.rotateX(Math.PI / 2);
+                geometry.translate(0, y, 0);
+
+                // Dashed line for moving current
+                const intensity = Math.sin(theta); 
+                const material = new THREE.LineDashedMaterial({
+                    color: 0xf1c40f,
+                    linewidth: 2,
+                    scale: 2,
+                    dashSize: 0.5,
+                    gapSize: 0.2,
+                    opacity: 0.2 + 0.8 * intensity,
+                    transparent: true
+                });
+
+                const ring = new THREE.Line(geometry, material);
+                ring.computeLineDistances(); 
+                ring.userData = { intensity: intensity }; 
+                currentGroup.add(ring);
+            }
+        }
+
+        function createFieldLines() {
+            fieldLinesGroup = new THREE.Group();
+            scene.add(fieldLinesGroup);
+            
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xe74c3c, opacity: 0.8, transparent: true });
+
+            // INSIDE LINES
+            for(let x = -R*0.8; x <= R*0.8; x += R*0.4) {
+                for(let z = -R*0.8; z <= R*0.8; z += R*0.4) {
+                    if(Math.sqrt(x*x + z*z) > R*0.8) continue;
+                    const maxY = Math.sqrt(R*R - x*x - z*z);
+                    const points = [
+                        new THREE.Vector3(x, -maxY, z),
+                        new THREE.Vector3(x, maxY, z)
+                    ];
+                    const geom = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geom, lineMat);
+                    fieldLinesGroup.add(line);
+                    
+                    // Arrow Helper
+                    const dir = new THREE.Vector3(0, 1, 0); 
+                    const origin = new THREE.Vector3(x, 0, z);
+                    const arrow = new THREE.ArrowHelper(dir, origin, 1.5, 0xe74c3c, 0.5, 0.3);
+                    arrow.userData = { type: 'arrow' };
+                    fieldLinesGroup.add(arrow);
+                }
+            }
+
+            // OUTSIDE LINES (Dipole Loops)
+            // r = r0 * sin^2(theta)
+            for(let planeAngle of [0, Math.PI/4, Math.PI/2, 3*Math.PI/4]) {
+                 for(let r0 = R * 1.5; r0 < R * 4; r0 += R*0.8) {
+                     const points = [];
+                     for(let t = 0.1; t < Math.PI - 0.1; t += 0.1) {
+                         const r = r0 * Math.sin(t) * Math.sin(t);
+                         if (r < R) continue; 
+                         const y = r * Math.cos(t);
+                         const h = r * Math.sin(t); 
+                         
+                         const x = h * Math.cos(planeAngle);
+                         const z = h * Math.sin(planeAngle);
+                         points.push(new THREE.Vector3(x, y, z));
+                     }
+                     const geom = new THREE.BufferGeometry().setFromPoints(points);
+                     const line = new THREE.Line(geom, lineMat);
+                     fieldLinesGroup.add(line);
+                 }
+            }
+        }
+
+        function updateVisuals() {
+            if (mode === 'magnetic') {
+                // Sphere Color
+                sphereMesh.material.vertexColors = false;
+                sphereMesh.material.color.setHex(0x2c3e50);
+                sphereMesh.material.needsUpdate = true;
+                currentGroup.visible = true;
+
+            } else {
+                // Electric Gradient (Bound Charge)
+                const colors = [];
+                const posAttribute = sphereMesh.geometry.attributes.position;
+                
+                for(let i = 0; i < posAttribute.count; i++) {
+                    const y = posAttribute.getY(i);
+                    const color = new THREE.Color();
+                    if(y > 0) color.setHex(0xe74c3c); // +
+                    else color.setHex(0x3498db); // -
+                    
+                    const saturation = Math.abs(y)/R;
+                    color.lerp(new THREE.Color(0xdddddd), 1 - saturation);
+                    colors.push(color.r, color.g, color.b);
+                }
+                
+                sphereMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                sphereMesh.material.vertexColors = true;
+                sphereMesh.material.needsUpdate = true;
+                currentGroup.visible = false;
+            }
+
+            // Update Field Arrows
+            fieldLinesGroup.children.forEach(child => {
+                if (child.userData.type === 'arrow') {
+                    if (mode === 'magnetic') child.setDirection(new THREE.Vector3(0, 1, 0)); // With M
+                    else child.setDirection(new THREE.Vector3(0, -1, 0)); // Against P
+                }
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Animate Current Rings
+            if (mode === 'magnetic' && currentGroup.visible) {
+                currentGroup.children.forEach(ring => {
+                    if (ring.material.dashOffset !== undefined) {
+                        ring.material.dashOffset -= 0.05 * (ring.userData.intensity || 1);
+                    }
+                });
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.setMode = function(m) {
+            mode = m;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(m === 'magnetic' ? 'btn-mag' : 'btn-elec').classList.add('active');
+            
+            document.getElementById('info-magnetic').style.display = m === 'magnetic' ? 'block' : 'none';
+            document.getElementById('info-electric').style.display = m === 'electric' ? 'block' : 'none';
+            updateVisuals();
+        };
+
+        init();
+    </script>
+<script defer data-offline-bundle src="magnetized_sphere_field.0.offline.js"></script>
+
+
+</body>
+</html>

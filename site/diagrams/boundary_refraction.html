@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundary Refraction</title>
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$']] },
+          svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; }
+        
+        .ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(18, 26, 35, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            color: #e0e0e0;
+            width: 300px;
+        }
+
+        .control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        label { font-size: 0.9rem; color: #b0c4de; }
+        input[type=range] { width: 140px; accent-color: #3498db; }
+        .value-disp { font-family: monospace; color: #f1c40f; width: 40px; text-align: right; }
+
+        .equation-box {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        canvas {
+            background: #080c10;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="ui-container">
+        <div class="control-row">
+            <label>Permeability 1 ($\mu_r^1$)</label>
+            <input type="range" id="mu1" min="1" max="10" step="0.5" value="1" oninput="update()">
+            <span id="mu1-val" class="value-disp">1.0</span>
+        </div>
+        <div class="control-row">
+            <label>Permeability 2 ($\mu_r^2$)</label>
+            <input type="range" id="mu2" min="1" max="100" step="1" value="10" oninput="update()">
+            <span id="mu2-val" class="value-disp">10</span>
+        </div>
+        <div class="control-row">
+            <label>Incident Angle ($\theta_1$)</label>
+            <input type="range" id="angle" min="0" max="85" step="1" value="45" oninput="update()">
+            <span id="angle-val" class="value-disp">45°</span>
+        </div>
+
+        <div class="equation-box">
+            $\frac{\tan \theta_1}{\tan \theta_2} = \frac{\mu_1}{\mu_2}$
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let mu1 = 1.0;
+        let mu2 = 10.0;
+        let theta1_deg = 45;
+        let theta1 = theta1_deg * Math.PI / 180;
+        let theta2 = 0;
+        
+        // Animation for moving field lines
+        let offset = 0;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function update() {
+            mu1 = parseFloat(document.getElementById('mu1').value);
+            mu2 = parseFloat(document.getElementById('mu2').value);
+            theta1_deg = parseFloat(document.getElementById('angle').value);
+            
+            document.getElementById('mu1-val').innerText = mu1.toFixed(1);
+            document.getElementById('mu2-val').innerText = mu2.toFixed(0);
+            document.getElementById('angle-val').innerText = theta1_deg.toFixed(0) + "°";
+
+            theta1 = theta1_deg * Math.PI / 180;
+            
+            // Calculate Refraction Angle theta2
+            // tan(t1) / tan(t2) = mu1 / mu2
+            // tan(t2) = tan(t1) * (mu2 / mu1)
+            
+            // Note: Angle is measured from NORMAL (vertical)
+            if (Math.abs(theta1_deg - 90) < 0.1) {
+                theta2 = Math.PI/2;
+            } else {
+                const tan_t2 = Math.tan(theta1) * (mu2 / mu1);
+                theta2 = Math.atan(tan_t2);
+            }
+        }
+
+        function drawFieldLine(xStart, yStart, angle, length, color, dashOffset) {
+            const xEnd = xStart + length * Math.sin(angle);
+            const yEnd = yStart - length * Math.cos(angle); // Up is negative Y
+
+            ctx.beginPath();
+            ctx.moveTo(xStart, yStart);
+            ctx.lineTo(xEnd, yEnd);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([15, 10]);
+            ctx.lineDashOffset = -dashOffset;
+            ctx.stroke();
+
+            // Arrow head
+            const arrowLen = 10;
+            // Midpoint arrow
+            const midX = (xStart + xEnd)/2;
+            const midY = (yStart + yEnd)/2;
+            
+            // Draw discrete arrow heads moving
+            // Simplified: Draw static arrow at midpoint for direction
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            const headAngle = angle - Math.PI/2; // Perpendicular
+            
+            // Actually, simple trig for arrow geometry
+            const tipX = midX + arrowLen * Math.sin(angle);
+            const tipY = midY - arrowLen * Math.cos(angle);
+            
+            // ctx.fillStyle = color;
+            // ctx.beginPath();
+            // ctx.arc(midX, midY, 4, 0, Math.PI*2);
+            // ctx.fill();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // 1. Draw Medium Backgrounds
+            // Top Half (Medium 2)
+            ctx.fillStyle = `rgba(52, 152, 219, ${0.1 + mu2/200})`; // Blue intensity based on mu
+            ctx.fillRect(0, 0, width, cy);
+            
+            // Bottom Half (Medium 1)
+            ctx.fillStyle = `rgba(46, 204, 113, ${0.1 + mu1/20})`; // Green
+            ctx.fillRect(0, cy, width, cy);
+
+            // Interface Line
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, cy); ctx.lineTo(width, cy);
+            ctx.stroke();
+            
+            // Normal Line (Dashed)
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(cx, 0); ctx.lineTo(cx, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Inter';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Medium 2 (μ = ${mu2})`, 20, 30);
+            ctx.textAlign = 'left';
+            ctx.fillText(`Medium 1 (μ = ${mu1})`, 20, height - 20);
+
+            // 2. Draw Field Lines
+            // We draw lines originating from the bottom boundary
+            const numLines = 9;
+            const spacing = 60;
+            
+            // Calculate geometry for lines passing through center area
+            // We want the central line to hit (cx, cy)
+            
+            // Length of lines
+            const len = Math.max(width, height);
+
+            for(let i = -4; i <= 4; i++) {
+                // Offset along the interface
+                // We space them horizontally at the interface
+                const interfaceX = cx + i * spacing;
+                
+                // Bottom Line (Incident)
+                // Starts somewhere below, ends at interfaceX
+                // Angle theta1 is from Vertical Normal
+                // x = interfaceX - L * sin(t1)
+                // y = cy + L * cos(t1)
+                
+                const startX = interfaceX - len * Math.sin(theta1);
+                const startY = cy + len * Math.cos(theta1);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(interfaceX, cy);
+                ctx.strokeStyle = '#f1c40f'; // Gold
+                ctx.lineWidth = 3;
+                ctx.setLineDash([15, 10]);
+                ctx.lineDashOffset = -offset;
+                ctx.stroke();
+
+                // Top Line (Refracted)
+                // Starts at interfaceX, goes up
+                const endX = interfaceX + len * Math.sin(theta2);
+                const endY = cy - len * Math.cos(theta2);
+                
+                ctx.beginPath();
+                ctx.moveTo(interfaceX, cy);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = '#e74c3c'; // Red
+                // Make lines denser in high mu if flux is conserved? 
+                // Technically B_perp is conserved, so vertical spacing changes.
+                // But visual lines usually represent flux tubes.
+                // Let's keep width constant for simplicity of refraction angle demo.
+                ctx.stroke();
+            }
+
+            // 3. Draw Angles
+            // Arc for Theta 1
+            ctx.beginPath();
+            ctx.arc(cx, cy, 60, Math.PI/2, Math.PI/2 + theta1);
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.setLineDash([]);
+            ctx.stroke();
+            // Label
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            // Position label
+            const label1X = cx + 80 * Math.sin(theta1/2);
+            const label1Y = cy + 80 * Math.cos(theta1/2);
+            ctx.fillText("θ1", label1X, label1Y);
+
+            // Arc for Theta 2
+            ctx.beginPath();
+            ctx.arc(cx, cy, 60, -Math.PI/2, -Math.PI/2 + theta2);
+            ctx.stroke();
+            const label2X = cx + 80 * Math.sin(theta2/2);
+            const label2Y = cy - 80 * Math.cos(theta2/2);
+            ctx.fillText("θ2", label2X, label2Y);
+        }
+
+        function animate() {
+            offset += 1;
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+    </script>
+</body>
+</html>

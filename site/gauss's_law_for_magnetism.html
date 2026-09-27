@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Gauss's Law for Magnetism</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-svg.js">
+    </script>
+
+    <style>
+        .comparison-table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        .comparison-table th {
+            background: rgba(15, 23, 42, 0.8);
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+        .comparison-table td {
+            color: #e2e8f0;
+        }
+        .callout {
+            background: rgba(56, 189, 248, 0.1);
+            border-left: 4px solid #38bdf8;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .concept-visual {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        .concept-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 20px;
+            border-radius: 12px;
+            width: 300px;
+            text-align: center;
+        }
+        .concept-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                <a href="ch3_3_div_curl_B.html">Divergence and Curl</a> >
+                Gauss's Law for Magnetism
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Gauss's Law for Magnetism</h1>
+        
+        <p class="intro-text">
+            Gauss's Law for Magnetism is one of the four Maxwell's Equations, the foundational pillars of classical electromagnetism. While it may look simple mathematically, it carries a profound physical implication: the non-existence of magnetic monopoles.
+        </p>
+
+        <section>
+            <h2>The Mathematical Statement</h2>
+            <p>
+                The law can be expressed in two equivalent forms: the differential form (point-wise) and the integral form (over a volume).
+            </p>
+
+            <div class="math-block">
+                $$ \underbrace{\nabla \cdot \mathbf{B} = 0}_{\text{Differential Form}} \iff \underbrace{\oint_S \mathbf{B} \cdot d\mathbf{A} = 0}_{\text{Integral Form}} $$
+            </div>
+
+            <h3>1. The Differential Form ($\nabla \cdot \mathbf{B} = 0$)</h3>
+            <p>
+                The divergence operator ($\nabla \cdot$) measures the "outward flow" or generation of a field from a specific point. 
+                If the divergence is positive, the point is a <strong>source</strong>. If negative, it is a <strong>sink</strong>.
+            </p>
+            <p>
+                The equation $\nabla \cdot \mathbf{B} = 0$ states that at <em>every point in space</em>, the magnetic field has zero divergence. There is no point where magnetic field lines are created or destroyed.
+            </p>
+
+            <h3>2. The Integral Form ($\oint \mathbf{B} \cdot d\mathbf{A} = 0$)</h3>
+            <p>
+                Using the <strong>Divergence Theorem</strong>, we can integrate the differential form over a volume $V$ bounded by a closed surface $S$:
+            </p>
+            <div class="math-block">
+                $$ \int_V (\nabla \cdot \mathbf{B}) \, dV = \oint_S \mathbf{B} \cdot d\mathbf{A} = 0 $$
+            </div>
+            <p>
+                This states that the <strong>net magnetic flux</strong> through <em>any</em> closed surface is zero. Every magnetic field line that enters the volume must eventually exit it. The "amount" of magnetic field flowing in equals the amount flowing out.
+            </p>
+        </section>
+
+        <section>
+            <h2>The Physical Implication: No Monopoles</h2>
+            
+            <div class="callout">
+                <strong>Key Insight:</strong> Unlike electric charges, which can exist in isolation (positive or negative), magnetic poles always come in pairs. You cannot have a "North" pole without a "South" pole.
+            </div>
+
+            <p>
+                To understand why this is unique, let's compare it to Electrostatics (Gauss's Law for Electricity).
+            </p>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Electrostatics ($\mathbf{E}$)</th>
+                        <th>Magnetostatics ($\mathbf{B}$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Governing Equation</strong></td>
+                        <td>$\nabla \cdot \mathbf{E} = \frac{\rho}{\epsilon_0}$</td>
+                        <td>$\nabla \cdot \mathbf{B} = 0$</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sources</strong></td>
+                        <td>Electric Charges ($q$)</td>
+                        <td>None (No Magnetic Charges)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Field Lines</strong></td>
+                        <td>Start on (+) charges, end on (-) charges.</td>
+                        <td>Form continuous, closed loops.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Flux through Closed Surface</strong></td>
+                        <td>Proportional to enclosed charge ($Q_{enc}/\epsilon_0$).</td>
+                        <td>Always Zero.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="concept-visual">
+                <div class="concept-card">
+                    <div class="concept-icon" style="color: #f87171;">⊕ ➝</div>
+                    <h3>Electric Field</h3>
+                    <p>Divergence $\neq$ 0. Lines diverge from a source. A closed box can trap a net positive flux.</p>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-icon" style="color: #38bdf8;">↺</div>
+                    <h3>Magnetic Field</h3>
+                    <p>Divergence = 0. Lines loop back on themselves. A closed box captures 0 net flux.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Why "Continuous Loops"?</h2>
+            <p>
+                Because there are no sources or sinks to start or stop the field lines, the only geometric option for magnetic field lines is to form closed loops (or extend to infinity).
+            </p>
+            <p>
+                Consider a bar magnet. Outside the magnet, lines go from North to South. If you only looked at the outside, it might seem like North is a source and South is a sink. However, <strong>inside the material</strong>, the B-field lines continue from South to North, completing the loop.
+            </p>
+            <p>
+                This is why if you cut a magnet in half, you don't get an isolated North pole and an isolated South pole. Instead, you get two smaller magnets, each with its own North and South, because the microscopic current loops (atomic dipoles) inside the material remain intact.
+            </p>
+        </section>
+
+    </main>
+    <footer></footer>
+</body>
+</html>

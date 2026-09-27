@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LR Circuit Lab - Physics II</title>
+
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script
+        type="importmap"> { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } } </script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            height: 100vh;
+            color: #eee;
+        }
+
+        /* Sidebar Layout */
+        #sidebar {
+            width: 320px;
+            background: #0f0f14;
+            border-right: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 20;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid #222;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        h1 {
+            font-size: 14px;
+            margin: 0;
+            color: #fbbf24;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+        }
+
+        .sidebar-content {
+            padding: 24px;
+            flex-grow: 1;
+        }
+
+        .math-display {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 24px;
+            color: #f87171;
+            font-size: 1.2rem;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #3b82f6;
+            cursor: pointer;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .stats-section {
+            margin-top: 10px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid #222;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .stats-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .val-blue {
+            color: #3b82f6;
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+        }
+
+        .val-green {
+            color: #4ade80;
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+        }
+
+        .val-red {
+            color: #f87171;
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+        }
+
+        .explanation-section {
+            margin-top: 32px;
+            border-top: 1px solid #222;
+            padding-top: 24px;
+        }
+
+        .explanation-section h3 {
+            font-size: 12px;
+            color: #fbbf24;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .explanation-text {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        .explanation-text b {
+            color: #ccc;
+        }
+
+        #status-overlay {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            pointer-events: none;
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            z-index: 5;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        .floating-label {
+            font-family: 'Fira Code', monospace;
+            font-weight: bold;
+            font-size: 12px;
+            color: #fbbf24;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #fbbf24;
+            white-space: nowrap;
+        }
+    </style>
+    <script src="simulator-layout.js"></script>
+</head>
+
+<body>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1>LR Circuit Lab</h1>
+        </div>
+        <div class="sidebar-content">
+            <div class="math-display" id="math-eq"></div>
+
+            <div class="control-group">
+                <div class="label-row"><span>EMF ($E$)</span> <span id="txt-v" class="val-green">0.0 V</span></div>
+                <input type="range" id="slider-v" min="-12" max="12" value="0" step="0.5">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row"><span>Resistance ($R$)</span> <span id="txt-r" style="color: #a78bfa;">1.0
+                        Ω</span></div>
+                <input type="range" id="slider-r" min="0" max="12.0" value="1.0" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row"><span>Inductance ($L$)</span> <span id="txt-l" class="val-blue">5.0 H</span>
+                </div>
+                <input type="range" id="slider-l" min="1.0" max="25.0" value="5.0" step="0.5">
+            </div>
+
+            <div class="stats-section">
+                <div class="stats-row"><span>Current (I)</span> <span id="txt-i" class="val-green">0.00 A</span></div>
+                <div class="stats-row"><span>Back EMF</span> <span id="txt-e" class="val-red">0.00 V</span></div>
+            </div>
+
+            <div class="explanation-section">
+                <h3>Simulator Insights</h3>
+                <div class="explanation-text">
+                    <p><b>Current Slowdown:</b> The inductor ($L$) opposes changes in current via self-inductance
+                        (Lenz's Law). <b>The higher the inductance ($L$), the more resilience the circuit has to changes
+                            in current</b>. When an <b>EMF ($E$)</b> is applied, the changing magnetic flux induces a
+                        <b>Back
+                            EMF</b> that
+                        resists the flow, causing current to ramp up gradually.</p>
+                    <p><b>Resistive Scattering:</b> In the resistor, electrons collide with the ion lattice (represented
+                        by the chaotic motion). This friction limits the final steady-state current to $I = E/R$.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <div id="status-overlay" style="color: #4ade80;">STEADY STATE</div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // === CONFIG & CONSTANTS ===
+        const TRACK_W = 8;
+        const TRACK_H = 5;
+        const R_COIL = 1.2;
+        const L_COIL = 6;
+        const P_COUNT = 1400;
+
+        // === SCENE SETUP ===
+        const scene = new THREE.Scene();
+        const canvasContainer = document.getElementById('canvas-container');
+        const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        camera.position.set(0, 5, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(1, 1);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        canvasContainer.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(1, 1);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        canvasContainer.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+        const pLight = new THREE.PointLight(0x3b82f6, 15, 60);
+        pLight.position.set(TRACK_W, 0, 0);
+        scene.add(pLight);
+
+        // === CIRCUIT GEOMETRY ===
+        class SolenoidCurve extends THREE.Curve {
+            constructor(radius, height, loops, centerX, centerY) {
+                super();
+                this.radius = radius;
+                this.height = height;
+                this.loops = loops;
+                this.centerX = centerX;
+                this.centerY = centerY;
+            }
+            getPoint(t) {
+                const angle = t * Math.PI * 2 * this.loops;
+                const x = this.centerX + Math.cos(angle) * this.radius;
+                const z = Math.sin(angle) * this.radius;
+                const y = this.centerY + (0.5 - t) * this.height; // Top to Bottom
+                return new THREE.Vector3(x, y, z);
+            }
+        }
+
+        const path = new THREE.CurvePath();
+        // 1. Left (Battery)
+        path.add(new THREE.LineCurve3(new THREE.Vector3(-TRACK_W, -1, 0), new THREE.Vector3(-TRACK_W, TRACK_H, 0)));
+        // 2. Top
+        path.add(new THREE.LineCurve3(new THREE.Vector3(-TRACK_W, TRACK_H, 0), new THREE.Vector3(TRACK_W, TRACK_H, 0)));
+        // 3. Right (Top part to Solenoid)
+        path.add(new THREE.LineCurve3(new THREE.Vector3(TRACK_W, TRACK_H, 0), new THREE.Vector3(TRACK_W, L_COIL / 2, 0)));
+        // 4. Solenoid
+        path.add(new SolenoidCurve(R_COIL, L_COIL, 12, TRACK_W, 0));
+        // 5. Right (Bottom part to Resistor)
+        path.add(new THREE.LineCurve3(new THREE.Vector3(TRACK_W, -L_COIL / 2, 0), new THREE.Vector3(TRACK_W, -TRACK_H, 0)));
+        // 6. Bottom (Resistor is here)
+        path.add(new THREE.LineCurve3(new THREE.Vector3(TRACK_W, -TRACK_H, 0), new THREE.Vector3(-TRACK_W, -TRACK_H, 0)));
+        // 7. Return to Battery
+        path.add(new THREE.LineCurve3(new THREE.Vector3(-TRACK_W, -TRACK_H, 0), new THREE.Vector3(-TRACK_W, -3, 0)));
+
+        const tubeGeo = new THREE.TubeGeometry(path, 600, 0.15, 12, false);
+        const tubeMat = new THREE.MeshPhysicalMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.2, transparent: true, opacity: 0.4 });
+        scene.add(new THREE.Mesh(tubeGeo, tubeMat));
+
+        // --- COMPONENTS ---
+        // Battery
+        const battery = new THREE.Group();
+        battery.position.set(-TRACK_W, -2, 0);
+        battery.add(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2.0, 32), new THREE.MeshPhysicalMaterial({ color: 0x111111 })));
+        const batCap = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.3, 32), new THREE.MeshBasicMaterial({ color: 0x4ade80 }));
+        batCap.position.y = 1.0;
+        battery.add(batCap);
+        const batDiv = document.createElement('div');
+        batDiv.className = 'floating-label';
+        batDiv.textContent = 'Battery';
+        const batLabel = new CSS2DObject(batDiv);
+        batLabel.position.set(0, 0, 1.8);
+        battery.add(batLabel);
+        scene.add(battery);
+
+        // Resistor
+        const resistor = new THREE.Group();
+        resistor.position.set(0, -TRACK_H, 0);
+        resistor.rotation.z = Math.PI / 2;
+        const resBody = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 6, 32, 1, true), new THREE.MeshPhysicalMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 1, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+        resistor.add(resBody);
+
+        // Lattice Ions
+        const ION_MAX = 340;
+        const ions = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 8, 8), new THREE.MeshLambertMaterial({ color: 0x666666 }), ION_MAX);
+        const dummyIon = new THREE.Object3D();
+        let lastIonResistance = -1;
+
+        function updateIons(resistance) {
+            const resistanceNorm = Math.max(0, Math.min(1, resistance / 12));
+            const count = Math.round(resistanceNorm * ION_MAX);
+            ions.count = count;
+
+            for (let i = 0; i < count; i++) {
+                const h = (Math.random() - 0.5) * 5.8;
+                const r = Math.random() * 1.6;
+                const theta = Math.random() * Math.PI * 2;
+                dummyIon.position.set(r * Math.cos(theta), h, r * Math.sin(theta));
+                dummyIon.updateMatrix();
+                ions.setMatrixAt(i, dummyIon.matrix);
+            }
+
+            ions.instanceMatrix.needsUpdate = true;
+            lastIonResistance = resistance;
+        }
+        resistor.add(ions);
+
+        const resDiv = document.createElement('div');
+        resDiv.className = 'floating-label';
+        resDiv.style.color = "#a78bfa";
+        resDiv.textContent = "Resistor (R)";
+        const resLabel = new CSS2DObject(resDiv);
+        resLabel.position.set(0, 0, 2.2);
+        resistor.add(resLabel);
+        scene.add(resistor);
+        // Inductor Label
+        const indDiv = document.createElement('div');
+        indDiv.className = 'floating-label';
+        indDiv.textContent = "Inductor (L)";
+        const indLabel = new CSS2DObject(indDiv);
+        indLabel.position.set(0, L_COIL / 2 + 1, 0);
+        const inductorGroup = new THREE.Group();
+        inductorGroup.position.set(TRACK_W, 0, 0);
+        inductorGroup.add(indLabel);
+
+        // Iron Core Visual
+        const coreGeo = new THREE.CylinderGeometry(R_COIL * 0.7, R_COIL * 0.7, L_COIL, 32);
+        const coreMat = new THREE.MeshPhysicalMaterial({ color: 0x444444, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.2 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        inductorGroup.add(core);
+        scene.add(inductorGroup);
+
+        // Internal Uniform B-Field
+        const bFieldArrows = new THREE.Group();
+        // Long arrows spanning the height
+        const arrowGeo = new THREE.CylinderGeometry(0.04, 0.04, L_COIL - 0.5, 8);
+        const tipGeo = new THREE.ConeGeometry(0.12, 0.4, 8);
+        const arrowMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8 });
+
+        for (let i = 0; i < 8; i++) {
+            const arrowGroup = new THREE.Group();
+            const shaft = new THREE.Mesh(arrowGeo, arrowMat);
+            const tip = new THREE.Mesh(tipGeo, arrowMat);
+            tip.position.y = (L_COIL - 0.5) / 2;
+            arrowGroup.add(shaft, tip);
+
+            const r = Math.random() * R_COIL * 0.5;
+            const theta = Math.random() * Math.PI * 2;
+            arrowGroup.position.set(r * Math.cos(theta), 0, r * Math.sin(theta));
+            bFieldArrows.add(arrowGroup);
+        }
+        inductorGroup.add(bFieldArrows);
+
+        // === VECTOR ARROWS ===
+        const createArrow = (color, label) => {
+            const group = new THREE.Group();
+            const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 2, color, 0.5, 0.3);
+            group.add(arrow);
+            const div = document.createElement('div');
+            div.className = 'floating-label';
+            div.style.border = `1px solid ${new THREE.Color(color).getStyle()}`;
+            div.style.color = new THREE.Color(color).getStyle();
+            div.textContent = label;
+            const lbl = new CSS2DObject(div);
+            lbl.position.set(0, 2.2, 0);
+            group.add(lbl);
+            scene.add(group);
+            return { group, arrow, lbl };
+        };
+
+        const eArrow = createArrow(0xf87171, "Back EMF (ε)");
+        eArrow.group.position.set(TRACK_W + 3, 0, 0);
+
+        // === PARTICLES ===
+        const particles = new THREE.InstancedMesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x3b82f6, emissiveIntensity: 2 }), P_COUNT);
+        scene.add(particles);
+        const pData = Array.from({ length: P_COUNT }, () => ({
+            t: Math.random(),
+            offX: (Math.sqrt(Math.random()) * 0.12) * Math.cos(Math.random() * Math.PI * 2),
+            offZ: (Math.sqrt(Math.random()) * 0.12) * Math.sin(Math.random() * Math.PI * 2),
+            chaosPos: new THREE.Vector3(),
+            chaosVel: new THREE.Vector3()
+        }));
+        const dummy = new THREE.Object3D();
+        const _tan = new THREE.Vector3();
+        const _norm = new THREE.Vector3();
+
+        // === PHYSICS & ANIMATION ===
+        let I = 0;
+        const clock = new THREE.Clock();
+        const ui = {
+            v: document.getElementById('slider-v'),
+            r: document.getElementById('slider-r'),
+            l: document.getElementById('slider-l'),
+            txtV: document.getElementById('txt-v'),
+            txtR: document.getElementById('txt-r'),
+            txtL: document.getElementById('txt-l'),
+            txtI: document.getElementById('txt-i'),
+            txtE: document.getElementById('txt-e'),
+            status: document.getElementById('status-overlay')
+        };
+
+        window.onload = () => {
+            katex.render("E - IR - L \\frac{dI}{dt} = 0", document.getElementById('math-eq'));
+            renderMathInElement(document.getElementById('sidebar'), {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ]
+            });
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+            const Vin = parseFloat(ui.v.value);
+            const R = parseFloat(ui.r.value);
+            const L = parseFloat(ui.l.value);
+            if (Math.abs(R - lastIonResistance) > 0.05) updateIons(R);
+
+            // LR PHYSICS
+            const dIdt = (Vin - (I * R)) / L;
+            I += dIdt * dt;
+            const backEmf = -L * dIdt;
+
+            // UI Updates
+            ui.txtV.innerText = Vin.toFixed(1) + " V";
+            ui.txtR.innerText = R.toFixed(1) + " Ω";
+            ui.txtL.innerText = L.toFixed(1) + " H";
+            ui.txtI.innerText = I.toFixed(2) + " A";
+            ui.txtE.innerText = backEmf.toFixed(2) + " V";
+            batLabel.element.textContent = Vin.toFixed(1) + " V";
+            resLabel.element.textContent = R.toFixed(1) + " Ω";
+            indLabel.element.textContent = L.toFixed(1) + " H";
+            eArrow.lbl.element.textContent = "Back EMF: " + backEmf.toFixed(2) + " V";
+
+            // Visual Sync
+            pLight.intensity = Math.min(Math.abs(I) * 0.25, 1.0) * 20;
+
+            // Update Iron Core & Internal Field
+            coreMat.opacity = 0.1 + (L / 25.0) * 0.7;
+            bFieldArrows.visible = Math.abs(I) > 0.01;
+            const bSign = Math.sign(I) || 1;
+            bFieldArrows.children.forEach(a => {
+                a.rotation.x = bSign > 0 ? 0 : Math.PI;
+                a.children.forEach(c => c.material.opacity = Math.min(Math.abs(I) * 1.5, 0.8));
+            });
+
+            // Update Back EMF Vector Arrow
+            const eLen = (backEmf / 12) * 3;
+            eArrow.group.visible = Math.abs(backEmf) > 0.1;
+            eArrow.arrow.setLength(Math.abs(eLen) || 0.1, 0.5, 0.3);
+            eArrow.arrow.setDirection(new THREE.Vector3(0, Math.sign(backEmf), 0)); // Opposes change in current
+
+            const speed = I * 0.012 * dt;
+            for (let i = 0; i < P_COUNT; i++) {
+                let p = pData[i];
+                p.t += speed;
+                if (p.t > 1) p.t -= 1; if (p.t < 0) p.t += 1;
+
+                const pos = path.getPointAt(p.t);
+                _tan.copy(path.getTangentAt(p.t));
+                _norm.set(-_tan.y, _tan.x, 0).normalize();
+
+                // Resistor Interaction (Scattering)
+                const inRes = (p.t > 0.905 && p.t < 0.945);
+                if (inRes) {
+                    if (Math.random() < 0.35) {
+                        const imp = 0.2 + (R / 12) * 0.25;
+                        p.chaosVel.x += (Math.random() - 0.5) * imp;
+                        p.chaosVel.z += (Math.random() - 0.5) * imp;
+
+                        // Prevent significant backward movement
+                        const backImp = (Math.random() - 0.3) * 0.05; // biased forward
+                        p.chaosVel.y += backImp;
+                    }
+                    p.chaosVel.multiplyScalar(0.92);
+                    p.chaosPos.add(p.chaosVel);
+
+                    // Tight lateral constraint to keep inside cylinder
+                    const distSq = p.chaosPos.x * p.chaosPos.x + p.chaosPos.z * p.chaosPos.z;
+                    if (distSq > 1.3 * 1.3) {
+                        const factor = 1.3 / Math.sqrt(distSq);
+                        p.chaosPos.x *= factor;
+                        p.chaosPos.z *= factor;
+                        p.chaosVel.x *= -0.5;
+                        p.chaosVel.z *= -0.5;
+                    }
+                    // Tight longitudinal constraint
+                    if (Math.abs(p.chaosPos.y) > 0.5) {
+                        p.chaosPos.y = Math.sign(p.chaosPos.y) * 0.5;
+                        p.chaosVel.y *= -0.5;
+                    }
+
+                    pos.add(p.chaosPos);
+                } else {
+                    p.chaosPos.multiplyScalar(0.7); // Faster decay outside
+                    if (p.chaosPos.lengthSq() < 0.001) p.chaosPos.set(0, 0, 0);
+                    p.chaosVel.set(0, 0, 0);
+                    pos.add(p.chaosPos);
+                }
+
+                pos.addScaledVector(_norm, p.offX);
+                pos.z += p.offZ;
+                dummy.position.copy(pos); dummy.updateMatrix(); particles.setMatrixAt(i, dummy.matrix);
+            }
+            particles.instanceMatrix.needsUpdate = true;
+
+            if (Math.abs(backEmf) > 2.0) { ui.status.innerText = "INDUCTIVE KICKBACK"; ui.status.style.color = "#f87171"; }
+            else if (Math.abs(I) > 0.1) { ui.status.innerText = "LR STEADY STATE"; ui.status.style.color = "#4ade80"; }
+            else { ui.status.innerText = "SYSTEM IDLE"; ui.status.style.color = "#666"; }
+
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        updateIons(parseFloat(ui.r.value));
+        animate();
+        function resizeScene() {
+            const rect = canvasContainer.getBoundingClientRect();
+            const w = Math.max(1, rect.width);
+            const h = Math.max(1, rect.height);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h, false);
+            labelRenderer.setSize(w, h);
+        }
+        window.addEventListener('resize', resizeScene);
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(resizeScene).observe(canvasContainer);
+        }
+        resizeScene();
+        requestAnimationFrame(resizeScene);
+        setTimeout(resizeScene, 0);
+        setTimeout(resizeScene, 100);
+    </script>
+<script defer data-offline-bundle src="inductor.0.offline.js"></script>
+
+
+</body>
+
+</html>

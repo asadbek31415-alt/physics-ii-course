@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Wire Simulation</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js & Utils -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script src="../vendor/tween.umd.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.95);
+            --accent: #58a6ff;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body { margin: 0; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; }
+        
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        .top-bar {
+            position: absolute; top: 20px; width: 100%;
+            display: flex; justify-content: center; pointer-events: auto;
+        }
+        
+        .mode-toggle {
+            background: #21262d; border: 1px solid var(--accent); color: #fff;
+            padding: 10px 24px; border-radius: 30px; cursor: pointer; font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: 0.3s;
+        }
+        .mode-toggle:hover { background: #1f6feb; border-color: #fff; }
+
+        /* SIDEBAR - FIXED TO TOP LEFT */
+        .side-panel {
+            position: absolute; top: 20px; left: 20px;
+            width: 380px; max-height: 85vh;
+            background: var(--panel-bg);
+            border-radius: 12px; border: 1px solid var(--border-color);
+            border-left: 5px solid var(--accent);
+            display: flex; flex-direction: column;
+            pointer-events: auto;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .side-panel.collapsed {
+            transform: translateX(-120%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; color: #888;
+            border: none; font-size: 1.5rem; cursor: pointer;
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; transition: 0.2s;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        /* OPEN BUTTON - FIXED TO TOP LEFT */
+        .open-btn {
+            position: absolute; top: 20px; left: 20px;
+            width: 50px; height: 50px;
+            background: var(--accent); color: white;
+            border: none; border-radius: 50%;
+            font-weight: bold; font-size: 1.5rem; cursor: pointer;
+            pointer-events: auto;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: transform 0.3s;
+            z-index: 5;
+            opacity: 0; transform: scale(0.5);
+        }
+        .open-btn.visible { opacity: 1; transform: scale(1); }
+        .open-btn:hover { transform: scale(1.1); }
+
+        .panel-content { padding: 20px 20px 30px 20px; overflow-y: auto; }
+
+        h2 { margin: 0 0 15px 0; font-size: 1.3rem; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-right: 30px; }
+        h3 { margin: 20px 0 8px 0; font-size: 1rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+        p { font-size: 0.95rem; line-height: 1.6; color: #c9d1d9; margin-bottom: 10px; }
+        
+        .math-display {
+            background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px;
+            margin: 12px 0; text-align: center; font-size: 1.1em;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .hidden { display: none; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="top-bar">
+            <button class="mode-toggle" onclick="toggleMode()">
+                Mode: <span id="mode-label" style="font-weight:bold">Result (3D)</span>
+            </button>
+        </div>
+
+        <button class="open-btn" onclick="openPanel()" id="btn-open" title="Show Info">i</button>
+
+        <div class="side-panel" id="info-panel">
+            <button class="close-btn" onclick="closePanel()" title="Hide Panel">×</button>
+
+            <div class="panel-content">
+                <div id="content-calc" class="hidden">
+                    <h2>Derivation Steps</h2>
+                    <h3>1. Cylindrical Symmetry</h3>
+                    <p>The field must have the same magnitude at any point equidistant from the wire ($r$). We choose a <strong>circular Amperian loop</strong> (yellow) of radius $r$.</p>
+                    <h3>2. Evaluate Integral</h3>
+                    <p>Along this circle, $\mathbf{B}$ is always parallel to the path $d\mathbf{l}$.</p>
+                    <div class="math-display">$$ \oint \mathbf{B} \cdot d\mathbf{l} = \oint B \, dl = B(2\pi r) $$</div>
+                    <h3>3. Solve</h3>
+                    <p>The total enclosed current is simply $I$. Equating Ampère's Law:</p>
+                    <div class="math-display">$$ B(2\pi r) = \mu_0 I \implies B = \frac{\mu_0 I}{2\pi r} $$</div>
+                </div>
+
+                <div id="content-result">
+                    <h2>The Infinite Wire</h2>
+                    <p>A long straight wire carrying current $I$ creates a magnetic field that circles the wire.</p>
+                    <h3>Visualization</h3>
+                    <p>The simulation shows how field strength decays as you move away from the wire ($1/r$).</p>
+                    <ul>
+                        <li><span style="color:#fff; font-weight:bold">Near Wire:</span> Strong Field (Fast, Bright)</li>
+                        <li><span style="color:#5588aa; font-weight:bold">Far Away:</span> Weak Field (Slow, Dim)</li>
+                    </ul>
+                    <div class="math-display">$$ \mathbf{B} = \frac{\mu_0 I}{2\pi r} \hat{\phi} $$</div>
+                    <p style="font-size:0.85rem; opacity:0.7">Direction is given by the Right Hand Rule.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const CONFIG = {
+        wireRadius: 0.5,
+        wireHeight: 50,
+        loopRadius: 5,
+        colors: {
+            wire: 0xb87333,
+            field: 0x58a6ff,
+            loop: 0xffff00,
+            arrow: 0xffffff,
+            current: 0xff3333
+        }
+    };
+
+    let state = { mode: 'result' };
+
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 10, 10);
+    scene.add(dirLight);
+
+    const world = new THREE.Group();
+    scene.add(world);
+
+    // 1. Wire
+    const wireGeo = new THREE.CylinderGeometry(CONFIG.wireRadius, CONFIG.wireRadius, CONFIG.wireHeight, 32);
+    const wireMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.wire, metalness: 0.8, roughness: 0.3 });
+    const wire = new THREE.Mesh(wireGeo, wireMat);
+    world.add(wire);
+
+    const currentArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -5, 0), 10, CONFIG.colors.current, 2, 1.5);
+    world.add(currentArrow);
+    
+    // 2. Amperian Loop
+    const loopGeo = new THREE.TorusGeometry(CONFIG.loopRadius, 0.05, 16, 100);
+    const loopMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.loop });
+    const amperianLoop = new THREE.Mesh(loopGeo, loopMat);
+    amperianLoop.rotation.x = Math.PI / 2;
+    amperianLoop.visible = false;
+    world.add(amperianLoop);
+
+    // 3. Into Screen Sign (X in Circle)
+    const currentSignGroup = new THREE.Group();
+    const signCircle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.06, 16, 100), new THREE.MeshBasicMaterial({color: CONFIG.colors.current}));
+    signCircle.rotation.x = Math.PI / 2;
+    
+    const xMat = new THREE.LineBasicMaterial({ color: CONFIG.colors.current, linewidth: 2 });
+    const xLine1 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.35, 0, -0.35), new THREE.Vector3(0.35, 0, 0.35)]);
+    const xLine2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.35, 0, 0.35), new THREE.Vector3(0.35, 0, -0.35)]);
+    currentSignGroup.add(signCircle, new THREE.Line(xLine1, xMat), new THREE.Line(xLine2, xMat));
+    currentSignGroup.visible = false;
+    world.add(currentSignGroup);
+
+    // 4. Vectors B and dl (PRESERVED)
+    const vectorGroup = new THREE.Group();
+    const vecPos = new THREE.Vector3(CONFIG.loopRadius, 0, 0);
+    const tangentDir = new THREE.Vector3(0, 0, -1);
+    const arrowB = new THREE.ArrowHelper(tangentDir, vecPos, 3, CONFIG.colors.field, 0.8, 0.6);
+    const arrowDl = new THREE.ArrowHelper(tangentDir, vecPos.clone().add(new THREE.Vector3(0, 0.2, 0)), 2, CONFIG.colors.loop, 0.8, 0.6);
+    vectorGroup.add(arrowB, arrowDl);
+    vectorGroup.visible = false;
+    world.add(vectorGroup);
+
+    // 5. Particles
+    const pCount = 1200;
+    const pGeo = new THREE.SphereGeometry(0.08, 4, 4);
+    const pMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const particles = new THREE.InstancedMesh(pGeo, pMat, pCount);
+    world.add(particles);
+
+    const pData = [];
+    for(let i=0; i<pCount; i++) {
+        const r = 1.5 + Math.random() * 12;
+        pData.push({ r: r, angle: Math.random() * Math.PI * 2, y: (Math.random() - 0.5) * 30, speed: 2.0 / (r * r) });
+    }
+
+    const dummy = new THREE.Object3D();
+    const tempColor = new THREE.Color();
+
+    function updateParticles() {
+        if(!particles.visible) return;
+        for(let i=0; i<pCount; i++) {
+            const p = pData[i];
+            p.angle -= p.speed * 0.5; // REVERSED DIRECTION
+            const x = p.r * Math.cos(p.angle);
+            const z = p.r * Math.sin(p.angle);
+            dummy.position.set(x, p.y, z);
+            const normR = (p.r - 1.5) / 12;
+            const scale = 1.5 * (1 - normR * 0.7);
+            dummy.scale.set(scale, scale, scale);
+            tempColor.setHSL(0.58, 1.0, 1.0 - normR * 0.8);
+            dummy.updateMatrix();
+            particles.setMatrixAt(i, dummy.matrix);
+            particles.setColorAt(i, tempColor);
+        }
+        particles.instanceMatrix.needsUpdate = true;
+        if(particles.instanceColor) particles.instanceColor.needsUpdate = true;
+    }
+
+    const camResult = { pos: new THREE.Vector3(15, 12, 15) };
+    const camCalc = { pos: new THREE.Vector3(0, 25, 0) };
+    camera.position.copy(camResult.pos);
+
+    function toggleMode() {
+        state.mode = state.mode === 'result' ? 'calc' : 'result';
+        const label = document.getElementById('mode-label');
+        const calcDiv = document.getElementById('content-calc');
+        const resDiv = document.getElementById('content-result');
+
+        if(state.mode === 'calc') {
+            label.innerText = "Calculation (Loop)";
+            label.style.color = "#ffff00";
+            calcDiv.classList.remove('hidden');
+            resDiv.classList.add('hidden');
+            new TWEEN.Tween(camera.position).to(camCalc.pos, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            particles.visible = false;
+            wire.visible = false;
+            currentArrow.visible = false;
+            setTimeout(() => { 
+                amperianLoop.visible = true; 
+                vectorGroup.visible = true; 
+                currentSignGroup.visible = true;
+            }, 500);
+        } else {
+            label.innerText = "Result (3D)";
+            label.style.color = "#fff";
+            calcDiv.classList.add('hidden');
+            resDiv.classList.remove('hidden');
+            new TWEEN.Tween(camera.position).to(camResult.pos, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            amperianLoop.visible = false;
+            vectorGroup.visible = false;
+            currentSignGroup.visible = false;
+            particles.visible = true;
+            wire.visible = true;
+            currentArrow.visible = true;
+        }
+    }
+
+    function closePanel() {
+        document.getElementById('info-panel').classList.add('collapsed');
+        document.getElementById('btn-open').classList.add('visible');
+    }
+
+    function openPanel() {
+        document.getElementById('info-panel').classList.remove('collapsed');
+        document.getElementById('btn-open').classList.remove('visible');
+    }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        TWEEN.update(time);
+        controls.update();
+        updateParticles();
+        renderer.render(scene, camera);
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.body, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}] });
+    });
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faraday's Law: Flux vs. Curl</title>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 350px;
+            --bg-color: #0b1016;
+            --panel-bg: #16212e;
+            --text-color: #e0e0e0;
+            --accent-blue: #3498db;
+            --accent-orange: #f39c12;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            background: var(--panel-bg);
+            border-right: 1px solid #2c3e50;
+            padding: 16px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1rem;
+            border-bottom: 1px solid #2c3e50;
+            padding-bottom: 6px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--accent-blue);
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--accent-blue);
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        button.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        #pulseBtn.active {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .static-reference {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.78rem;
+            line-height: 1.32;
+        }
+
+        .ref-case {
+            margin-bottom: 10px;
+            border-left: 3px solid #555;
+            padding-left: 10px;
+        }
+
+        .case-title {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .formula {
+            background: #000;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        /* --- CANVAS --- */
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .legend {
+            font-size: 0.75rem;
+            margin-top: auto;
+            border-top: 1px solid #2c3e50;
+            padding-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100dvh;
+            }
+
+            #canvas-container {
+                grid-row: 1;
+                width: 100%;
+                min-height: 0;
+            }
+
+            #sidebar {
+                grid-row: 2;
+                width: 100%;
+                min-width: 0;
+                border-right: 0;
+                border-top: 1px solid #2c3e50;
+                padding: 8px 10px;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 7px 8px;
+                overflow: hidden;
+            }
+
+            #sidebar > * {
+                min-width: 0;
+            }
+
+            h2,
+            #math-display {
+                grid-column: 1 / -1;
+            }
+
+            h2 {
+                font-size: 0.84rem;
+                padding-bottom: 4px;
+                margin: 0;
+            }
+
+            .btn-group {
+                margin: 0;
+            }
+
+            button {
+                min-height: 34px;
+                padding: 7px 8px;
+                font-size: 0.72rem;
+            }
+
+            .static-reference,
+            .legend {
+                display: none;
+            }
+
+            .formula {
+                padding: 7px;
+                margin: 0;
+                font-size: 0.78rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <h2>Faraday's Law</h2>
+
+        <label style="font-size: 0.8rem; opacity: 0.7;">Select Perspective:</label>
+        <div class="btn-group">
+            <button id="btn-flux" class="active" onclick="setView('flux')">Flux (Integral)</button>
+            <button id="btn-curl" onclick="setView('curl')">Curl (Differential)</button>
+        </div>
+
+        <button id="pulseBtn" onclick="togglePulse()">Start B-Field Pulse</button>
+
+        <div class="static-reference">
+            <div class="ref-case" style="border-color: var(--success);">
+                <span class="case-title" style="color: var(--success);">Case 1: B is Increasing (\( \frac{\partial
+                    \vec{B}}{\partial t} > 0 \))</span>
+                The induced \(\vec{E}\) field curls <b>Clockwise</b> to oppose the growth of the magnetic flux
+                (Lenz's Law).
+            </div>
+            <div class="ref-case" style="border-color: var(--danger);">
+                <span class="case-title" style="color: var(--danger);">Case 2: B is Decreasing (\( \frac{\partial
+                    \vec{B}}{\partial t} < 0 \))</span>
+                        The induced \(\vec{E}\) field curls <b>Counter-Clockwise</b> to support the dying field and
+                        oppose the loss.
+            </div>
+        </div>
+
+        <div id="math-display">
+            <div id="math-flux" class="formula">
+                \(\oint \vec{E} \cdot d\vec{l} = -\frac{d\Phi_B}{dt}\)
+            </div>
+            <div id="math-curl" class="formula" style="display:none;">
+                \(\nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t}\)
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot" style="background:var(--accent-blue)"></div> Magnetic Field (\(\vec{B}\))
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background:var(--accent-orange)"></div> Induced Electric Field (\(\vec{E}\))
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background:#fff"></div> Flux Path / Curl Indicator
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // --- THREE.JS SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b1016);
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(8, 6, 8);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dLight.position.set(5, 10, 5);
+        scene.add(dLight);
+
+        // --- OBJECTS ---
+        let viewMode = 'flux'; // 'flux' or 'curl'
+        const bGroup = new THREE.Group();
+        scene.add(bGroup);
+
+        const bArrows = [];
+        for (let x = -1.5; x <= 1.5; x += 1.5) {
+            for (let z = -1.5; z <= 1.5; z += 1.5) {
+                const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(x, -2, z), 4, 0x3498db, 0.4, 0.2);
+                bGroup.add(arrow);
+                bArrows.push(arrow);
+            }
+        }
+
+        // Flux Perspective: Large Ring
+        const fluxGroup = new THREE.Group();
+        scene.add(fluxGroup);
+        const mainRing = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0, 0, 3, 3).getPoints(64)),
+            new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 })
+        );
+        mainRing.rotation.x = Math.PI / 2;
+        fluxGroup.add(mainRing);
+
+        const fluxEArrows = [];
+        for (let i = 0; i < 8; i++) {
+            const a = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 0.7, 0xf39c12, 0.2, 0.1);
+            fluxGroup.add(a);
+            fluxEArrows.push({ mesh: a, angle: (i / 8) * Math.PI * 2 });
+        }
+
+        // Induced Current Particles
+        const pCount = 50;
+        const pGeo = new THREE.SphereGeometry(0.08, 8, 8);
+        const pMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x2ecc71, emissiveIntensity: 2 });
+        const particles = new THREE.InstancedMesh(pGeo, pMat, pCount);
+        fluxGroup.add(particles);
+        const pOffsets = new Float32Array(pCount);
+        for (let i = 0; i < pCount; i++) pOffsets[i] = Math.random();
+        const dummy = new THREE.Object3D();
+
+        // Curl Perspective: Grid of small spinners
+        const curlGroup = new THREE.Group();
+        scene.add(curlGroup);
+        const spinners = [];
+        for (let x = -1.5; x <= 1.5; x += 1.5) {
+            for (let z = -1.5; z <= 1.5; z += 1.5) {
+                const spinnerGroup = new THREE.Group();
+                spinnerGroup.position.set(x, 0, z);
+                const tinyRing = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0, 0, 0.4, 0.4).getPoints(32)),
+                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })
+                );
+                tinyRing.rotation.x = Math.PI / 2;
+                spinnerGroup.add(tinyRing);
+
+                const sArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0.4, 0, 0), 0.3, 0xf39c12, 0.1, 0.05);
+                spinnerGroup.add(sArrow);
+
+                spinners.push({ group: spinnerGroup, arrow: sArrow, angle: 0 });
+                curlGroup.add(spinnerGroup);
+            }
+        }
+        curlGroup.visible = false;
+
+        // --- LOGIC ---
+        let isPulsing = false;
+        let time = 0;
+        let bStrength = 1.0;
+        let dBdt = 0;
+
+        function setView(mode) {
+            viewMode = mode;
+            document.getElementById('btn-flux').classList.toggle('active', mode === 'flux');
+            document.getElementById('btn-curl').classList.toggle('active', mode === 'curl');
+            document.getElementById('math-flux').style.display = mode === 'flux' ? 'block' : 'none';
+            document.getElementById('math-curl').style.display = mode === 'curl' ? 'block' : 'none';
+            fluxGroup.visible = (mode === 'flux');
+            curlGroup.visible = (mode === 'curl');
+        }
+
+        function togglePulse() {
+            isPulsing = !isPulsing;
+            document.getElementById('pulseBtn').classList.toggle('active', isPulsing);
+            document.getElementById('pulseBtn').innerText = isPulsing ? "Stop Pulse" : "Start B-Field Pulse";
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            time += 0.02;
+
+            if (isPulsing) {
+                const freq = 2.0;
+                bStrength = 1.2 + 0.8 * Math.sin(time * freq);
+                dBdt = 0.8 * freq * Math.cos(time * freq);
+            } else {
+                bStrength += (1.0 - bStrength) * 0.05;
+                dBdt += (0 - dBdt) * 0.1;
+            }
+
+            bArrows.forEach(a => a.setLength(Math.max(bStrength * 2.5, 0.1), 0.4, 0.2));
+
+            const eOpacity = Math.min(Math.abs(dBdt) * 0.5, 1.0);
+
+            // Update Flux Visuals
+            fluxEArrows.forEach(obj => {
+                obj.mesh.visible = (viewMode === 'flux' && eOpacity > 0.05);
+                obj.angle += dBdt * 0.05;
+                const x = Math.cos(obj.angle) * 3;
+                const z = Math.sin(obj.angle) * 3;
+                obj.mesh.position.set(x, 0, z);
+                const tangent = new THREE.Vector3(-Math.sin(obj.angle), 0, Math.cos(obj.angle));
+                if (dBdt < 0) tangent.negate();
+                obj.mesh.setDirection(tangent);
+                obj.mesh.line.material.opacity = eOpacity;
+            });
+
+            // Update Curl Visuals
+            spinners.forEach(s => {
+                s.group.visible = (viewMode === 'curl' && eOpacity > 0.05);
+                s.angle += dBdt * 0.15;
+                const x = Math.cos(s.angle) * 0.4;
+                const z = Math.sin(s.angle) * 0.4;
+                s.arrow.position.set(x, 0, z);
+                const tangent = new THREE.Vector3(-Math.sin(s.angle), 0, Math.cos(s.angle));
+                if (dBdt < 0) tangent.negate();
+                s.arrow.setDirection(tangent);
+                s.arrow.line.material.opacity = eOpacity;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        animate();
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Energy in Dielectric Systems</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dtau: "d\\tau"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 3rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: white;
+            border-left: 5px solid var(--accent-color);
+            padding-left: 1.5rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            margin-top: 2rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        /* Note Box */
+        .note-box {
+            background: rgba(52, 152, 219, 0.05);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: rgba(46, 204, 113, 0.05);
+            border-left: 4px solid var(--success-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            margin-top: 4rem;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="ch2_5_linear_dielectrics.html">Linear Dielectrics</a> >
+                Energy Derivation
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Energy in Dielectric Systems</h1>
+
+        <p>
+            When we calculate the energy of a configuration involving dielectrics, we must be careful. Are we counting
+            the work done on <em>all</em> charges, or just the <em>free</em> charges we can physically manipulate?
+        </p>
+
+        <section>
+            <h2>1. The Capacitor Motivation</h2>
+            <p>
+                Recall that the energy of a charged capacitor is:
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{2} C V^2 $$
+            </div>
+            <p>
+                When a linear dielectric is inserted, the capacitance increases: \(C = \epsilon_r C_{\text{vac}}\). This
+                means for a fixed voltage, the energy stored increases by a factor of \(\epsilon_r\).
+            </p>
+            <p>
+                Physically, this is because we must add more <strong>free charge</strong> to maintain the same
+                potential, as some of the field is canceled by the <strong>bound charges</strong> of the dielectric.
+            </p>
+        </section>
+
+        <section>
+            <h2>2. The Incremental Work Proof</h2>
+            <p>
+                Suppose the dielectric is fixed in place, and we build up the free charge little by little. At any
+                moment, adding a small extra amount of free charge \(\delta \rho_f\) at potential \(V\) requires work
+            </p>
+            <div class="math-block">
+                $$ \delta W = \int V\,\delta \rho_f \, d\tau $$
+            </div>
+            <p>
+                Gauss's law for the displacement field says \(\div \vec{D} = \rho_f\), so the added free charge is
+                \(\delta \rho_f = \div(\delta \vec{D})\).
+            </p>
+            <div class="math-block">
+                $$ \delta W = \int V\,\div(\delta \vec{D})\,d\tau $$
+            </div>
+            <p>
+                Moving the derivative from \(\delta \vec{D}\) onto \(V\), and using \(\vec{E} = -\grad V\), gives
+            </p>
+            <div class="math-block">
+                $$ \delta W = \int \vec{E}\cdot\delta\vec{D}\,d\tau $$
+            </div>
+            <p>
+                The boundary term is zero if we integrate over all space, because the fields die away far from the
+                system.
+            </p>
+            <p>
+                Now use the fact that the material is linear:
+            </p>
+            <div class="math-block">
+                $$ \vec{D} = \epsilon \vec{E}
+                \quad\Rightarrow\quad
+                \vec{E} = \frac{\vec{D}}{\epsilon} $$
+            </div>
+            <p>
+                Let the final fields be \(\vec{D}\) and \(\vec{E}\). While we build the system, imagine turning them on
+                gradually. At the fraction \(\lambda\) of the final charge,
+            </p>
+            <div class="math-block">
+                $$ \vec{D}_\lambda = \lambda \vec{D},
+                \qquad
+                \vec{E}_\lambda = \lambda \vec{E},
+                \qquad
+                d\vec{D}_\lambda = \vec{D}\,d\lambda $$
+            </div>
+            <p>
+                Therefore the energy density is
+            </p>
+            <div class="math-block">
+                $$ w = \int_0^1 \vec{E}_\lambda \cdot d\vec{D}_\lambda
+                = \int_0^1 (\lambda \vec{E})\cdot(\vec{D}\,d\lambda)
+                = \frac{1}{2}\vec{D}\cdot\vec{E} $$
+            </div>
+        </section>
+
+        <section>
+            <h2>3. The Final Formula</h2>
+            <p>
+                Adding this energy density over all space gives:
+            </p>
+            <div class="math-block" style="border: 2px solid var(--success-color);">
+                $$ W = \frac{1}{2} \int \vec{D} \cdot \vec{E} \, d\tau $$
+            </div>
+
+            <div class="highlight-box">
+                <p>
+                    For linear dielectrics, this can also be written in terms of the permittivity:
+                    $$ W = \frac{\epsilon}{2} \int E^2 \, d\tau $$
+                </p>
+            </div>
+        </section>
+
+        <section>
+            <h2>4. What does this energy include?</h2>
+            <p>
+                There are two ways to think about "assembling" a system with dielectrics:
+            </p>
+            <div class="note-box">
+                <ol>
+                    <li>
+                        <strong>Counting Every Charge:</strong> If you move every single charge (free and bound) into
+                        place one by one, you use the vacuum formula \(W = \frac{\epsilon_0}{2} \int E^2 \, d\tau\).
+                        This counts <em>only</em> the field energy.
+                    </li>
+                    <li>
+                        <strong>Counting Physical Work:</strong> If you bring in the free charges and let the dielectric
+                        respond naturally, you use the formula above. This counts the field energy <strong>plus</strong>
+                        the energy stored in the "stretched" molecules of the dielectric.
+                    </li>
+                </ol>
+            </div>
+            <p>
+                In most engineering and physics problems, we are interested in the <strong>total work done on the free
+                    charges</strong>, so the \(\vec{D} \cdot \vec{E}\) form is the one we use.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

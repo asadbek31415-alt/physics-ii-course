@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Maxwell's Equations: Symmetry & Monopoles</title>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0b1016;
+            --panel-bg: #16212e;
+            --accent-blue: #3498db;
+            --accent-red: #e74c3c;
+            --text-color: #e0e0e0;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 350px;
+            background: var(--panel-bg);
+            padding: 24px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            height: 100%;
+            position: relative;
+        }
+
+        .toggle-container {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            background: #2c3e50;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .mode-btn.active {
+            background: var(--accent-blue);
+            border-color: #fff;
+        }
+
+        .mode-btn.magnetic {
+            background: #2c3e50;
+        }
+
+        .mode-btn.magnetic.active {
+            background: var(--accent-red);
+        }
+
+        .eqn-display {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-top: 20px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .eqn-display.monopole {
+            border-left-color: var(--accent-red);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+        }
+
+        p {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.4;
+            margin: 0 0 15px 0;
+        }
+
+        .label-e {
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .label-b {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <h2>Symmetry & Monopoles</h2>
+        <p>Compare our asymmetric universe with one where magnetic charges exist.</p>
+
+        <div class="toggle-container">
+            <label style="font-size: 0.75rem; font-weight: 600; opacity: 0.7;">SELECT UNIVERSE</label>
+            <div id="btn-standard" class="mode-btn active">Our Universe (Standard)</div>
+            <div id="btn-monopole" class="mode-btn magnetic">Full Symmetry (Monopoles)</div>
+        </div>
+
+        <div id="eqn-box" class="eqn-display">
+            <div id="eqn-text">
+                $\nabla \cdot \mathbf{E} = \rho / \epsilon_0$<br>
+                $\nabla \cdot \mathbf{B} = 0$<br>
+                $\nabla \times \mathbf{E} = -\partial \mathbf{B} / \partial t$<br>
+                $\nabla \times \mathbf{B} = \mu_0 \mathbf{J} + \dots$
+            </div>
+        </div>
+
+        <p style="margin-top: 20px; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 15px;">
+            In the symmetric case, <span class="label-b">Magnetic Charge</span> acts just like electric charge, creating
+            radial B-fields and "magnetic currents" that induce E-fields.
+        </p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b1016);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(5, 5, 8);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+        // --- SOURCES ---
+        const matE = new THREE.MeshStandardMaterial({ color: 0x3498db, emissive: 0x3498db, emissiveIntensity: 0.5 });
+        const matB = new THREE.MeshStandardMaterial({ color: 0xe74c3c, emissive: 0xe74c3c, emissiveIntensity: 0.5 });
+
+        // Electric Source (Always present)
+        const eSource = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), matE);
+        eSource.position.x = -1.5;
+        scene.add(eSource);
+
+        // Magnetic Source (Monopole vs Dipole)
+        const bSource = new THREE.Group();
+        bSource.position.x = 1.5;
+        scene.add(bSource);
+
+        const monopoleMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), matB);
+        const dipoleMesh = new THREE.Group();
+        const d1 = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), matB); d1.position.z = 0.2;
+        const d2 = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), matB); d2.position.z = -0.2;
+        d2.material = new THREE.MeshStandardMaterial({ color: 0xffffff }); // White for South
+        dipoleMesh.add(d1, d2);
+
+        // --- FIELD LINES ---
+        const eLines = new THREE.Group(); scene.add(eLines);
+        const bLines = new THREE.Group(); scene.add(bLines);
+
+        function createRadialLines(group, color, count = 16) {
+            group.clear();
+            const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.6 });
+            for (let i = 0; i < count; i++) {
+                const theta = Math.acos(1 - 2 * Math.random());
+                const phi = 2 * Math.PI * Math.random();
+                const x = Math.sin(theta) * Math.cos(phi);
+                const y = Math.sin(theta) * Math.sin(phi);
+                const z = Math.cos(theta);
+
+                const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(x * 2, y * 2, z * 2)];
+                const geo = new THREE.BufferGeometry().setFromPoints(points);
+                group.add(new THREE.Line(geo, mat));
+            }
+        }
+
+        function createDipoleLines(group, color, count = 12) {
+            group.clear();
+            const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.5 });
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * Math.PI * 2;
+                const points = [];
+                for (let t = 0; t <= Math.PI; t += 0.1) {
+                    const r = 1.5 * Math.sin(t);
+                    points.push(new THREE.Vector3(r * Math.cos(angle), r * Math.sin(angle), 0.8 * Math.cos(t)));
+                }
+                const geo = new THREE.BufferGeometry().setFromPoints(points);
+                group.add(new THREE.Line(geo, mat));
+            }
+        }
+
+        // --- LOGIC ---
+        let isSymmetric = false;
+        const btnStandard = document.getElementById('btn-standard');
+        const btnMonopole = document.getElementById('btn-monopole');
+        const eqnBox = document.getElementById('eqn-box');
+        const eqnText = document.getElementById('eqn-text');
+
+        function updateUniverse(mode) {
+            isSymmetric = (mode === 'monopole');
+            btnStandard.classList.toggle('active', !isSymmetric);
+            btnMonopole.classList.toggle('active', isSymmetric);
+            eqnBox.classList.toggle('monopole', isSymmetric);
+
+            bSource.clear();
+            if (isSymmetric) {
+                bSource.add(monopoleMesh);
+                createRadialLines(bLines, 0xe74c3c, 24);
+                eqnText.innerHTML = `
+                $\\nabla \\cdot \\mathbf{E} = \\rho_e / \\epsilon_0$<br>
+                $\\nabla \\cdot \\mathbf{B} = \\mu_0 \\rho_m$<br>
+                $\\nabla \\times \\mathbf{E} = -\\partial \\mathbf{B} / \\partial t - \\mu_0 \\mathbf{J}_m$<br>
+                $\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J}_e + \\mu_0 \\epsilon_0 \\partial \\mathbf{E} / \\partial t$
+            `;
+            } else {
+                bSource.add(dipoleMesh);
+                createDipoleLines(bLines, 0xe74c3c);
+                eqnText.innerHTML = `
+                $\\nabla \\cdot \\mathbf{E} = \\rho / \\epsilon_0$<br>
+                $\\nabla \\cdot \\mathbf{B} = 0$<br>
+                $\\nabla \\times \\mathbf{E} = -\\partial \\mathbf{B} / \\partial t$<br>
+                $\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0 \\epsilon_0 \\partial \\mathbf{E} / \\partial t$
+            `;
+            }
+            if (typeof window.MathJax?.typesetPromise === 'function') {
+                window.MathJax.typesetPromise([eqnText]);
+            }
+        }
+
+        btnStandard.onclick = () => updateUniverse('standard');
+        btnMonopole.onclick = () => updateUniverse('monopole');
+
+        createRadialLines(eLines, 0x3498db);
+        eLines.position.x = -1.5;
+        bLines.position.x = 1.5;
+        updateUniverse('standard');
+        window.addEventListener('load', () => {
+            if (typeof window.MathJax?.typesetPromise === 'function') {
+                window.MathJax.typesetPromise([eqnText]);
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            eLines.rotation.y += 0.005;
+            bLines.rotation.y += 0.005;
+            if (!isSymmetric) dipoleMesh.rotation.y += 0.01;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        animate();
+    </script>
+</body>
+
+</html>

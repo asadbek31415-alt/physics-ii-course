@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 5.2: Electromagnetic Induction</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    sep: "\\vec{\\mathcal{r}}",
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> >
+                Electromagnetic Induction
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Electromagnetic Induction</h1>
+
+        <p class="intro-text">
+            In <a href="ch5_1_electromotive_force.html#concept-0-from-fields-to-circuits">Chapter 5.1</a>, we connected
+            field laws to circuit rules and saw that moving a wire through a magnetic field drives a current (Motional EMF).
+            But Faraday discovered something even more profound: <strong>a changing magnetic field itself creates an
+                electric field</strong>, even if nothing is moving.
+        </p>
+
+        <!-- CONCEPT 1: THE GENERAL LAW -->
+        <section data-concept-title="1. The General Law" id="concept-1-1-the-general-law">
+            <h2>1. The General Law</h2>
+            <p>
+                This is the true form of electromagnetic induction. A time-varying magnetic field acts as a source for a
+                "curling" electric field. This is the 3rd Maxwell Equation:
+            </p>
+            <div class="math-block">
+                $$ \nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t} $$
+            </div>
+
+            <p>
+                In a loop of wire, this induced field drives an EMF. This explains why standard generators (Motional)
+                and transformers (Induced Field) obey the exact same "Flux Rule" for magnetic flux $\Phi_B$:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E} = -\frac{d\Phi_B}{dt} $$
+            </div>
+
+            <h3>The Circuit-Level Consequence</h3>
+            <p>
+                The electrostatic KVL rule used in the previous lesson assumed that no changing magnetic flux linked
+                the loop. Faraday's law now tells us how to extend it. Choose a direction around the loop and keep all
+                voltage drops and EMFs signed in that direction. The induced EMF
+                $\mathcal{E}_{\mathrm{ind}}=-d\Phi_B/dt$ must be included as an additional source term:
+            </p>
+            <div class="math-block">
+                $$ \sum V_{\mathrm{drops}}-\sum \mathcal{E}_{\mathrm{sources}}
+                =\mathcal{E}_{\mathrm{ind}}=-\frac{d\Phi_B}{dt} $$
+            </div>
+            <p>
+                When the linked magnetic flux is constant, the right-hand side is zero and the ordinary quasistatic
+                KVL equation is recovered. Thus Faraday's law does not discard the circuit rule; it states its range of
+                validity and supplies the required correction.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/faraday_law.html" title="Faraday Law Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_2_faraday_details.html?back=ch5_2_electromagnetic_induction.html%23concept-1-1-the-general-law"><span aria-hidden="true">+</span> Deep Dive: The Origins of Induction</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 2: INDUCTANCE -->
+        <section data-concept-title="2. Inductance: From Geometry to Inertia" id="concept-2-2-inductance-from-geometry-to-inertia">
+            <h2>2. Inductance: From Geometry to Inertia</h2>
+            <p>
+                One current-carrying loop can induce an EMF in another, even without any physical connection. This is
+                <strong>Mutual Inductance</strong>. The key insight is that the magnetic flux $\Phi_{B,2}$ through loop 2 (from
+                current $I_1$ in loop 1) is proportional to the current:
+            </p>
+            <div class="math-block">
+                $$ \Phi_{B,2} = M I_1 $$
+            </div>
+            <p>
+                A changing current means a changing magnetic flux, which induces an EMF: $\mathcal{E}_2 = -M \frac{dI_1}{dt}$.
+            </p>
+
+            <p>
+                But a loop also links its <em>own</em> magnetic field. Changing its current induces an EMF in itself. We
+                call this <strong>Self Inductance ($L$)</strong>:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E}_L = -L \frac{dI}{dt} $$
+            </div>
+            <p>
+                The minus sign is Lenz's law: the induced EMF opposes the change in current. In circuit notation we
+                usually use the <strong>passive sign convention</strong>, taking current to enter the terminal labeled
+                positive. The corresponding terminal voltage drop is then
+            </p>
+            <div class="math-block">
+                $$ V_L = L \frac{dI}{dt} $$
+            </div>
+            <p>
+                The terminal voltage and the back EMF describe the same effect with opposite reference directions.
+                This is why current cannot change instantly—the inductor acts like <strong>electrical inertia</strong>.
+                The greater the inductance, the harder it is to start or stop the current.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/inductance.html" title="Inductance Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_2_inductance_details.html?back=ch5_2_electromagnetic_induction.html%23concept-2-2-inductance-from-geometry-to-inertia"><span aria-hidden="true">+</span> Deep Dive: Mutual & Self Inductance</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 3: ENERGY -->
+        <section data-concept-title="3. Magnetic Energy" id="concept-3-3-magnetic-energy">
+            <h2>3. Magnetic Energy</h2>
+            <p>
+                Because the inductor fights you, you must do <strong>work</strong> to get the current flowing. This work
+                isn't lost to heat; it is stored in the magnetic field you created.
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{2} L I^2 $$
+            </div>
+            <p>
+                This confirms a fundamental truth: <strong>Magnetic fields store energy.</strong>
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_2_energy_details.html?back=ch5_2_electromagnetic_induction.html%23concept-3-3-magnetic-energy"><span aria-hidden="true">+</span> Deep Dive: Energy in Magnetic Fields</a>
+            </div>
+        </section>
+
+        <!-- SECTION: THE BIG PICTURE -->
+        <section class="concept-card"
+            style="border-left: 4px solid var(--accent-color); padding: 20px; background: rgba(59, 130, 246, 0.05); margin-top: 3rem;">
+            <h3>The Big Picture</h3>
+            <p>
+                We have moved from the fundamental physics of space to the practical rules of circuits:
+            </p>
+            <ol style="line-height: 1.8; color: var(--text-secondary);">
+                <li><strong>The Physics:</strong> $\nabla \times \vec{E} = -\partial \vec{B}/\partial t$ (Nature's Law)
+                </li>
+                <li><strong>The Geometry:</strong> $L$ (How strict your loop is)</li>
+                <li><strong>The Circuit:</strong> $\mathcal{E} = -L dI/dt$ (The resulting inertia)</li>
+                <li><strong>The Consequence:</strong> $W = \frac{1}{2}LI^2$ (The energy cost)</li>
+            </ol>
+            <p>
+                Next, the <a href="ch5_3_maxwells_equations.html#concept-2-2-the-amp-re-maxwell-correction">charging-capacitor
+                    paradox</a> returns to the current-continuity question and shows why a time-varying electric field
+                must appear in the complete field equations.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

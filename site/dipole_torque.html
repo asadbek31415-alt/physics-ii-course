@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torque on Dipole</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        canvas { display: block; cursor: move; }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .controls {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            pointer-events: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: #e0e0e0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        p {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .math {
+            font-family: 'Courier New', monospace;
+            color: #facc15;
+            background: rgba(0,0,0,0.3);
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .switch-label { color: #2ecc71; font-weight: 700; font-size: 0.95rem; }
+        
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* Labels */
+        .annotation {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.3s;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+    <script src="vendor/three-legacy/three.min.js"></script>
+    <script src="vendor/three-legacy/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="controls">
+            <h2>Dipole Torque</h2>
+            <p>The field exerts a torque <span class="math">N = m × B</span>, rotating the dipole to align with B.</p>
+            
+            <div class="toggle-row">
+                <span class="switch-label">Apply B Field</span>
+                <label class="switch">
+                    <input type="checkbox" id="fieldToggle" onchange="toggleField()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Labels -->
+    <div id="label-m" class="annotation" style="color: #facc15;">m (Dipole)</div>
+    <div id="label-b" class="annotation" style="color: #2ecc71;">B (Field)</div>
+    <div id="label-torque" class="annotation" style="color: #ef4444; font-size: 0.8rem;">Torque</div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.Fog(0x0f172a, 10, 40);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 3, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1.5);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        // --- THE ATOM (Dipole) ---
+        const atomGroup = new THREE.Group();
+        scene.add(atomGroup);
+
+        // 1. Nucleus
+        const nucGeo = new THREE.SphereGeometry(0.5, 32, 32);
+        const nucMat = new THREE.MeshStandardMaterial({ color: 0xe74c3c, emissive: 0x7b241c });
+        const nucleus = new THREE.Mesh(nucGeo, nucMat);
+        atomGroup.add(nucleus);
+
+        // 2. Orbit Ring
+        const orbitRadius = 2.5;
+        const orbitGeo = new THREE.TorusGeometry(orbitRadius, 0.05, 16, 100);
+        const orbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+        const orbit = new THREE.Mesh(orbitGeo, orbitMat);
+        orbit.rotation.x = Math.PI / 2; // Lie flat in local space
+        atomGroup.add(orbit);
+
+        // 3. Electron Pivot (for animation)
+        const electronPivot = new THREE.Group();
+        atomGroup.add(electronPivot);
+
+        // 4. Electron
+        const eleGeo = new THREE.SphereGeometry(0.25, 16, 16);
+        const eleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+        const electron = new THREE.Mesh(eleGeo, eleMat);
+        electron.position.set(orbitRadius, 0, 0);
+        electronPivot.add(electron);
+
+        // 5. Dipole Vector (m) - Yellow Arrow
+        // Current flows opposite to electron. If e- moves CCW (viewed from top), I is CW.
+        // CW Current -> B points DOWN.
+        const mDir = new THREE.Vector3(0, -1, 0);
+        const mOrigin = new THREE.Vector3(0, 1, 0); // Start slightly above
+        const mArrow = new THREE.ArrowHelper(mDir, mOrigin, 4, 0xfacc15, 1, 0.6);
+        atomGroup.add(mArrow);
+
+        // --- EXTERNAL FIELD (B) ---
+        const bFieldGroup = new THREE.Group();
+        scene.add(bFieldGroup);
+        bFieldGroup.visible = false;
+
+        // Create a grid of green arrows
+        const bDir = new THREE.Vector3(0, -1, 0); // Field pointing DOWN
+        for(let x=-1; x<=1; x+=2) {
+            for(let z=-1; z<=1; z+=2) {
+                const bArrow = new THREE.ArrowHelper(
+                    bDir, 
+                    new THREE.Vector3(x*3, 4, z*3), 
+                    8, 
+                    0x2ecc71, 
+                    1, 0.5
+                );
+                bFieldGroup.add(bArrow);
+            }
+        }
+
+        // --- LOGIC ---
+        let isFieldOn = false;
+        let time = 0;
+
+        // Initial random rotation
+        atomGroup.rotation.z = Math.PI / 4;
+        atomGroup.rotation.x = Math.PI / 3;
+
+        function toggleField() {
+            isFieldOn = document.getElementById('fieldToggle').checked;
+            bFieldGroup.visible = isFieldOn;
+            
+            // Show/Hide B Label
+            document.getElementById('label-b').style.opacity = isFieldOn ? 1 : 0;
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+            controls.update();
+
+            // 1. Electron Orbit (Always happening)
+            electronPivot.rotation.y = time;
+
+            // 2. Dipole Dynamics
+            if (isFieldOn) {
+                // TORQUE ACTION: Align m with B
+                // Our m points local (0, -1, 0). Our B points world (0, -1, 0).
+                // So we want the object's local Y axis to align with world Y.
+                
+                const targetQ = new THREE.Quaternion();
+                targetQ.setFromEuler(new THREE.Euler(0, 0, 0)); // Identity rotation aligns local axes with world axes
+
+                // Slerp towards alignment (Simulates damped oscillation/movement)
+                atomGroup.quaternion.slerp(targetQ, 0.05);
+
+            } else {
+                // RANDOM DRIFT (Thermal noise)
+                atomGroup.rotation.x += Math.sin(time * 0.5) * 0.01;
+                atomGroup.rotation.z += Math.cos(time * 0.3) * 0.01;
+                atomGroup.rotation.y += 0.005;
+            }
+
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+        // --- LABEL POSITIONING ---
+        const lblM = document.getElementById('label-m');
+        const lblB = document.getElementById('label-b');
+
+        function updateLabels() {
+            // Label M (Tip of yellow arrow)
+            const mTip = new THREE.Vector3(0, -3, 0); // Local coord of tip
+            mTip.applyMatrix4(atomGroup.matrixWorld);
+            projectLabel(mTip, lblM);
+            lblM.style.opacity = 1;
+
+            // Label B (Middle of field)
+            if(isFieldOn) {
+                const bPos = new THREE.Vector3(3, 0, 3);
+                projectLabel(bPos, lblB);
+            }
+        }
+
+        function projectLabel(vec, element) {
+            const v = vec.clone();
+            v.project(camera);
+            const x = (v.x * .5 + .5) * window.innerWidth;
+            const y = (-(v.y * .5) + .5) * window.innerHeight;
+            element.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: How Maxwell Fixed Ampère's Law</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    pd: ["\\frac{\\partial #1}{\\partial #2}", 2],
+                    vec: ["\\mathbf{#1}", 1],
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        .step-box {
+            border-left: 3px solid var(--accent-color);
+            padding-left: 20px;
+            margin: 20px 0;
+        }
+
+        .example-card {
+            background: #1a1f29;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .example-header {
+            color: var(--accent-green);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > Fixing Ampère
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: How Maxwell Fixed Ampère's Law</h1>
+
+        <!-- 1. THE MATHEMATICAL FLAW -->
+        <section>
+            <h2>1. The Mathematical Contradiction</h2>
+            <p>
+                Before Maxwell, Ampère's Law was written as $\curl \vec{B} = \mu_0 \vec{J}$. While this worked perfectly
+                for steady currents (magnetostatics), Maxwell noticed a fatal mathematical flaw for time-varying
+                currents.
+            </p>
+            <p>
+                There is a vector calculus identity that states the <strong>divergence of a curl is always
+                    zero</strong>:
+            </p>
+            <div class="math-block">
+                $$ \div (\curl \vec{A}) = 0 $$
+            </div>
+            <p>
+                If we apply the divergence to both sides of the old Ampère's Law:
+            </p>
+            <div class="step-box">
+                <p><strong>Left Side:</strong> $\div (\curl \vec{B}) = 0$ (Always)</p>
+                <p><strong>Right Side:</strong> $\div (\mu_0 \vec{J}) = \mu_0 (\div \vec{J})$</p>
+            </div>
+            <p>
+                However, the <strong>Continuity Equation</strong> (conservation of charge) states that $\div \vec{J} =
+                -\frac{\partial \rho}{\partial t}$. If charge density is changing (like a charging capacitor), the right
+                side is <strong>not zero</strong>.
+            </p>
+            <p class="highlight-box">
+                <strong>Conclusion:</strong> Ampère's Law $\curl \vec{B} = \mu_0 \vec{J}$ is mathematically impossible
+                if charge density varies with time.
+            </p>
+        </section>
+
+        <!-- 2. THE FIX -->
+        <section>
+            <h2>2. Maxwell's Correction</h2>
+            <p>
+                Maxwell needed to add a term to the right side such that the divergence would essentially "cancel out"
+                the continuity equation.
+            </p>
+            <p>
+                We know from Gauss's Law that $\rho = \epsilon_0 (\div \vec{E})$. We can substitute this into the
+                Continuity Equation:
+            </p>
+            <div class="math-block">
+                $$
+                \begin{align}
+                \div \vec{J} &= -\frac{\partial \rho}{\partial t} \\
+                &= -\frac{\partial}{\partial t} (\epsilon_0 \div \vec{E}) \\
+                &= - \div \left( \epsilon_0 \frac{\partial \vec{E}}{\partial t} \right)
+                \end{align}
+                $$
+            </div>
+            <p>
+                Moving everything to one side:
+            </p>
+            <div class="math-block">
+                $$ \div \left( \vec{J} + \epsilon_0 \frac{\partial \vec{E}}{\partial t} \right) = 0 $$
+            </div>
+            <p>
+                This quantity inside the parentheses has a divergence of zero, which is exactly what is required to be
+                the source of a curl. Thus, Maxwell amended Ampère's Law to:
+            </p>
+            <div class="math-block" style="border: 1px solid var(--accent-color);">
+                $$ \curl \vec{B} = \mu_0 \vec{J} + \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t} $$
+            </div>
+        </section>
+
+        <!-- 3. DISPLACEMENT CURRENT -->
+        <section>
+            <h2>3. The Displacement Current</h2>
+            <p>
+                Maxwell called this extra term the <strong>Displacement Current Density</strong>:
+            </p>
+            <div class="math-block">
+                $$ \vec{J}_d \equiv \epsilon_0 \frac{\partial \vec{E}}{\partial t} $$
+            </div>
+            <p>
+                It is not a current of real charge carriers, but it has the same units as current density and creates a
+                magnetic field just like real current does. This leads to the profound realization that <strong>a
+                    changing electric field induces a magnetic field</strong>.
+            </p>
+        </section>
+
+        <!-- 4. EXAMPLE: CAPACITOR PARADOX -->
+        <section>
+            <div class="iframe-container"
+                style="height: 600px; margin-bottom: 2rem; border-radius: 12px; overflow: hidden; background: #000;">
+                <iframe class="diagram-frame" src="diagrams/ampere_flaw.html" title="The Capacitor Paradox"
+                    scrolling="no" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+
+            <div class="example-card">
+                <div class="example-header">Example: The Capacitor Paradox</div>
+                <p>
+                    Consider a wire carrying current $I$ charging a capacitor. Imagine an "Amperian Loop" (a circle)
+                    around the wire just before the capacitor plate.
+                </p>
+                <p>
+                    According to the integral form $\oint \vec{B} \cdot d\vec{l} = \mu_0 I_{enc}$, the answer depends on
+                    which surface spans the loop:
+                </p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div>
+                        <strong style="color:var(--accent-blue)">Surface 1: Flat Disk</strong>
+                        <p>The flat surface cuts through the wire.</p>
+                        <p>$I_{enc} = I$ (Conduction Current)</p>
+                    </div>
+                    <div>
+                        <strong style="color:var(--accent-red)">Surface 2: Balloon Shape</strong>
+                        <p>The surface bulges out and passes <em>between</em> the capacitor plates.</p>
+                        <p>$I_{enc} = 0$ (No wire touches it!)</p>
+                    </div>
+                </div>
+
+                <p style="margin-top: 20px;">
+                    <strong>The Solution:</strong> Between the plates, there is no wire $I$, but there is a changing
+                    Electric Field $\vec{E}$.
+                </p>
+                <p>
+                    The electric field between plates of area $A$ is $E = \sigma/\epsilon_0 = Q/(\epsilon_0 A)$. The
+                    flux is $\Phi_E = EA = Q/\epsilon_0$.
+                </p>
+                <div class="math-block">
+                    $$ I_d = \epsilon_0 \frac{d\Phi_E}{dt} = \epsilon_0 \frac{d}{dt}\left(\frac{Q}{\epsilon_0}\right) =
+                    \frac{dQ}{dt} = I $$
+                </div>
+                <p>
+                    The displacement current $I_d$ passing through the "Balloon" surface is exactly equal to the
+                    conduction current $I$ passing through the "Flat" surface. Ampère's Law is consistent again.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

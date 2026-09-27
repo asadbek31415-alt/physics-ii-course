@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetostatic Triangle</title>
+    
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="../vendor/mathjax/tex-mml-chtml.js">
+        </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .diagram-container {
+            position: relative;
+            width: 600px;
+            height: 500px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .node-circle {
+            fill: #1e293b;
+            stroke: #475569;
+            stroke-width: 3;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .node-text {
+            font-family: 'Inter', sans-serif;
+            font-weight: bold;
+            font-size: 24px;
+            fill: #e2e8f0;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .arrow-path {
+            fill: none;
+            stroke: #475569;
+            stroke-width: 2;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .arrow-head {
+            fill: #475569;
+            transition: all 0.3s ease;
+        }
+
+        .node-group:hover .node-circle,
+        .node-group.active .node-circle {
+            stroke: #3b82f6;
+            fill: #1e293b;
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
+        }
+
+        .arrow-group:hover .arrow-path,
+        .arrow-group.active .arrow-path {
+            stroke: #fbbf24;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5));
+        }
+
+        .arrow-group:hover .arrow-head,
+        .arrow-group.active .arrow-head {
+            fill: #fbbf24;
+        }
+
+        .formula-label {
+            position: absolute;
+            font-size: 13px;
+            color: #94a3b8;
+            background-color: rgba(15, 23, 42, 0.85);
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            border: 1px solid transparent;
+            transform-origin: center;
+        }
+
+        .arrow-group:hover+.formula-label,
+        .arrow-group.active+.formula-label,
+        .formula-label.active {
+            color: #fbbf24;
+            border-color: #fbbf24;
+            background-color: #0f172a;
+            z-index: 10;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .dashed {
+            stroke-dasharray: 6, 4;
+            opacity: 0.5;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div class="diagram-container">
+        <!-- Formulas -->
+        <div class="formula-label" style="top: 180px; left: 100px; transform: rotate(60deg);">$\mathbf{A} =
+            \frac{\mu_0}{4\pi}\int \frac{\mathbf{J}}{r} d\tau$</div>
+        <div class="formula-label" style="top: 180px; left: 160px; transform: rotate(60deg);">$\nabla^2 \mathbf{A} =
+            -\mu_0 \mathbf{J}$</div>
+        <div class="formula-label" style="top: 180px; right: 100px; transform: rotate(-60deg);">$\mathbf{B} =
+            \frac{\mu_0}{4\pi}\int \frac{\mathbf{J} \times \hat{\mathbf{r}}}{r^2} d\tau$</div>
+        <div class="formula-label" style="top: 180px; right: 170px; transform: rotate(-60deg);">$\nabla \times
+            \mathbf{B} = \mu_0 \mathbf{J}$</div>
+        <div class="formula-label" style="bottom: 120px; left: 260px;">$\mathbf{B} = \nabla \times \mathbf{A}$</div>
+        <div class="formula-label" style="bottom: 80px; left: 260px; opacity: 0.6;">(Rarely Used)</div>
+
+        <svg viewBox="0 0 600 500">
+            <defs>
+                <marker id="arrow-end" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"
+                    markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" class="arrow-head" />
+                </marker>
+            </defs>
+            <g class="arrow-group" data-from="node-j" data-to="node-a">
+                <path d="M 285 100 L 165 310" class="arrow-path" marker-end="url(#arrow-end)" />
+                <path d="M 285 100 L 165 310" stroke="transparent" stroke-width="20" fill="none" />
+            </g>
+            <g class="arrow-group" data-from="node-a" data-to="node-j">
+                <path d="M 185 300 L 305 90" class="arrow-path" marker-end="url(#arrow-end)" />
+                <path d="M 185 300 L 305 90" stroke="transparent" stroke-width="20" fill="none" />
+            </g>
+            <g class="arrow-group" data-from="node-j" data-to="node-b">
+                <path d="M 315 100 L 435 310" class="arrow-path" marker-end="url(#arrow-end)" />
+                <path d="M 315 100 L 435 310" stroke="transparent" stroke-width="20" fill="none" />
+            </g>
+            <g class="arrow-group" data-from="node-b" data-to="node-j">
+                <path d="M 415 300 L 295 90" class="arrow-path" marker-end="url(#arrow-end)" />
+                <path d="M 415 300 L 295 90" stroke="transparent" stroke-width="20" fill="none" />
+            </g>
+            <g class="arrow-group" data-from="node-a" data-to="node-b">
+                <path d="M 190 335 L 410 335" class="arrow-path" marker-end="url(#arrow-end)" />
+                <path d="M 190 335 L 410 335" stroke="transparent" stroke-width="20" fill="none" />
+            </g>
+            <g class="arrow-group" data-from="node-b" data-to="node-a">
+                <path d="M 410 365 L 190 365" class="arrow-path dashed" marker-end="url(#arrow-end)" />
+                <path d="M 410 365 L 190 365" stroke="transparent" stroke-width="20" fill="none" />
+            </g>
+            <g class="node-group" id="node-j">
+                <circle cx="300" cy="80" r="35" class="node-circle" /><text x="300" y="80" class="node-text">J</text>
+            </g>
+            <g class="node-group" id="node-a">
+                <circle cx="150" cy="350" r="35" class="node-circle" /><text x="150" y="350" class="node-text">A</text>
+            </g>
+            <g class="node-group" id="node-b">
+                <circle cx="450" cy="350" r="35" class="node-circle" /><text x="450" y="350" class="node-text">B</text>
+            </g>
+        </svg>
+    </div>
+    <script>
+        const arrowGroups = document.querySelectorAll('.arrow-group');
+        const formulaLabels = document.querySelectorAll('.formula-label');
+        arrowGroups.forEach((group, index) => {
+            group.addEventListener('mouseenter', () => {
+                group.classList.add('active');
+                const fromId = group.getAttribute('data-from');
+                const toId = group.getAttribute('data-to');
+                document.getElementById(fromId).classList.add('active');
+                document.getElementById(toId).classList.add('active');
+                if (formulaLabels[index]) formulaLabels[index].classList.add('active');
+            });
+            group.addEventListener('mouseleave', () => {
+                group.classList.remove('active');
+                const fromId = group.getAttribute('data-from');
+                const toId = group.getAttribute('data-to');
+                document.getElementById(fromId).classList.remove('active');
+                document.getElementById(toId).classList.remove('active');
+                if (formulaLabels[index]) formulaLabels[index].classList.remove('active');
+            });
+        });
+    </script>
+</body>
+
+</html>

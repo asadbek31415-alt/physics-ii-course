@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atomic Orbit & Diamagnetism</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        canvas { display: block; cursor: move; }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .controls {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            pointer-events: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        button {
+            background: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button:hover { background: #334155; color: white; }
+        
+        button.active {
+            background: #0ea5e9;
+            color: white;
+            border-color: #0ea5e9;
+            font-weight: 600;
+        }
+
+        .status-panel {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #334155;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+        
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .val { font-family: monospace; color: #facc15; }
+
+        /* Vectors Legend */
+        .legend {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+        }
+        .legend-item { display: flex; align-items: center; gap: 4px; color: #cbd5e1; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    </style>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="controls">
+            <h2>Magnetic Field Control</h2>
+            <div class="btn-group">
+                <button id="btn-up" onclick="setField(1)">
+                    <span>Field UP (↑)</span>
+                </button>
+                <button id="btn-off" class="active" onclick="setField(0)">
+                    <span>Field OFF</span>
+                </button>
+                <button id="btn-down" onclick="setField(-1)">
+                    <span>Field DOWN (↓)</span>
+                </button>
+            </div>
+
+            <div class="status-panel">
+                <div class="stat-row">
+                    <span>Electron Speed:</span>
+                    <span id="val-speed" class="val">Normal</span>
+                </div>
+                <div class="stat-row">
+                    <span>Dipole Moment (m):</span>
+                    <span id="val-m" class="val">Normal</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item"><div class="dot" style="background:#38bdf8"></div>v</div>
+                <div class="legend-item"><div class="dot" style="background:#d946ef"></div>Fm</div>
+                <div class="legend-item"><div class="dot" style="background:#facc15"></div>m</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 8, 12);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x404040, 2));
+        const pl = new THREE.PointLight(0xffffff, 1.2);
+        pl.position.set(5, 10, 5);
+        scene.add(pl);
+
+        // --- OBJECTS ---
+        const atomGroup = new THREE.Group();
+        scene.add(atomGroup);
+
+        // Nucleus
+        const nuc = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 32, 32),
+            new THREE.MeshStandardMaterial({ color: 0xe74c3c, emissive: 0x7b241c })
+        );
+        atomGroup.add(nuc);
+
+        // Orbit Path
+        const orbitRadius = 3.5;
+        const orbit = new THREE.Mesh(
+            new THREE.RingGeometry(orbitRadius - 0.05, orbitRadius + 0.05, 64),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.2, transparent: true, side: THREE.DoubleSide })
+        );
+        orbit.rotation.x = Math.PI / 2;
+        atomGroup.add(orbit);
+
+        // Electron Group (Pivot)
+        const electronPivot = new THREE.Group();
+        atomGroup.add(electronPivot);
+
+        // Electron Sphere
+        const electron = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0ea5e9 })
+        );
+        electron.position.set(orbitRadius, 0, 0);
+        electronPivot.add(electron);
+
+        // --- VECTORS ---
+        
+        // 1. Velocity Vector (Cyan) - Attached to Electron
+        const vArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, -1), // Tangent
+            new THREE.Vector3(0, 0, 0),
+            2, 0x38bdf8, 0.5, 0.3
+        );
+        electron.add(vArrow);
+
+        // 2. Magnetic Force Vector (Purple) - Attached to Electron
+        const fArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(-1, 0, 0), // Radial In
+            new THREE.Vector3(0, 0, 0),
+            0, 0xd946ef, 0.5, 0.3
+        );
+        electron.add(fArrow);
+
+        // 3. Dipole Moment Vector (Yellow) - Attached to Center
+        // Electron moves CCW (Top View) -> Current is CW -> m points DOWN
+        const mArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, -1, 0),
+            new THREE.Vector3(0, 0.5, 0),
+            3, 0xfacc15, 0.8, 0.5
+        );
+        atomGroup.add(mArrow);
+
+        // 4. B Field (Green) - Global
+        const bFieldGroup = new THREE.Group();
+        scene.add(bFieldGroup);
+        const bDir = new THREE.Vector3(0, 1, 0); // Up default
+        
+        for(let x=-1; x<=1; x+=2) {
+            for(let z=-1; z<=1; z+=2) {
+                const bArr = new THREE.ArrowHelper(bDir, new THREE.Vector3(x*4, -3, z*4), 6, 0x2ecc71, 1, 0.5);
+                bFieldGroup.add(bArr);
+            }
+        }
+        bFieldGroup.visible = false;
+
+
+        // --- LOGIC ---
+        let fieldState = 0; // 0: Off, 1: Up, -1: Down
+        let currentSpeed = 0.05;
+        let targetSpeed = 0.05;
+        
+        // Physics Constants for visual scaling
+        const BASE_SPEED = 0.05;
+        const SPEED_UP = 0.08;
+        const SPEED_DOWN = 0.02;
+
+        function setField(val) {
+            fieldState = val;
+            
+            // UI Updates
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            if(val === 1) document.getElementById('btn-up').classList.add('active');
+            if(val === 0) document.getElementById('btn-off').classList.add('active');
+            if(val === -1) document.getElementById('btn-down').classList.add('active');
+
+            // Physics Logic
+            if (val === 0) {
+                targetSpeed = BASE_SPEED;
+                bFieldGroup.visible = false;
+                fArrow.setLength(0); // No magnetic force
+            } else {
+                bFieldGroup.visible = true;
+                
+                // Update B Field Visual Direction
+                const dir = new THREE.Vector3(0, val, 0);
+                bFieldGroup.children.forEach(arrow => arrow.setDirection(dir));
+
+                if (val === 1) {
+                    // Field UP
+                    // v is CCW, B is UP -> v x B is Radial OUT
+                    // Force = -e(v x B) -> Radial IN
+                    // Force adds to centripetal -> Speed INCREASES
+                    targetSpeed = SPEED_UP;
+                    
+                    // Force Vector Visuals
+                    fArrow.setDirection(new THREE.Vector3(-1, 0, 0)); // Inward
+                    fArrow.setLength(1.5);
+                } else {
+                    // Field DOWN
+                    // v is CCW, B is DOWN -> v x B is Radial IN
+                    // Force = -e(v x B) -> Radial OUT
+                    // Force fights centripetal -> Speed DECREASES
+                    targetSpeed = SPEED_DOWN;
+
+                    // Force Vector Visuals
+                    fArrow.setDirection(new THREE.Vector3(1, 0, 0)); // Outward
+                    fArrow.setLength(1.5);
+                }
+            }
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Smoothly interpolate speed
+            currentSpeed += (targetSpeed - currentSpeed) * 0.05;
+
+            // Move Electron
+            electronPivot.rotation.y += currentSpeed;
+
+            // Update Vector Visuals based on Speed
+            // Velocity Arrow Length
+            const vLen = (currentSpeed / BASE_SPEED) * 2;
+            vArrow.setLength(vLen, 0.5, 0.3);
+
+            // Dipole Moment Length (Proportional to current I, which is prop to v)
+            const mLen = (currentSpeed / BASE_SPEED) * 3;
+            mArrow.setLength(mLen, 0.8, 0.5);
+
+            // Update Text Labels
+            const speedLbl = document.getElementById('val-speed');
+            const mLbl = document.getElementById('val-m');
+
+            if(Math.abs(currentSpeed - BASE_SPEED) < 0.005) {
+                speedLbl.innerText = "Normal";
+                speedLbl.style.color = "#cbd5e1";
+                mLbl.innerText = "Normal";
+                mLbl.style.color = "#cbd5e1";
+            } else if (currentSpeed > BASE_SPEED) {
+                speedLbl.innerText = "INCREASED";
+                speedLbl.style.color = "#facc15";
+                mLbl.innerText = "INCREASED (Opposes B)";
+                mLbl.style.color = "#facc15";
+            } else {
+                speedLbl.innerText = "DECREASED";
+                speedLbl.style.color = "#38bdf8";
+                mLbl.innerText = "DECREASED (Net opposes B)"; // Technically net change is up, opposing down field
+                mLbl.style.color = "#38bdf8";
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Motional Electromotive Force (Motional EMF)</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="motional-emf-embed.css">
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_1_electromotive_force.html">Electromotive Force</a> > Motional Electromotive Force (Motional EMF)
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <div class="header-section">
+            <h1>Deep Dive: Motional Electromotive Force (Motional EMF)</h1>
+            <p class="subtitle-text">Deriving the flux rule from the Lorentz force</p>
+        </div>
+
+        <p class="intro-text">
+            In the main topic, we stated that the <strong>motional electromotive force (motional EMF)</strong> is
+            $\mathcal{E}=vBh$ for a bar moving through a magnetic field. Here, we show <em>why</em> this is true,
+            starting only from the Lorentz force law. The symbol $\mathcal{E}$ is the script capital E used for EMF:
+            energy supplied by the source per unit charge, measured in volts. It is distinct from the electric-field
+            vector $\mathbf{E}$.
+        </p>
+
+        <!-- Visualization Section -->
+        <section class="concept-section">
+            <h2>A Sliding-Bar Generator: The Setup</h2>
+            <p>
+                The gold vertical conductor is the moving bar. It slides along two fixed, parallel silver rails while
+                maintaining electrical contact with both. The rails are joined on the left through a fixed resistor
+                $R$ and an ammeter, which complete the rectangular circuit. The crosses represent a uniform magnetic
+                field <strong>into the screen</strong>, supplied by an external magnet (not drawn); dots represent a
+                field out of the screen when reversed. The shaded region is the surface enclosed by the circuit, not
+                a sheet of material. Its area is $A=hx$, so moving the bar changes the area even though $B$ stays
+                constant.
+            </p>
+            <div class="iframe-container course-motional-emf-embed">
+                <iframe class="diagram-frame" src="diagrams/motional_emf.html" title="Sliding-bar generator: motional Electromotive Force (motional EMF)"
+                    scrolling="no"></iframe>
+            </div>
+        </section>
+
+        <section class="concept-section">
+            <h2>1. The Lorentz Force on Charges</h2>
+            <p>
+                We start with the fundamental Lorentz force law. When a charge $q$ moves with velocity $\mathbf{v}$ in a
+                magnetic field $\mathbf{B}$, it experiences a force:
+            </p>
+            <div class="math-block">
+                $$ \mathbf{F}_{mag} = q(\mathbf{v} \times \mathbf{B}) $$
+            </div>
+            <p>
+                Now, consider a conducting bar of length $h$ moving with velocity $\mathbf{v}$ perpendicular to both the
+                bar and a uniform field $\mathbf{B}$. For rightward motion and a field into the screen,
+                $\mathbf{v}\times\mathbf{B}$ points upward. In an isolated bar, charges separate until an electric
+                field balances the magnetic force. With the rails and resistor connected, the bar instead drives a
+                continuous current: up through the bar, left along the upper rail, through the load, and back along
+                the lower rail. The top of the ideal bar is positive relative to its bottom.
+            </p>
+        </section>
+
+        <section class="concept-section">
+            <h2>2. Motional Electromotive Force (Motional EMF) as Work per Unit Charge</h2>
+            <p>
+                For a moving circuit in a static magnetic field, the <strong>motional electromotive force (motional EMF)</strong> is the loop
+                integral of $\mathbf{v}\times\mathbf{B}$, where $\mathbf{v}$ is the local velocity of the conductor:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E} = \oint (\mathbf{v} \times \mathbf{B}) \cdot d\mathbf{l} $$
+            </div>
+            <p>
+                Only the bar moves; the stationary rails and resistor contribute no motional term. Integrating
+                upward along the bar for rightward motion in a field into the screen gives:
+            </p>
+            <div class="math-block">
+                $$ \mathcal{E} = \int_0^h (vB) \, dl = vBh $$
+            </div>
+            <p>
+                The energy comes from the <strong>external mechanical drive</strong>, not from the magnetic
+                field. Magnetic forces do no work on charges; the drive supplies the work needed to move the bar
+                against magnetic drag. With negligible rail and bar resistance, the terminal voltage equals the
+                generated EMF, and the resistor dissipates $P=\mathcal{E}I=I^2R$.
+            </p>
+        </section>
+
+        <section class="concept-section">
+            <h2>3. Connecting to the Flux Rule</h2>
+            <p>
+                Choose counterclockwise circulation as positive, so the positive surface normal points out of the
+                screen. Write the signed field component as $B_z$; for the default inward field, $B_z=-B$.
+                As the bar moves by $dx$, the area changes by $dA=h\,dx$, and:
+            </p>
+            <div class="math-block">
+                $$ \Phi_B=B_z hx, \qquad d\Phi_B=B_z h\,dx $$
+            </div>
+            <p>
+                The rate of change of magnetic flux is:
+            </p>
+            <div class="math-block">
+                $$ \frac{d\Phi_B}{dt}=B_z hv $$
+            </div>
+            <p>
+                The signed EMF is therefore:
+            </p>
+            <div class="highlight-box">
+                $$ \mathcal{E}=-\frac{d\Phi_B}{dt}=-B_z hv $$
+                <p style="margin-top: 10px; font-size: 0.9rem;">This is <strong>Faraday's Law</strong>. The minus sign
+                (Lenz's Law) indicates the induced EMF opposes the change in magnetic flux.</p>
+            </div>
+            <p>
+                The surface here is the surface <em>bounded by the moving circuit</em>. Even when $\mathbf{B}$ is
+                constant, the loop sweeps out a changing area, so $\Phi_B = \int_{S(t)} \mathbf{B}\cdot d\mathbf{a}$
+                changes. Changing only the mathematical surface while keeping the same fixed boundary does not create
+                an EMF; the physical change is the motion of the conductor and its boundary.
+            </p>
+            <p>
+                In a circuit, this motional EMF appears in a moving conductor such as the sliding bar in the
+                visualization. An ordinary stationary inductor has a different source: its changing current changes
+                the linked magnetic flux and produces the self-induced EMF $\mathcal{E}_L=-L\,dI/dt$. If the inductor
+                itself moves through an external magnetic field, it can also have a motional contribution.
+            </p>
+        </section>
+
+        <section class="concept-section">
+            <h2>4. Motion, Voltage, and Current</h2>
+            <ul class="key-points">
+                <li><strong>Held still:</strong> the loop still encloses magnetic flux, but $v=0$, so
+                    $\mathcal{E}=0$ and $I=0$. Flux alone does not produce a current.</li>
+                <li><strong>Moving right:</strong> the shaded area increases. For the default inward field, the
+                    current is counterclockwise and creates an outward field opposing the increase in inward flux.</li>
+                <li><strong>Moving left:</strong> the area decreases and both the voltage polarity and current
+                    reverse. The yellow arrows indicate conventional current, opposite to electron drift.</li>
+                <li><strong>Larger resistance:</strong> the same motion generates the same EMF, but less current
+                    flows. The readouts show magnitudes; the signs on the bar and arrows give direction.</li>
+            </ul>
+            <p>
+                In this demonstration an external drive moves the bar sinusoidally. It momentarily stops at each end
+                of its travel, where the EMF is zero, and moves fastest at the midpoint, where $|\mathcal{E}|$ peaks.
+                A 90-degree phase relationship applies to this sinusoidal variation; the general rule for any motion
+                is $\mathcal{E}=-d\Phi_B/dt$.
+            </p>
+            <p>
+                The model uses ideal sliding contacts and an ideal ammeter; all resistance is in the load.
+                Self-inductance, contact resistance, and switching transients are neglected. Adjusting or reversing
+                $B$ selects a new constant field; it does not simulate the transient EMF caused by changing the field.
+            </p>
+        </section>
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

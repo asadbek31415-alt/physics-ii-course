@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bound Charges Visualizer</title>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none; /* Prevent text selection while dragging */
+        }
+
+        #canvas-container {
+            position: relative;
+            background: #1c2734; /* Card background */
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 8px;
+        }
+
+        /* Controls Section */
+        .controls {
+            margin-top: 20px;
+            background: rgba(28, 39, 52, 0.9);
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 1px solid #2c3e50;
+            text-align: center;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 250px;
+            height: 6px;
+            background: #2c3e50;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #5dade2;
+        }
+
+        .label-text {
+            font-size: 0.85rem;
+            color: #b0c4de;
+        }
+
+        /* Floating Annotations */
+        .annotation {
+            position: absolute;
+            background: rgba(0,0,0,0.85);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .lbl-blue { border: 1px solid #3498db; color: #3498db; }
+        .lbl-red { border: 1px solid #e74c3c; color: #e74c3c; }
+        .lbl-grey { border: 1px solid #7f8c8d; color: #bdc3c7; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas" width="800" height="400"></canvas>
+        
+        <!-- Annotations using HTML Entities for math symbols -->
+        <div id="lbl-left" class="annotation lbl-blue">
+            Surface Charge (-)<br>
+            <strong>&minus;&sigma;<sub>b</sub></strong>
+        </div>
+        
+        <div id="lbl-mid" class="annotation lbl-grey">
+            <strong>Bulk Material</strong><br>
+            Internal Cancellation
+        </div>
+        
+        <div id="lbl-right" class="annotation lbl-red">
+            Surface Charge (+)<br>
+            <strong>+&sigma;<sub>b</sub></strong>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="label-text">Drag to transition from Microscopic to Macroscopic view</div>
+        <div class="slider-container">
+            <span class="label-text" style="opacity: 0.7;">Microscopic<br>(Zoomed In)</span>
+            <!-- Range 0 to 100 for smoother math -->
+            <input type="range" id="zoomSlider" min="0" max="100" value="0">
+            <span class="label-text" style="opacity: 0.7;">Macroscopic<br>(Averaged)</span>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const slider = document.getElementById('zoomSlider');
+    
+    // HTML Elements
+    const lblLeft = document.getElementById('lbl-left');
+    const lblRight = document.getElementById('lbl-right');
+    const lblMid = document.getElementById('lbl-mid');
+
+    // Configuration
+    const rows = 4;
+    const cols = 8;
+    
+    // Base dimensions (at max zoom/microscopic)
+    const BASE_RADIUS = 14; 
+    const BASE_DIPOLE_LEN = 35; 
+    const BASE_ROW_GAP = 55; // Y-axis spacing
+    const BASE_COL_GAP = 25; // X-axis spacing (the empty space between dipoles)
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 1. Calculate Simulation State based on Slider
+        // Slider 0 = Microscopic (High Zoom, High Separation)
+        // Slider 100 = Macroscopic (Low Zoom, Touching)
+        
+        const t = parseInt(slider.value) / 100; // Normalized 0.0 to 1.0
+
+        // Scale Factor: Shrinks everything as we go to macroscopic
+        // Starts at 1.0, shrinks to 0.7
+        const globalScale = 1.0 - (0.3 * t); 
+
+        // Gap Factor: Gap closes to 0 as we go to macroscopic
+        const gapScale = 1.0 - t; 
+
+        // Apply Scalings
+        const radius = BASE_RADIUS * globalScale;
+        const dipoleLen = BASE_DIPOLE_LEN * globalScale;
+        const rowGap = BASE_ROW_GAP * globalScale;
+        
+        // X-spacing: The gap disappears completely at t=1
+        const colGap = BASE_COL_GAP * gapScale; 
+
+        // 2. Calculate Centering
+        // Total width of the block = (cols * dipoleLen) + (cols-1 * colGap)
+        const totalBlockWidth = (cols * dipoleLen) + ((cols - 1) * colGap) + (2 * radius);
+        const totalBlockHeight = ((rows - 1) * rowGap) + (2 * radius);
+
+        const startX = (canvas.width - totalBlockWidth) / 2 + radius;
+        const startY = (canvas.height - totalBlockHeight) / 2 + radius;
+
+        // 3. Update Label Positions (Dynamic tracking)
+        // Left Label
+        const leftEdgeX = startX - radius - 10;
+        const blockCenterY = startY + (totalBlockHeight/2) - radius;
+        
+        lblLeft.style.left = (leftEdgeX - 140) + "px"; // Offset to left
+        lblLeft.style.top = (blockCenterY - 20) + "px";
+
+        // Right Label
+        const rightEdgeX = startX + totalBlockWidth - radius - radius;
+        lblRight.style.left = (rightEdgeX + 25) + "px"; // Offset to right
+        lblRight.style.top = (blockCenterY - 20) + "px";
+
+        // Middle Label
+        lblMid.style.left = ((canvas.width/2) - 80) + "px";
+        lblMid.style.top = (startY - 70) + "px";
+
+        // 4. Cancellation Visualization Logic
+        // As gaps close (t -> 1), internal charges fade out
+        let cancellationAlpha = 0;
+        if(t > 0.6) {
+            // Remap 0.6->1.0 to 0.0->1.0
+            cancellationAlpha = (t - 0.6) / 0.4;
+        }
+
+        // Toggle Label Visibility
+        lblMid.style.opacity = cancellationAlpha;
+        // Surface labels fade IN when cancellation happens (to emphasize them)
+        // Or stay visible always? Let's keep them visible but dim them slightly in microscopic view
+        lblLeft.style.opacity = 0.5 + (0.5 * t); 
+        lblRight.style.opacity = 0.5 + (0.5 * t);
+
+        // 5. Draw Loop
+        // Draw bounding box (dashed)
+        ctx.strokeStyle = `rgba(52, 73, 94, ${0.5 + (0.5*t)})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(startX - radius - 10, startY - radius - 10, totalBlockWidth + 20, totalBlockHeight + 20);
+        ctx.setLineDash([]);
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                
+                // Calculate Centers
+                // x = start + column_index * (length_of_dipole + gap_between_dipoles)
+                const cx = startX + (c * (dipoleLen + colGap));
+                const cy = startY + (r * rowGap);
+
+                const minusX = cx; 
+                const plusX = cx + dipoleLen;
+
+                // Opacity Logic for Internal Charges
+                // Leftmost minus is Surface. Rightmost plus is Surface.
+                // Everything else is internal.
+                let internalFade = 1.0;
+                
+                // If it's an internal interface...
+                // (i.e. we are looking at the Gap between Col C and Col C+1)
+                // The Minus of Col C (c>0) and the Plus of Col C (c<last) fade.
+                
+                // Drawing logic:
+                // 1. Draw Bond
+                ctx.beginPath();
+                ctx.moveTo(minusX, cy);
+                ctx.lineTo(plusX, cy);
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 3 * globalScale;
+                ctx.stroke();
+
+                // 2. Determine Alpha for Negative Charge (Left side of dipole)
+                // It fades if it is NOT the very first column (Surface)
+                let minusAlpha = 1.0;
+                if (c > 0) {
+                     minusAlpha = 1.0 - cancellationAlpha;
+                }
+                
+                drawCharge(minusX, cy, radius, '#3498db', '-', minusAlpha, globalScale);
+
+                // 3. Determine Alpha for Positive Charge (Right side of dipole)
+                // It fades if it is NOT the very last column (Surface)
+                let plusAlpha = 1.0;
+                if (c < cols - 1) {
+                    plusAlpha = 1.0 - cancellationAlpha;
+                }
+
+                drawCharge(plusX, cy, radius, '#e74c3c', '+', plusAlpha, globalScale);
+            }
+        }
+        
+        requestAnimationFrame(draw);
+    }
+
+    function drawCharge(x, y, r, color, symbol, alpha, scale) {
+        if (alpha <= 0.05) return; // Don't draw if invisible
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        
+        // Glow effect only if visible and "active"
+        if(alpha > 0.8) {
+            ctx.shadowBlur = 10 * scale;
+            ctx.shadowColor = color;
+        }
+
+        // Sphere
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        // Text Symbol
+        ctx.fillStyle = "white";
+        // Scale font size with zoom
+        const fontSize = Math.max(10, 16 * scale); 
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        // Slight vertical adjustment for font baseline
+        ctx.fillText(symbol, x, y + (1 * scale)); 
+
+        ctx.restore();
+    }
+
+    // Init
+    draw();
+
+</script>
+</body>
+</html>

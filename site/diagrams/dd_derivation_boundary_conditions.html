@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surface Current Boundary Conditions</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            padding: 20px;
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        h2 { margin-top: 0; font-size: 1.2rem; color: #0ff; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        p { font-size: 0.9rem; color: #ccc; line-height: 1.4; }
+        
+        .control-group { margin-bottom: 15px; }
+        label { display: flex; justify-content: space-between; font-size: 0.85rem; color: #0f0; margin-bottom: 5px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #0ff; }
+        
+        .legend { margin-top: 15px; font-size: 0.8rem; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; }
+        
+        #tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #0ff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        /* Toggle Switch */
+        .toggle-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #0ff; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>Boundary Conditions</h2>
+        <p>Visualizing the interface between two media with a surface current density <b>K</b>.</p>
+        
+        <div class="control-group">
+            <label>Gaussian Height (&epsilon;) <span id="val-epsilon">1.0</span></label>
+            <input type="range" id="slider-epsilon" min="0.05" max="2.0" step="0.05" value="1.0">
+        </div>
+
+        <div class="toggle-container">
+            <span>Show Amperian Loop</span>
+            <label class="switch">
+                <input type="checkbox" id="check-loop" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="toggle-container">
+            <span>Show Gaussian Pillbox</span>
+            <label class="switch">
+                <input type="checkbox" id="check-pillbox" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background:#0f0; box-shadow:0 0 5px #0f0;"></div>Current Density (K)</div>
+            <div class="legend-item"><div class="dot" style="background:#f0f; box-shadow:0 0 5px #f0f;"></div>Magnetic Field (B)</div>
+            <div class="legend-item"><div class="dot" style="background:#0ff; box-shadow:0 0 5px #0ff;"></div>Amperian Loop</div>
+            <div class="legend-item"><div class="dot" style="background:#ff0; box-shadow:0 0 5px #ff0;"></div>Gaussian Pillbox</div>
+            <div class="legend-item"><div class="dot" style="background:#fff;"></div>Normal Vector (n)</div>
+        </div>
+        <p style="font-size: 0.75rem; color: #888; margin-top: 10px;">Left Click: Rotate | Right Click: Pan | Scroll: Zoom</p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Import Three.js as a module -->
+    <script type="text/offline-module">
+        import * as THREE from '../vendor/three/build/three.module.js';
+        import { OrbitControls } from '../vendor/three/examples/jsm/controls/OrbitControls.js';
+
+        // --- Configuration ---
+        const CONFIG = {
+            colors: {
+                bg: 0x000000,
+                current: 0x00ff00, // Lime
+                field: 0xff00ff,   // Magenta
+                loop: 0x00ffff,    // Cyan
+                pillbox: 0xffff00, // Yellow
+                grid: 0x222222,
+                normal: 0xffffff
+            },
+            gridSize: 10,
+            arrowDensity: 6
+        };
+
+        // --- State ---
+        let state = {
+            epsilon: 1.0,
+            showLoop: true,
+            showPillbox: true
+        };
+
+        // --- Setup Scene ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(CONFIG.colors.bg);
+        // Add some fog for depth
+        scene.fog = new THREE.FogExp2(CONFIG.colors.bg, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(5, 4, 6);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // --- Helper: Create Sprite Text ---
+        function createSpriteText(text, color) {
+            const canvas = document.createElement('canvas');
+            const size = 256;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = color;
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, size/2, size/2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(1, 1, 1);
+            return sprite;
+        }
+
+        // --- Objects Creation ---
+
+        const mainGroup = new THREE.Group();
+        scene.add(mainGroup);
+
+        // 1. Surface Plane (z = 0)
+        // We use a grid helper to represent the infinite sheet
+        const gridHelper = new THREE.GridHelper(CONFIG.gridSize, 20, 0x444444, 0x222222);
+        mainGroup.add(gridHelper);
+        
+        // Transparent plane for better visual solidity
+        const planeGeo = new THREE.PlaneGeometry(CONFIG.gridSize, CONFIG.gridSize);
+        const planeMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+        const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+        planeMesh.rotation.x = -Math.PI / 2;
+        mainGroup.add(planeMesh);
+
+        // 2. Surface Current Vectors (K) - Along X axis
+        // Placing arrows on the grid
+        const kGroup = new THREE.Group();
+        const kArrowLength = 0.8;
+        const kArrowHead = 0.2;
+        const kColor = CONFIG.colors.current;
+        
+        for (let z = -CONFIG.gridSize/2; z <= CONFIG.gridSize/2; z += 2) {
+            for (let x = -CONFIG.gridSize/2; x < CONFIG.gridSize/2; x += 2) {
+                // Shift slightly to fill gaps
+                const origin = new THREE.Vector3(x, 0, z);
+                const dir = new THREE.Vector3(1, 0, 0);
+                const arrowHelper = new THREE.ArrowHelper(dir, origin, kArrowLength, kColor, kArrowHead, kArrowHead * 0.8);
+                kGroup.add(arrowHelper);
+            }
+        }
+        mainGroup.add(kGroup);
+
+        // Label for K
+        const kLabel = createSpriteText("K", "#0f0");
+        kLabel.position.set(4, 0.5, 4);
+        mainGroup.add(kLabel);
+
+        // 3. Normal Vector (n)
+        const nDir = new THREE.Vector3(0, 1, 0);
+        const nOrigin = new THREE.Vector3(3, 0, -3);
+        const nArrow = new THREE.ArrowHelper(nDir, nOrigin, 1.5, CONFIG.colors.normal, 0.3, 0.2);
+        mainGroup.add(nArrow);
+        const nLabel = createSpriteText("n", "#fff");
+        nLabel.position.set(3, 1.8, -3);
+        mainGroup.add(nLabel);
+
+        // 4. Magnetic Field Vectors (B)
+        // If K is +x, and n is +y (up), B above is -z, B below is +z (using RHR on infinite sheet).
+        // Let's adjust coordinate system visual: 
+        // ThreeJS: Y is UP. 
+        // Surface: XZ plane.
+        // K = +X. 
+        // n = +Y.
+        // B_above = K x n = X x Y = Z. So B points +Z above.
+        // B_below = -Z below.
+        
+        const bGroup = new THREE.Group();
+        const bColor = CONFIG.colors.field;
+        const bArrowLength = 0.6;
+        
+        // Populate B vectors in volume
+        for (let x = -3; x <= 3; x += 2) {
+            for (let z = -3; z <= 3; z += 2) {
+                // Above
+                const originUp = new THREE.Vector3(x, 0.5, z); // Base slightly above surface
+                const dirUp = new THREE.Vector3(0, 0, 1); // +Z
+                const bUp = new THREE.ArrowHelper(dirUp, originUp, bArrowLength, bColor, 0.15, 0.1);
+                bGroup.add(bUp);
+
+                // Below
+                const originDown = new THREE.Vector3(x, -0.5, z); // Base slightly below
+                const dirDown = new THREE.Vector3(0, 0, -1); // -Z
+                const bDown = new THREE.ArrowHelper(dirDown, originDown, bArrowLength, bColor, 0.15, 0.1);
+                bGroup.add(bDown);
+            }
+        }
+        mainGroup.add(bGroup);
+
+        // 5. Amperian Loop (Rectangle perpendicular to K)
+        // K is X. Loop should be in YZ plane to capture the curl/boundary.
+        const loopGroup = new THREE.Group();
+        mainGroup.add(loopGroup);
+        
+        // Loop geometry (Dynamic based on epsilon)
+        const loopGeo = new THREE.BufferGeometry();
+        // 5 points to close the loop
+        const loopPositions = new Float32Array(5 * 3); 
+        loopGeo.setAttribute('position', new THREE.BufferAttribute(loopPositions, 3));
+        const loopMat = new THREE.LineBasicMaterial({ color: CONFIG.colors.loop, linewidth: 3 });
+        const loopLine = new THREE.Line(loopGeo, loopMat);
+        
+        // Make the line glow slightly by duplicating with transparency
+        const loopGlowMat = new THREE.LineBasicMaterial({ color: CONFIG.colors.loop, linewidth: 5, transparent: true, opacity: 0.3 });
+        const loopGlow = new THREE.Line(loopGeo, loopGlowMat);
+        
+        loopGroup.add(loopLine);
+        loopGroup.add(loopGlow);
+
+        // Direction indicators on loop (Arrows)
+        const loopArrow1 = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 0.5, CONFIG.colors.loop, 0.15, 0.1);
+        const loopArrow2 = new THREE.ArrowHelper(new THREE.Vector3(0,0,-1), new THREE.Vector3(0,0,0), 0.5, CONFIG.colors.loop, 0.15, 0.1);
+        loopGroup.add(loopArrow1);
+        loopGroup.add(loopArrow2);
+
+        // 6. Gaussian Pillbox (Cylinder for flux)
+        // Cylinder aligned with Y axis (normal)
+        const pillGroup = new THREE.Group();
+        mainGroup.add(pillGroup);
+
+        const pillRadius = 0.8;
+        // Geometry will be updated dynamically
+        const pillGeo = new THREE.CylinderGeometry(pillRadius, pillRadius, 1, 32, 1, true); // Open ends
+        const pillMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.pillbox, wireframe: true, transparent: true, opacity: 0.5 });
+        const pillMesh = new THREE.Mesh(pillGeo, pillMat);
+        
+        // Caps
+        const capGeo = new THREE.CircleGeometry(pillRadius, 32);
+        const capMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.pillbox, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+        const topCap = new THREE.Mesh(capGeo, capMat);
+        const botCap = new THREE.Mesh(capGeo, capMat);
+        topCap.rotation.x = -Math.PI/2;
+        botCap.rotation.x = Math.PI/2;
+        
+        pillGroup.add(pillMesh);
+        pillGroup.add(topCap);
+        pillGroup.add(botCap);
+
+        // Offset pillbox slightly so it doesn't overlap loop visually
+        pillGroup.position.set(-2, 0, 0);
+
+        // --- Update Function ---
+
+        function updateGeometry() {
+            const h = parseFloat(state.epsilon);
+            
+            // Update Amperian Loop (YZ plane centered at X=1)
+            // Vertices: (1, h, -1) -> (1, h, 1) -> (1, -h, 1) -> (1, -h, -1) -> (1, h, -1)
+            // Width along Z is 2 units (-1 to 1)
+            const lx = 1.5;
+            const lz = 1.0;
+            
+            const pts = [
+                lx, h, -lz, // Top Left
+                lx, h, lz,  // Top Right
+                lx, -h, lz, // Bot Right
+                lx, -h, -lz,// Bot Left
+                lx, h, -lz  // Close
+            ];
+
+            const posAttr = loopLine.geometry.attributes.position;
+            for(let i=0; i<pts.length; i++) {
+                posAttr.array[i] = pts[i];
+            }
+            posAttr.needsUpdate = true;
+
+            // Update Loop Arrows
+            // Top leg: at y=h, z=0, pointing +z
+            loopArrow1.position.set(lx, h, 0); 
+            // Bottom leg: at y=-h, z=0, pointing -z
+            loopArrow2.position.set(lx, -h, 0);
+            
+            // If h is very small, hide vertical arrows or scale them?
+            // Let's just keep them on the horizontal segments as those matter for B_tangential.
+
+            // Update Pillbox
+            pillMesh.scale.set(1, h*2, 1); // Height is 2*h
+            topCap.position.set(0, h, 0);
+            botCap.position.set(0, -h, 0);
+
+            // Toggle Visibility
+            loopGroup.visible = state.showLoop;
+            pillGroup.visible = state.showPillbox;
+
+            // Update Field vectors based on proximity? 
+            // Optional: fade out B field inside the "gap" if we wanted to be super fancy, 
+            // but standard diagrams show B uniform above/below.
+        }
+
+        // --- Interaction Handlers ---
+
+        document.getElementById('slider-epsilon').addEventListener('input', (e) => {
+            state.epsilon = e.target.value;
+            document.getElementById('val-epsilon').textContent = state.epsilon;
+            updateGeometry();
+        });
+
+        document.getElementById('check-loop').addEventListener('change', (e) => {
+            state.showLoop = e.target.checked;
+            updateGeometry();
+        });
+
+        document.getElementById('check-pillbox').addEventListener('change', (e) => {
+            state.showPillbox = e.target.checked;
+            updateGeometry();
+        });
+
+        // --- Animation Loop ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Slight animation of current arrows to indicate flow
+            const time = Date.now() * 0.002;
+            kGroup.children.forEach((arrow, i) => {
+                // Pulse opacity or scale slightly
+                // arrow.scale.setScalar(1 + 0.1 * Math.sin(time + i));
+            });
+            
+            // Loop glowing effect
+            loopGlow.material.opacity = 0.3 + 0.1 * Math.sin(time * 2);
+
+            renderer.render(scene, camera);
+        }
+
+        // Initial call
+        updateGeometry();
+        animate();
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+<script defer data-offline-bundle src="dd_derivation_boundary_conditions.0.offline.js"></script>
+
+
+</body>
+</html>

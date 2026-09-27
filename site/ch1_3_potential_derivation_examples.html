@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Calculations & Examples</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}",
+                    dtau: "d\\tau",
+                    rcurs: "\\mathcal{r}"
+                    /* 'hat' macro removed to fix recursion error */
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 2rem;
+            font-size: 1.4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Example Box */
+        .example-box {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .example-title {
+            color: var(--success-color);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 2rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            height: 400px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Back Button Wrapper */
+        .back-wrapper {
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+
+        .back-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electrostatics_index.html">Electrostatics</a> >
+                <a href="ch1_3_electric_potential.html">Electric Potential</a> >
+                Examples
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Calculations & Examples</h1>
+
+        <p>
+            There are two primary ways to calculate the potential \(V\):
+        <ol style="color: var(--text-secondary); margin-left: 20px;">
+            <li><strong>Method 1:</strong> Integrate the Electric Field (if \(\vec{E}\) is already known, e.g., via
+                Gauss's Law).</li>
+            <li><strong>Method 2:</strong> Integrate the Charge Distribution (if \(\vec{E}\) is unknown).</li>
+        </ol>
+        </p>
+
+        <!-- SECTION 1: FORMULAS -->
+        <section>
+            <h2>1. The Master Formulas</h2>
+
+            <p>If you know the Field \(\vec{E}\):</p>
+            <div class="math-block">
+                $$ V(\vec{r}) = - \int_{\infty}^{\vec{r}} \vec{E} \cdot d\vec{l} $$
+            </div>
+
+            <p>If you know the Charge Density \(\rho\):</p>
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \int \frac{\rho(\vec{r}')}{|\vec{r} - \vec{r}'|} d\tau' $$
+            </div>
+        </section>
+
+        <!-- SECTION 2: SPHERICAL SHELL -->
+        <section>
+            <h2>2. Example: Spherical Shell</h2>
+            <p>
+                Consider a spherical shell of radius \(R\) with uniform surface charge \(\sigma\). We want to find the
+                potential everywhere.
+            </p>
+
+            <div class="iframe-container">
+                <!-- Placeholder for V vs r graph -->
+                <iframe src="diagrams/potential_shell_graph.html" title="Spherical Shell Potential Graph"></iframe>
+            </div>
+
+            <div class="example-box">
+                <span class="example-title">Method 1: Integrating the Field</span>
+                <p>
+                    From Gauss's Law, we know the field is:
+                    <br>
+                    <strong>Outside (\(r > R\)):</strong> \(\vec{E} = \frac{1}{4\pi\epsilon_0} \frac{q}{r^2} \hat{r}\)
+                    <br>
+                    <strong>Inside (\(r < R\)):</strong> \(\vec{E} = 0\)
+                </p>
+
+                <h3>Step A: Outside</h3>
+                <p>For a point \(r > R\), we integrate from infinity:</p>
+                <div class="math-block" style="font-size: 1.1rem;">
+                    $$ V(r) = - \int_{\infty}^{r} \left( \frac{1}{4\pi\epsilon_0} \frac{q}{z^2} \right) dz =
+                    \frac{1}{4\pi\epsilon_0} \frac{q}{r} $$
+                </div>
+                <p>This is identical to the potential of a point charge.</p>
+
+                <h3>Step B: Inside</h3>
+                <p>For a point \(r < R\), we must integrate from infinity to \(R\), and then from \(R\) to \(r\):</p>
+                        <div class="math-block" style="font-size: 1.1rem;">
+                            $$ V(r) = - \int_{\infty}^{R} \vec{E}_{\text{out}} \cdot d\vec{l} - \int_{R}^{r}
+                            \vec{E}_{\text{in}} \cdot d\vec{l} $$
+                        </div>
+                        <p>
+                            The first term gives \(V(R)\). The second term is zero because \(\vec{E}_{\text{in}} = 0\).
+                        </p>
+                        <div class="math-block" style="border-left-color: var(--warning-color);">
+                            $$ V(r) = \frac{1}{4\pi\epsilon_0} \frac{q}{R} \quad (\text{Constant!}) $$
+                        </div>
+                        <p>
+                            <strong>Key Insight:</strong> The potential inside is <em>not</em> zero. It is constant. It
+                            takes work to bring a charge from infinity to the surface \(R\), but no <em>additional</em>
+                            work to move it around inside the shell.
+                        </p>
+            </div>
+        </section>
+
+        <!-- SECTION 3: LINE CHARGE -->
+        <section>
+            <h2>3. Example: Uniform Line Charge</h2>
+            <p>
+                Consider a thin rod of length \(2L\) lying on the <strong>x-axis</strong>, with uniform charge density
+                \(\lambda\). Let's find the potential at a distance \(z\) on the <strong>z-axis</strong> (perpendicular
+                to the rod).
+            </p>
+
+            <div class="iframe-container">
+                <!-- Placeholder for Line Integration Diagram -->
+                <iframe src="diagrams/potential_line_integration.html" title="Line Charge Integration"></iframe>
+            </div>
+
+            <div class="example-box">
+                <span class="example-title">Method 2: Integrating Charge Density</span>
+                <p>
+                    Here, we chop the rod into bits \(dq = \lambda dx\). The distance from a chunk at \(x\) to the point
+                    \(P\) on the axis is \(\rcurs = \sqrt{z^2 + x^2}\).
+                </p>
+                <div class="math-block">
+                    $$ V = \frac{1}{4\pi\epsilon_0} \int_{-L}^{L} \frac{\lambda dx}{\sqrt{z^2 + x^2}} $$
+                </div>
+                <p>
+                    Evaluating this integral gives:
+                </p>
+                <div class="math-block">
+                    $$ V = \frac{\lambda}{4\pi\epsilon_0} \left[ \ln(x + \sqrt{z^2 + x^2}) \right]_{-L}^{L} $$
+                    $$ V = \frac{\lambda}{2\pi\epsilon_0} \ln \left( \frac{L + \sqrt{z^2 + L^2}}{z} \right) $$
+                </div>
+                <p>
+                    This method is often "brute force" calculus, but it works even when there is no symmetry for Gauss's
+                    Law.
+                </p>
+            </div>
+            <h2>4. Summary: The Electrostatic Triangle</h2>
+            <p>
+                In electrostatics, we deal with three fundamental quantities: the source charge distribution (\(\rho\)),
+                the electric field (\(\vec{E}\)), and the electric potential (\(V\)). We have derived six formulas that
+                allow us to translate any one of these quantities into any other.
+            </p>
+
+            <div class="iframe-container">
+                <!-- Interactive Diagram: The Electrostatic Triangle -->
+                <iframe src="diagrams/electrostatic_triangle.html" title="Relationships between rho, E, and V"></iframe>
+            </div>
+
+            <div class="example-box">
+                <span class="example-title">Strategy: Which Path Should I Take?</span>
+                <p>
+                    While you can theoretically calculate any quantity from any other, the difficulty of the math varies
+                    wildly depending on the "path" you choose.
+                </p>
+
+                <h3>Scenario A: High Symmetry</h3>
+                <p>
+                    If the problem has Spherical, Cylindrical, or Planar symmetry:
+                    <br>
+                    <strong>Path:</strong> \(\rho \rightarrow \vec{E} \rightarrow V\)
+                </p>
+                <ul style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    <li>Step 1: Use <strong>Gauss's Law</strong> to find \(\vec{E}\) easily.</li>
+                    <li>Step 2: Integrate \(\vec{E}\) (line integral) to find \(V\).</li>
+                </ul>
+
+                <h3>Scenario B: Low Symmetry (General Case)</h3>
+                <p>
+                    If the charge distribution is "ugly" or lacks symmetry, the direct vector integral for \(\vec{E}\)
+                    is difficult because you must track components (\(\hat{x}, \hat{y}, \hat{z}\)).
+                    <br>
+                    <strong>Path:</strong> \(\rho \rightarrow V \rightarrow \vec{E}\)
+                </p>
+                <ul style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    <li>Step 1: Calculate \(V\) first using the integral formula. Since \(V\) is a
+                        <strong>scalar</strong>, you just add numbers, not vectors.</li>
+                    <li>Step 2: Calculate \(\vec{E}\) by taking the <strong>Gradient</strong> (\(\vec{E} = -\nabla V\)).
+                        Derivatives are easier than integrals!</li>
+                </ul>
+
+                <div class="math-block" style="font-size: 1rem; border-left-color: var(--accent-color);">
+                    $$ \text{Poisson's Eq: } \nabla^2 V = -\frac{\rho}{\epsilon_0} $$
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem;">
+                        (Directly relates Source \(\rho\) to Potential \(V\))
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch1_3_electric_potential.html" class="back-btn">← Return to Electric Potential</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

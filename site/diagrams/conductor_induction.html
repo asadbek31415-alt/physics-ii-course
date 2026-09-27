@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductor Induction: Charge Separation</title>
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --text-color: #e0e0e0;
+            --metal-color: #444;
+            --safe-green: #51cf66;
+            --danger-red: #ff6b6b;
+            --electron-blue: #4dabf7;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #sim-shell {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        #info-panel {
+            box-sizing: border-box;
+            height: 100%;
+            padding: 18px;
+            background: rgba(20, 24, 31, 0.96);
+            border-right: 1px solid rgba(255,255,255,0.14);
+            color: var(--text-color);
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 0;
+            scrollbar-gutter: stable;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .instruction {
+            background: rgba(0, 0, 0, 0.85);
+            color: var(--text-color);
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            border: 1px solid rgba(255,255,255,0.15);
+            line-height: 1.5;
+        }
+
+        .state-indicator {
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: block;
+            font-size: 18px;
+        }
+
+        .legend {
+            margin-top: 14px;
+            color: #b7c0ce;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 900px) {
+            body,
+            html {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+            #sim-shell {
+                height: 100%;
+                min-height: 0;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            #info-panel {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                overflow: hidden;
+                border-right: 0;
+                border-top: 1px solid rgba(255,255,255,0.14);
+                border-bottom: 0;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="sim-shell">
+        <aside id="info-panel">
+            <div class="instruction">
+                <span id="stateText" class="state-indicator" style="color:#aaa">State: Neutral</span>
+                Drag <strong>+Q</strong> closer to polarize the conductor.<br><br>
+                The red positive lattice stays fixed. Only the blue electrons move, so one side gains excess negative charge and the opposite side is left positive.
+            </div>
+            <div class="legend">
+                Red +: fixed positive lattice<br>
+                Blue -: mobile electrons<br>
+                Center label: the conductor interior field remains zero at equilibrium
+            </div>
+        </aside>
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const stateText = document.getElementById('stateText');
+
+        // --- Configuration ---
+        const CONDUCTOR_RADIUS = 110;
+        const PAIR_COUNT = 55; // Number of +/- pairs inside the conductor
+        
+        // --- State ---
+        let width, height, centerX, centerY;
+        
+        const conductor = { x: 0, y: 0 };
+        
+        const externalCharge = {
+            x: 0, y: 0,
+            radius: 25,
+            dragging: false
+        };
+
+        // We simulate "Bound Pairs" initially distributed randomly
+        let chargePairs = [];
+
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+
+            placeExternalCharge();
+
+            // Initialize Charge Pairs distributed randomly inside the solid sphere
+            for(let i=0; i<PAIR_COUNT; i++) {
+                // Random position inside circle
+                const r = Math.sqrt(Math.random()) * (CONDUCTOR_RADIUS - 15);
+                const theta = Math.random() * 2 * Math.PI;
+                
+                const baseX = Math.cos(theta) * r;
+                const baseY = Math.sin(theta) * r;
+
+                chargePairs.push({
+                    baseX: baseX,
+                    baseY: baseY,
+                    // Current positions
+                    posX: 0, posY: 0,
+                    negX: 0, negY: 0,
+                    electronJitterX: (Math.random() - 0.5) * 4,
+                    electronJitterY: (Math.random() - 0.5) * 4
+                });
+            }
+
+            update(true);
+            draw();
+            loop();
+        }
+
+        function resize() {
+            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2;
+            conductor.x = centerX;
+            conductor.y = centerY;
+            if (!externalCharge.dragging) placeExternalCharge();
+            if (chargePairs.length) {
+                update(true);
+                draw();
+            }
+        }
+
+        function placeExternalCharge() {
+            const minVisibleX = externalCharge.radius + 14;
+            const maxVisibleX = Math.max(minVisibleX, width - externalCharge.radius - 14);
+            const outsideX = conductor.x + CONDUCTOR_RADIUS + externalCharge.radius + 10;
+            const preferredX = conductor.x + Math.min(400, Math.max(CONDUCTOR_RADIUS + 80, width * 0.34));
+            externalCharge.x = Math.min(maxVisibleX, Math.max(outsideX, preferredX));
+            externalCharge.y = conductor.y;
+        }
+
+        // --- Physics Logic ---
+
+        function update(immediate = false) {
+            const dx = externalCharge.x - conductor.x;
+            const dy = externalCharge.y - conductor.y;
+            const distToCharge = Math.sqrt(dx*dx + dy*dy);
+            
+            // Calculate Field Strength (0 to 1)
+            let fieldStrength = 1 - ((distToCharge - 140) / 350);
+            fieldStrength = Math.max(0, Math.min(1, fieldStrength));
+
+            // Update UI Text
+            if(fieldStrength < 0.1) {
+                stateText.innerText = "State: Neutral (Mixed)";
+                stateText.style.color = "#aaa";
+            } else {
+                stateText.innerText = "State: Polarized (Separated)";
+                stateText.style.color = "#4dabf7";
+            }
+
+            // Update Charge Pairs
+            chargePairs.forEach(pair => {
+                // Absolute base position
+                const absBaseX = conductor.x + pair.baseX;
+                const absBaseY = conductor.y + pair.baseY;
+
+                if (fieldStrength > 0.01) {
+                    // --- POLARIZATION MODE ---
+                    
+                    // Vector pointing to external charge
+                    const vecX = externalCharge.x - absBaseX;
+                    const vecY = externalCharge.y - absBaseY;
+                    const vecLen = Math.sqrt(vecX*vecX + vecY*vecY);
+                    const unitX = vecX / vecLen;
+                    const unitY = vecY / vecLen;
+
+                    // Mobile electrons move toward the external positive charge.
+                    // The positive lattice stays fixed at the base position.
+                    const separation = 80 * fieldStrength; 
+
+                    // Target positions
+                    let targetNegX = absBaseX + unitX * separation;
+                    let targetNegY = absBaseY + unitY * separation;
+
+                    // CLAMPING: Keep inside the conductor
+                    // Check Negative
+                    const dNeg = Math.sqrt((targetNegX - conductor.x)**2 + (targetNegY - conductor.y)**2);
+                    if (dNeg > CONDUCTOR_RADIUS - 10) {
+                        const ang = Math.atan2(targetNegY - conductor.y, targetNegX - conductor.x);
+                        targetNegX = conductor.x + Math.cos(ang) * (CONDUCTOR_RADIUS - 10);
+                        targetNegY = conductor.y + Math.sin(ang) * (CONDUCTOR_RADIUS - 10);
+                    }
+
+                    if (immediate) {
+                        pair.negX = targetNegX;
+                        pair.negY = targetNegY;
+                    } else {
+                        // Apply with smoothing (Lerp)
+                        pair.negX += (targetNegX - pair.negX) * 0.1;
+                        pair.negY += (targetNegY - pair.negY) * 0.1;
+                    }
+                    pair.posX = absBaseX;
+                    pair.posY = absBaseY;
+
+                } else {
+                    // --- NEUTRAL MODE ---
+                    // Return to base (mixed)
+                    const targetX = absBaseX;
+                    const targetY = absBaseY;
+
+                    pair.posX = targetX;
+                    pair.posY = targetY;
+                    const targetNegX = targetX + pair.electronJitterX;
+                    const targetNegY = targetY + pair.electronJitterY;
+                    if (immediate) {
+                        pair.negX = targetNegX;
+                        pair.negY = targetNegY;
+                    } else {
+                        pair.negX += (targetNegX - pair.negX) * 0.1;
+                        pair.negY += (targetNegY - pair.negY) * 0.1;
+                    }
+                }
+            });
+        }
+
+        // --- Drawing ---
+
+        function drawConductor(ctx) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(conductor.x, conductor.y, CONDUCTOR_RADIUS, 0, Math.PI*2);
+            ctx.clip();
+
+            // Metal Gradient
+            const grad = ctx.createRadialGradient(conductor.x, conductor.y, 10, conductor.x, conductor.y, CONDUCTOR_RADIUS);
+            grad.addColorStop(0, '#555');
+            grad.addColorStop(1, '#333');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Hatching (Engineering style)
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i = -CONDUCTOR_RADIUS; i < CONDUCTOR_RADIUS; i+=15) {
+                ctx.moveTo(conductor.x + i, conductor.y - CONDUCTOR_RADIUS);
+                ctx.lineTo(conductor.x + i - 30, conductor.y + CONDUCTOR_RADIUS);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Outline
+            ctx.strokeStyle = '#777';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(conductor.x, conductor.y, CONDUCTOR_RADIUS, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        function drawCharges(ctx) {
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            chargePairs.forEach(pair => {
+                // Draw Positive (Red)
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillText("+", pair.posX, pair.posY);
+
+                // Draw Negative (Blue)
+                ctx.fillStyle = '#4dabf7';
+                ctx.fillText("-", pair.negX, pair.negY);
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Axis Line (Dashed)
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(conductor.x, conductor.y);
+            ctx.lineTo(externalCharge.x, externalCharge.y);
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 2. Draw Conductor
+            drawConductor(ctx);
+
+            // 3. Draw Charges
+            drawCharges(ctx);
+
+            // 4. Draw "E = 0" Label (Physics Concept)
+            // We draw a small box behind it to make it readable over the charges
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.beginPath();
+            ctx.arc(conductor.x, conductor.y, 25, 0, Math.PI*2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#51cf66';
+            ctx.font = "bold 16px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("E = 0", conductor.x, conductor.y);
+
+
+            // 5. Draw External Charge
+            ctx.beginPath();
+            ctx.arc(externalCharge.x, externalCharge.y, externalCharge.radius, 0, Math.PI*2);
+            const grad = ctx.createRadialGradient(externalCharge.x, externalCharge.y, 5, externalCharge.x, externalCharge.y, externalCharge.radius);
+            grad.addColorStop(0, '#ff8787');
+            grad.addColorStop(1, '#c92a2a');
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = "bold 16px Arial";
+            ctx.fillText("+Q", externalCharge.x, externalCharge.y);
+        }
+
+        // --- Interaction ---
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
+
+        function onDown(e) {
+            const pos = getMousePos(e.touches ? e.touches[0] : e);
+            const dx = pos.x - externalCharge.x;
+            const dy = pos.y - externalCharge.y;
+            if (Math.sqrt(dx*dx + dy*dy) < 40) externalCharge.dragging = true;
+        }
+
+        function onMove(e) {
+            if (!externalCharge.dragging) return;
+            const pos = getMousePos(e.touches ? e.touches[0] : e);
+            
+            // Keep outside conductor
+            const dx = pos.x - conductor.x;
+            const dy = pos.y - conductor.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const minDist = CONDUCTOR_RADIUS + 30;
+
+            if (dist < minDist) {
+                const angle = Math.atan2(dy, dx);
+                externalCharge.x = conductor.x + Math.cos(angle) * minDist;
+                externalCharge.y = conductor.y + Math.sin(angle) * minDist;
+            } else {
+                externalCharge.x = pos.x;
+                externalCharge.y = pos.y;
+            }
+        }
+
+        function onUp() { externalCharge.dragging = false; }
+
+        canvas.addEventListener('mousedown', onDown);
+        canvas.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        canvas.addEventListener('touchstart', onDown);
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); });
+        window.addEventListener('touchend', onUp);
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Faraday's Law Visualization</title>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 320px;
+            --bg-color: #0b1016;
+            --panel-bg: #16212e;
+            --text-color: #e0e0e0;
+            --accent-blue: #3498db;
+            --accent-orange: #f39c12;
+            --danger: #e74c3c;
+        }
+
+        body { 
+            margin: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            background: var(--panel-bg);
+            border-right: 1px solid #2c3e50;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        h2 { margin: 0; font-size: 1.2rem; border-bottom: 1px solid #2c3e50; padding-bottom: 10px; }
+
+        .formula-box {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        button {
+            width: 100%; padding: 12px; border: 1px solid var(--accent-blue); 
+            background: rgba(52, 152, 219, 0.1); color: var(--accent-blue); 
+            border-radius: 6px; cursor: pointer; font-weight: 700;
+            transition: all 0.2s;
+        }
+        button:hover { background: var(--accent-blue); color: white; }
+        button.active { background: var(--danger); border-color: var(--danger); color: white; }
+
+        .stats {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .val { font-weight: bold; font-family: monospace; }
+
+        /* --- INTUITION BOX --- */
+        #intuition-box {
+            background: rgba(243, 156, 18, 0.05);
+            border-left: 4px solid var(--accent-orange);
+            padding: 15px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .intuition-title { font-weight: bold; color: var(--accent-orange); margin-bottom: 5px; display: block; }
+
+        /* --- CANVAS --- */
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .legend { font-size: 0.75rem; margin-top: auto; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Faraday's Law</h2>
+    
+    <div class="formula-box">
+        \(\mathcal{E} = -\frac{d\Phi_B}{dt}\)
+    </div>
+
+    <button id="pulseBtn" onclick="togglePulse()">Start B-Field Pulse</button>
+
+    <div class="stats">
+        <div class="stat-row">
+            <span>Magnetic Flux Change (\(\frac{d\Phi_B}{dt}\)):</span>
+            <span id="phi-status" class="val">Static</span>
+        </div>
+        <div class="stat-row">
+            <span>Induced \(\vec{E}\) Direction:</span>
+            <span id="e-status" class="val" style="color: var(--accent-orange);">None</span>
+        </div>
+    </div>
+
+    <div id="intuition-box">
+        <span class="intuition-title">Lenz's Law Intuition:</span>
+        <span id="intuition-text">
+            When the magnetic field is constant, no electric field is induced. Use the "Pulse" to change the magnetic flux.
+        </span>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:var(--accent-blue)"></div> Magnetic Field (\(\vec{B}\))</div>
+        <div class="legend-item"><div class="dot" style="background:var(--accent-orange)"></div> Induced Electric Field (\(\vec{E}\))</div>
+    </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<script>
+    // --- THREE.JS SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b1016);
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(8, 6, 8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dLight.position.set(5, 10, 5);
+    scene.add(dLight);
+
+    // --- OBJECTS ---
+    const bArrows = [];
+    const bGroup = new THREE.Group();
+    scene.add(bGroup);
+
+    // B-Field grid
+    for(let x=-1; x<=1; x++) {
+        for(let z=-1; z<=1; z++) {
+            const arrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 1, 0), 
+                new THREE.Vector3(x * 1.2, -1.5, z * 1.2), 
+                3, 0x3498db, 0.4, 0.2
+            );
+            bGroup.add(arrow);
+            bArrows.push(arrow);
+        }
+    }
+
+    const disk = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.5, 2.5, 0.05, 32),
+        new THREE.MeshPhongMaterial({ color: 0x3498db, transparent: true, opacity: 0.15 })
+    );
+    scene.add(disk);
+
+    // Induced E-Rings
+    const eRings = [];
+    const eArrowGroup = new THREE.Group();
+    scene.add(eArrowGroup);
+
+    function createERing(radius, y) {
+        const ring = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0, 0, radius, radius).getPoints(64)),
+            new THREE.LineBasicMaterial({ color: 0xf39c12, transparent: true, opacity: 0 })
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = y;
+        scene.add(ring);
+
+        const arrows = [];
+        for(let i=0; i<4; i++) {
+            const a = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 0.7, 0xf39c12, 0.2, 0.1);
+            a.visible = false;
+            eArrowGroup.add(a);
+            arrows.push({mesh: a, angle: (i/4) * Math.PI * 2});
+        }
+        return { line: ring, arrows, radius };
+    }
+
+    eRings.push(createERing(3.0, 0.6));
+    eRings.push(createERing(3.0, -0.6));
+
+    // --- LOGIC ---
+    let isPulsing = false;
+    let time = 0;
+    let bStrength = 1.0;
+    let dBdt = 0;
+
+    function togglePulse() {
+        isPulsing = !isPulsing;
+        const btn = document.getElementById('pulseBtn');
+        btn.innerText = isPulsing ? "Stop Pulse" : "Start B-Field Pulse";
+        btn.classList.toggle('active', isPulsing);
+    }
+
+    const intuitionEl = document.getElementById('intuition-text');
+    const phiEl = document.getElementById('phi-status');
+    const eStatusEl = document.getElementById('e-status');
+
+    function updateUI() {
+        if (Math.abs(dBdt) < 0.05) {
+            phiEl.innerText = "Static";
+            eStatusEl.innerText = "None";
+            intuitionEl.innerText = "Field is constant. No magnetic-flux change means no induced electric field.";
+            return;
+        }
+
+        if (dBdt > 0) {
+            phiEl.innerText = "Increasing (+)";
+            phiEl.style.color = "#2ecc71";
+            eStatusEl.innerText = "Clockwise";
+            intuitionEl.innerHTML = "<b>B is increasing:</b> The induced field curls to create a 'downward' force to oppose the growth. (Lenz's Law)";
+        } else {
+            phiEl.innerText = "Decreasing (-)";
+            phiEl.style.color = "#e74c3c";
+            eStatusEl.innerText = "Counter-CW";
+            intuitionEl.innerHTML = "<b>B is decreasing:</b> The induced field curls to 'help' the field and oppose the loss. (Lenz's Law)";
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        time += 0.02;
+
+        if (isPulsing) {
+            const freq = 2.5;
+            bStrength = 1.2 + 0.8 * Math.sin(time * freq);
+            dBdt = 0.8 * freq * Math.cos(time * freq);
+        } else {
+            bStrength += (1.0 - bStrength) * 0.05;
+            dBdt += (0 - dBdt) * 0.1;
+        }
+
+        bArrows.forEach(a => a.setLength(Math.max(bStrength * 2.2, 0.1), 0.4, 0.2));
+        updateUI();
+
+        const eOpacity = Math.min(Math.abs(dBdt) * 0.5, 1.0);
+        eRings.forEach(ring => {
+            ring.line.material.opacity = eOpacity;
+            ring.arrows.forEach(obj => {
+                obj.mesh.visible = eOpacity > 0.05;
+                obj.angle += dBdt * 0.08;
+                const x = Math.cos(obj.angle) * ring.radius;
+                const z = Math.sin(obj.angle) * ring.radius;
+                obj.mesh.position.set(x, ring.line.position.y, z);
+                const tangent = new THREE.Vector3(-Math.sin(obj.angle), 0, Math.cos(obj.angle));
+                if (dBdt < 0) tangent.negate();
+                obj.mesh.setDirection(tangent);
+                obj.mesh.line.material.opacity = eOpacity;
+            });
+        });
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    animate();
+</script>
+
+</body>
+</html>

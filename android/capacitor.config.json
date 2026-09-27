@@ -1,0 +1,8 @@
+{
+  "appId": "uz.turinprepnik.physicsii",
+  "appName": "Physics II",
+  "webDir": "../site",
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Polarization</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ]
+            });
+        });
+    </script>
+    <style>
+        .def-item {
+            grid-template-columns: 110px 1fr !important;
+        }
+
+        .def-symbol {
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt;
+                <a href="ch6_2_vacuum_waves.html">Waves in Vacuum</a> &gt; Polarization
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Polarization</h1>
+
+        <section class="topic-section">
+            <h2>The Polarization Vector</h2>
+            <p>
+                The <strong>polarization</strong> of an EM wave is defined by the direction of the electric field vector
+                $\vec{E}$.
+                We characterize this using a complex displacement vector $\vec{n}$ (the polarization vector). For a
+                plane wave:
+            </p>
+            <div class="equation-box">
+                $$ \tilde{\mathbf{E}}(z, t) = \tilde{E}_0 e^{i(kz-\omega t)} \hat{n} $$
+            </div>
+            <p>
+                If $\hat{n}$ is a real unit vector, the wave is <strong>linearly polarized</strong>. If $\hat{n}$ is
+                complex, the
+                tip of $\vec{E}$ traces out an ellipse.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>Types of Polarization</h2>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">Linear</span>
+                    <span class="def-text">The E-field oscillates in a single fixed direction. The polarization vector
+                        $\hat{n}$ is real.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Circular</span>
+                    <span class="def-text">The E-field tip traces a circle. Two orthogonal waves with equal amplitude
+                        and $90^\circ$ phase shift.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Elliptical</span>
+                    <span class="def-text">The most general case where amplitudes are unequal or the phase shift is not
+                        $90^\circ$.</span>
+                </div>
+            </div>
+            <div class="highlight-box"
+                style="background: rgba(var(--accent-rgb), 0.05); padding: 1rem; border-radius: 8px; margin-top: 2rem; border-left: 4px solid var(--accent-color);">
+                <h3 style="margin-top: 0; color: var(--accent-color); font-size: 1.1rem;">Handedness Convention</h3>
+                <p style="margin-bottom: 0;">
+                    Looking <em>towards</em> the source, if the vector rotates clockwise, it is
+                    <strong>Right-Handed</strong> (RHCP). Using the $(\hat{x} + i\hat{y})$ convention corresponds to a
+                    specific rotation direction that depends on whether you choose $kz - \omega t$ or $\omega t - kz$ in
+                    the exponent.
+                </p>
+            </div>
+        </section>
+
+        <section class="topic-section">
+            <h2>Mathematical Descriptions</h2>
+            <h3>Linear</h3>
+            <p>
+                A wave polarized at an angle $\theta$ to the $x$-axis:
+                $$ \vec{E}(z,t) = E_0 \cos(kz - \omega t) (\cos\theta \hat{x} + \sin\theta \hat{y}) $$
+            </p>
+            <h3>Circular</h3>
+            <p>
+                Two orthogonal waves with a \(90^\circ\) phase shift:
+            </p>
+            <div class="equation-box">
+                $$ \tilde{\mathbf{E}}_{R/L} = E_0 e^{i(kz-\omega t)} (\hat{x} \pm i\hat{y}) $$
+            </div>
+            <p>
+                In real terms:
+                $$ \vec{E}(z,t) = E_0 [\cos(kz-\omega t)\hat{x} \mp \sin(kz-\omega t)\hat{y}] $$
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Dielectrics</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)'], ['$', '$']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dtau: "d\\tau"
+                }
+            },
+            options: {
+                enableMenu: false
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Definition Box */
+        .def-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        /* List Styling for Properties */
+        ol.properties-list {
+            counter-reset: item;
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        ol.properties-list li {
+            position: relative;
+            padding-left: 3.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        ol.properties-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        ol.properties-list li strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        ol.properties-list li::before {
+            content: counter(item);
+            counter-increment: item;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2.5rem;
+            height: 2.5rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 2.5rem;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> >
+                Linear Dielectrics
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Linear Dielectrics</h1>
+
+        <p>
+            In many substances, the polarization \(\vec{P}\) is proportional to the electric field. These are called
+            <strong>linear dielectrics</strong>. While the microscopic physics can be complex, the macroscopic behavior
+            is often simple and elegant.
+        </p>
+
+        <!-- SECTION 1: DEFINITIONS -->
+        <section data-concept-title="Susceptibility and Permittivity" id="concept-1-susceptibility-and-permittivity">
+            <h2>Susceptibility and Permittivity</h2>
+            <p>
+                For a linear dielectric, the polarization is proportional to the <strong>total</strong> macroscopic
+                field \(\vec{E}\). We define this relationship using the electric susceptibility \(\chi_e\):
+            </p>
+
+            <div class="math-block">
+                $$ \vec{P} = \epsilon_0 \chi_e \vec{E} $$
+            </div>
+
+            <div class="def-box"
+                style="border-left: 4px solid var(--warning-color); background: rgba(241, 196, 15, 0.05);">
+                <strong style="color: var(--warning-color);">Isotropic vs. Anisotropic Materials</strong>
+                <p style="margin-top: 10px;">
+                    This simple scalar relation assumes the material is <strong>isotropic</strong>, meaning its
+                    properties are identical in all directions (e.g., gases, liquids, glass).
+                </p>
+                <p>
+                    In <strong>anisotropic</strong> materials (like crystals), the polarizability depends on the
+                    direction of the field. In such cases, \(\vec{P}\) is not necessarily parallel to \(\vec{E}\), and
+                    \(\chi_e\) becomes a <em>tensor</em> rather than a scalar number.
+                </p>
+            </div>
+
+            <p>
+                Substituting this into the definition of Displacement (\(\vec{D} = \epsilon_0 \vec{E} + \vec{P}\)), we
+                find that \(\vec{D}\) is also proportional to \(\vec{E}\):
+            </p>
+
+            <div class="math-block">
+                $$ \vec{D} = \epsilon \vec{E} $$
+            </div>
+
+            <div class="def-box">
+                <ol class="properties-list">
+                    <li>
+                        <strong>Electric Susceptibility (\(\chi_e\))</strong>
+                        A dimensionless measure of how easily a material polarizes. For vacuum, \(\chi_e = 0\).
+                    </li>
+                    <li>
+                        <strong>Permittivity (\(\epsilon\))</strong>
+                        Defined as \(\epsilon = \epsilon_0 (1 + \chi_e)\). This determines the field strength inside the
+                        material.
+                    </li>
+                    <li>
+                        <strong>Dielectric Constant (\(\epsilon_r\))</strong>
+                        The relative permittivity: \(\epsilon_r = 1 + \chi_e = \epsilon / \epsilon_0\). This is the
+                        factor by which the field is reduced.
+                    </li>
+                </ol>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_5_capacitor_example.html?back=ch2_5_linear_dielectrics.html%23concept-1-susceptibility-and-permittivity"><span aria-hidden="true">+</span> Deep Dive: Capacitor with Dielectric</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: ENERGY -->
+        <section data-concept-title="Energy in Dielectric Systems" id="concept-2-energy-in-dielectric-systems">
+            <h2>Energy in Dielectric Systems</h2>
+            <p>
+                To polarize a dielectric, work must be done to displace the charges against their internal forces. In a
+                linear dielectric, this work is stored as electrostatic potential energy.
+            </p>
+            <p>
+                The total energy required to assemble a charge distribution in the presence of a linear dielectric is
+                given by a volume integral over all space:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ W = \frac{1}{2} \int \vec{D} \cdot \vec{E} \, d\tau $$
+            </div>
+
+            <p>
+                This expression generalizes the vacuum case (\(W = \frac{\epsilon_0}{2} \int E^2 \, d\tau\)). Notice
+                that the presence of the dielectric, with its large permittivity \(\epsilon\), typically increases the
+                amount of energy a system can store for a given field strength.
+            </p>
+
+            <div class="def-box">
+                <p>
+                    <strong>Physical Interpretation:</strong> Part of this energy is stored in the <em>field
+                        itself</em>, and part is stored as <em>potential energy in the distorted molecules</em> of the
+                    dielectric.
+                </p>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_5_energy_derivation.html?back=ch2_5_linear_dielectrics.html%23concept-2-energy-in-dielectric-systems"><span aria-hidden="true">+</span> Deep Dive: Energy in Dielectric Systems</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

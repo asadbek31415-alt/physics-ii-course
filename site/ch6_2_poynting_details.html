@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Poynting Vector</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ],
+                macros: {
+                    "\\vec": "\\mathbf{#1}",
+                    "\\pd": "\\frac{\\partial #1}{\\partial #2}",
+                    "\\div": "\\nabla \\cdot",
+                    "\\curl": "\\nabla \\times"
+                }
+            });
+        });
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt;
+                <a href="ch6_3_energy_momentum.html">Energy & Momentum</a> &gt; Poynting Vector
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: The Poynting Vector</h1>
+
+        <section class="topic-section">
+            <h2>Poynting's Theorem: Derivation</h2>
+            <p>
+                How much work does an EM field do on a collection of charges? The rate of work per unit volume is given
+                by the power density:
+                $$ \vec{f} \cdot \vec{v} = \rho(\vec{E} + \vec{v}\times\vec{B}) \cdot \vec{v} = \vec{J}\cdot\vec{E} $$
+            </p>
+            <p>
+                From <strong>Ampère's Law</strong> (with Maxwell's correction), we solve for current density $\vec{J}$:
+                $$ \vec{J} = \frac{1}{\mu_0}\curl\vec{B} - \epsilon_0\pd{\vec{E}}{t} $$
+            </p>
+            <p>
+                Substituting this into the power equation:
+            </p>
+            <div class="math-block">
+                $$ \vec{J}\cdot\vec{E} = \frac{1}{\mu_0}(\curl\vec{B})\cdot\vec{E} -
+                \epsilon_0\vec{E}\cdot\pd{\vec{E}}{t} $$
+            </div>
+            <p>
+                Using the vector product rule $\div(\vec{E}\times\vec{B}) = \vec{B}\cdot(\curl\vec{E}) -
+                \vec{E}\cdot(\curl\vec{B})$ and <strong>Faraday's Law</strong> ($\curl\vec{E} = -\pd{\vec{B}}{t}$):
+            </p>
+            <div class="equation-box">
+                $$ \vec{J}\cdot\vec{E} = -\frac{1}{\mu_0}\div(\vec{E}\times\vec{B}) -
+                \frac{1}{\mu_0}\vec{B}\cdot\pd{\vec{B}}{t} - \epsilon_0\vec{E}\cdot\pd{\vec{E}}{t} $$
+            </div>
+            <p>
+                Recognizing that $\vec{A}\cdot\pd{\vec{A}}{t} = \frac{1}{2}\pd{A^2}{t}$, we obtain the integral form of
+                <strong>Poynting's Theorem</strong>:
+            </p>
+            <div class="equation-box"
+                style="border: 2px solid var(--accent-color); background: rgba(var(--accent-rgb), 0.05); padding: 1.5rem;">
+                $$ \frac{dW}{dt} = -\frac{d}{dt} \int_V \frac{1}{2}\left( \epsilon_0 E^2 + \frac{1}{\mu_0} B^2 \right)
+                d\tau - \oint_S \vec{S} \cdot d\vec{a} $$
+            </div>
+            <p style="margin-top: 1.5rem;">
+                <strong>Conservation of Energy:</strong> The work done per unit time on the charges ($dW/dt$) equals the
+                rate at which field energy decreases minus the rate at which energy flows out through the bounding
+                surface.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>Intensity</h2>
+            <p>
+                For sinusoidal waves, the rapid fluctuations of $\mathbf{S}$ are usually averaged out. The average power
+                per unit area, called <strong>intensity</strong> ($I$), is:
+            </p>
+            <div class="equation-box">
+                $$ I = \langle S \rangle = \frac{1}{2} c \epsilon_0 E_0^2 $$
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

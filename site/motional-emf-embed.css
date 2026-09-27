@@ -1,0 +1,26 @@
+.course-motional-emf-embed {
+    --motional-height: 560px;
+    container: motional / inline-size;
+}
+.course-motional-emf-embed.course-responsive-embed {
+    height: var(--motional-height);
+    min-height: 0;
+}
+.course-motional-emf-embed .diagram-frame {
+    height: var(--motional-height);
+    min-height: 0;
+}
+.course-motional-emf-embed .course-fullscreen-button {
+    top: auto;
+    bottom: 0.65rem;
+    right: 0.65rem;
+    transform: none;
+}
+@container motional (max-width: 702px) {
+    .course-motional-emf-embed .course-fullscreen-button {
+        bottom: 292px;
+    }
+}
+@media (max-width: 900px) {
+    .course-motional-emf-embed { --motional-height: 680px; }
+}

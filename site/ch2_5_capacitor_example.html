@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Capacitor with Dielectric</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dtau: "d\\tau"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header & Nav */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Content Layout */
+        .container {
+            max-width: 800px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.2rem; margin-top: 0.5rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 3rem; }
+        h3 { color: var(--text-primary); margin-top: 2rem; font-size: 1.3rem; }
+        p { color: var(--text-secondary); margin-bottom: 1.5rem; }
+
+        /* Math Styling */
+        .math-step {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid var(--border-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+        }
+
+        .math-result {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--success-color);
+            border-left: 6px solid var(--success-color);
+            overflow-x: auto;
+        }
+
+        /* Iframe Container */
+        .iframe-container {
+            width: 100%;
+            height: 450px;
+            background-color: #0d1723;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin: 2rem 0;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        .iframe-container.capacitor-dielectric-sim {
+            height: clamp(500px, 62vh, 640px);
+            min-height: 500px;
+        }
+
+        @media (max-width: 620px) {
+            .iframe-container.capacitor-dielectric-sim {
+                height: min(620px, 86svh);
+                min-height: 500px;
+            }
+        }
+
+        /* Intuition Box */
+        .intuition-box {
+            background-color: rgba(52, 152, 219, 0.05);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-top: 3rem;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 4rem;}
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> > 
+                <a href="ch2_5_linear_dielectrics.html">Linear Dielectrics</a> >
+                Capacitor Example
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Capacitor with Dielectric</h1>
+        
+        <p>
+            <strong>Problem:</strong> A parallel plate capacitor with plate area \(A\) and separation \(d\) is filled with a linear dielectric material of permittivity \(\epsilon\). Calculate the capacitance.
+        </p>
+
+        <!-- IFRAME PLACEHOLDER -->
+        <div class="iframe-container capacitor-dielectric-sim">
+            <iframe src="diagrams/capacitor_dielectric.html" title="Capacitor Dielectric Visualizer"></iframe>
+        </div>
+
+        <section>
+            <h2>The Strategy: Use D First</h2>
+            <p>
+                If we tried to calculate the Electric Field \(\vec{E}\) directly, we would struggle because we don't know the bound charges on the dielectric surface yet. 
+            </p>
+            <p>
+                However, we know the <strong>Free Charge</strong> on the metal plates (\(+Q\) and \(-Q\)). This makes \(\vec{D}\) the perfect tool.
+            </p>
+
+            <h3>Step 1: Find the Displacement (D)</h3>
+            <p>
+                Using Gauss's Law for free charge \(\oint \vec{D} \cdot d\vec{a} = Q_{f,enc}\), we draw a Gaussian pillbox around the top plate. The free charge density is \(\sigma_f = Q/A\).
+            </p>
+            <div class="math-step">
+                $$ D = \sigma_f = \frac{Q}{A} $$
+            </div>
+            <p style="font-size: 0.9rem;">(Pointing downwards, from + to -)</p>
+
+            <h3>Step 2: Find the Electric Field (E)</h3>
+            <p>
+                Now we use the property of the linear dielectric: \(\vec{D} = \epsilon \vec{E}\).
+            </p>
+            <div class="math-step">
+                $$ E = \frac{D}{\epsilon} = \frac{Q}{\epsilon A} $$
+            </div>
+            <p>
+                <em>Note:</em> If this were vacuum, we would use \(\epsilon_0\). Since \(\epsilon > \epsilon_0\), the electric field is <strong>reduced</strong> inside the material.
+            </p>
+
+            <h3>Step 3: Find the Potential (V)</h3>
+            <p>
+                The potential difference is the integral of the field over the distance \(d\):
+            </p>
+            <div class="math-step">
+                $$ V = E d = \frac{Q d}{\epsilon A} $$
+            </div>
+
+            <h3>Step 4: Calculate Capacitance (C)</h3>
+            <p>
+                By definition, \(C = Q/V\):
+            </p>
+            <div class="math-result">
+                $$ C = \frac{\epsilon A}{d} = \epsilon_r \frac{\epsilon_0 A}{d} = \epsilon_r C_{vac} $$
+            </div>
+        </section>
+
+        <section class="intuition-box">
+            <h3 style="margin-top: 0; color: var(--accent-color);">Physical Intuition: Shielding</h3>
+            <p>
+                Why does the capacitance increase?
+            </p>
+            <p>
+                The dielectric material gets polarized. Positive ends of the dipoles point toward the negative plate, and negative ends point toward the positive plate.
+            </p>
+            <p>
+                This creates a <strong>Bound Surface Charge</strong> that opposes the free charge on the plates. This "shielding" effect cancels out some of the Electric Field.
+            </p>
+            <ul>
+                <li>Since \(E\) is weaker, the voltage \(V = Ed\) is lower for the same amount of charge \(Q\).</li>
+                <li>Since \(C = Q/V\), a lower \(V\) (denominator) means a <strong>higher Capacitance</strong>.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Conclusion</h2>
+            <p>
+                For a parallel-plate capacitor filled with one linear dielectric material,
+                the vacuum result
+            </p>
+            <div class="math-step">
+                $$ C_{vac} = \frac{\epsilon_0 A}{d} $$
+            </div>
+            <p>
+                becomes
+            </p>
+            <div class="math-result">
+                $$ C = \frac{\epsilon A}{d} = \epsilon_r C_{vac} $$
+            </div>
+            <p>
+                The constant \(\epsilon_0\) itself has not changed. It is the permittivity of empty space. When the
+                space between the plates is filled with a dielectric, the material responds to the field, so the
+                relevant permittivity becomes \(\epsilon = \epsilon_r \epsilon_0\).
+            </p>
+            <p>
+                This is the same factor that appears in the capacitance. In vacuum, a certain free charge produces a
+                certain field. In the dielectric, bound charges partly oppose that field, so the same free charge
+                produces a smaller \(E\) and a smaller voltage \(V = Ed\). Since \(C = Q/V\), the capacitance is larger
+                by the factor \(\epsilon_r\).
+            </p>
+            <p>
+                A useful shortcut is: when a region that used to be vacuum is completely filled with a uniform linear
+                dielectric, many vacuum formulas that contain \(\epsilon_0\) become the material formulas by replacing
+                \(\epsilon_0\) with \(\epsilon\). The replacement is not magic; it is a compact way to include the
+                material's polarization response.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Boundary Conditions</title>
+    
+    <!-- MathJax -->
+    <script>
+        MathJax = { tex: { inlineMath: [['\\(', '\\)']] } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Inter', sans-serif; color: #e0e0e0; }
+        
+        #ui-container {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .card {
+            background: rgba(28, 39, 52, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            backdrop-filter: blur(5px);
+            max-width: 320px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: auto;
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.1rem; color: #3498db; }
+        
+        .math-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px; 
+            font-size: 0.95rem; 
+            background: rgba(0,0,0,0.3);
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+        
+        p.desc {
+            font-size: 0.85rem; margin: 10px 0; color: #b0c4de; line-height: 1.5;
+        }
+
+        .legend {
+            font-size: 0.8rem; 
+            color: #aaa; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 12px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+        }
+        .legend-item { display: flex; align-items: center; }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .yellow { background-color: #f1c40f; }
+        .blue { background-color: #3498db; }
+        .red { background-color: #e74c3c; }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 39, 52, 0.95);
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: flex;
+            gap: 25px;
+            border: 1px solid #2c3e50;
+            z-index: 10;
+            align-items: center;
+        }
+
+        .control-group { display: flex; flex-direction: column; align-items: center; min-width: 130px; }
+        label { margin-bottom: 5px; font-size: 0.85rem; color: #b0c4de; font-weight: 500; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #3498db; }
+        
+        /* Toggle Switch */
+        .toggle-container { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #b0c4de; cursor: pointer; }
+        input[type=checkbox] { accent-color: #3498db; transform: scale(1.2); cursor: pointer; }
+
+        @media (max-width: 500px) {
+            .controls {
+                left: 10px;
+                right: 10px;
+                transform: none;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+                padding: 10px;
+            }
+            .control-group { min-width: 110px; }
+        }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <!-- UI Overlay -->
+    <div id="ui-container">
+        <div class="card">
+            <h2>Magnetic Refraction</h2>
+            
+            <div class="math-row">
+                <span>Normal (\(\perp\)):</span>
+                <span style="color: #f1c40f;">\(B_{1}^{\perp} = B_{2}^{\perp}\)</span>
+            </div>
+            <div class="math-row">
+                <span>Parallel (\(\parallel\)):</span>
+                <span style="color: #3498db;">\(H_{1}^{\parallel} = H_{2}^{\parallel}\)</span>
+            </div>
+            
+            <p class="desc">
+                The magnetic field <strong>B</strong> must "bend" because its parallel component is linked to <strong>H</strong>, which behaves differently inside materials.
+            </p>
+            
+            <div class="legend">
+                <div class="legend-item"><span class="dot red"></span> Total B</div>
+                <div class="legend-item"><span class="dot yellow"></span> Perp (Continuous)</div>
+                <div class="legend-item"><span class="dot blue"></span> Para (Discontinuous)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="control-group">
+            <label>Field Angle (\(\theta\))</label>
+            <input type="range" id="slider-angle" min="0" max="180" step="1" value="45">
+        </div>
+        <div class="control-group">
+            <label>Ratio (\(B_{2}^{\parallel} / B_{1}^{\parallel}\))</label>
+            <input type="range" id="slider-mu" min="0.1" max="5" step="0.1" value="3.0">
+        </div>
+        <div class="toggle-container">
+            <input type="checkbox" id="check-mat" checked>
+            <label for="check-mat">Material</label>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(15, 8, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); // Fix text crispness
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 2, 0);
+
+        // --- LIGHTS ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- OBJECTS ---
+
+        // 1. Grid (The Interface)
+        const grid = new THREE.GridHelper(30, 30, 0x555555, 0x222222);
+        scene.add(grid);
+
+        // 2. Material Block (Medium 2 - Above Grid)
+        const matGeo = new THREE.BoxGeometry(30, 10, 30);
+        // Move up by 5 so bottom is at 0
+        matGeo.translate(0, 5, 0); 
+        const matMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0x3498db, 
+            transparent: true, 
+            opacity: 0.15, // Low opacity as requested
+            side: THREE.DoubleSide,
+            depthWrite: false, // Helps with transparency sorting
+            metalness: 0,
+            roughness: 0
+        });
+        const materialBlock = new THREE.Mesh(matGeo, matMaterial);
+        scene.add(materialBlock);
+
+        // 3. High-Res Text Sprites
+        function createTextSprite(message, x, y, z) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            // High res canvas for crisp text
+            canvas.width = 512;
+            canvas.height = 128;
+            
+            context.font = "Bold 48px Arial";
+            context.fillStyle = "rgba(255,255,255,0.9)";
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.shadowColor = "rgba(0,0,0,0.8)";
+            context.shadowBlur = 4;
+            context.fillText(message, 256, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            // Scale sprite to be reasonable size in 3D world
+            sprite.scale.set(10, 2.5, 1);
+            sprite.position.set(x, y, z);
+            scene.add(sprite);
+            return sprite;
+        }
+
+        const label1 = createTextSprite("Medium 1 (Vacuum)", -8, -2, 0);
+        const label2 = createTextSprite("Medium 2 (Matter)", -8, 2, 0);
+
+        // 4. Normal Line (Dashed)
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -10, 0), new THREE.Vector3(0, 10, 0)]);
+        const lineMat = new THREE.LineDashedMaterial({ color: 0x888888, dashSize: 0.5, gapSize: 0.5, opacity: 0.5, transparent: true });
+        const normalLine = new THREE.Line(lineGeo, lineMat);
+        normalLine.computeLineDistances();
+        scene.add(normalLine);
+
+        // 5. Vectors Helper
+        function createVector(color, length) {
+            // Origin (0,0,0), Dir (0,1,0) placeholder
+            return new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), length, color, 0.6, 0.3);
+        }
+
+        const vecB1 = createVector(0xe74c3c, 1);      // Red
+        const vecB1_perp = createVector(0xf1c40f, 1); // Yellow
+        const vecB1_para = createVector(0x3498db, 1); // Blue
+        
+        const vecB2 = createVector(0xe74c3c, 1);
+        const vecB2_perp = createVector(0xf1c40f, 1);
+        const vecB2_para = createVector(0x3498db, 1);
+
+        scene.add(vecB1); scene.add(vecB1_perp); scene.add(vecB1_para);
+        scene.add(vecB2); scene.add(vecB2_perp); scene.add(vecB2_para);
+
+
+        // --- LOGIC ---
+        const sliderAngle = document.getElementById('slider-angle');
+        const sliderMu = document.getElementById('slider-mu');
+        const checkMat = document.getElementById('check-mat');
+
+        function updatePhysics() {
+            // Inputs
+            const thetaDeg = parseFloat(sliderAngle.value);
+            const ratio = parseFloat(sliderMu.value); // Multiplier for parallel component
+            const showMat = checkMat.checked;
+
+            // Toggle Visuals
+            materialBlock.visible = showMat;
+            label2.visible = showMat;
+
+            // Math
+            // Theta is angle from Vertical Y axis. 0 = Up, 90 = Right, 180 = Down
+            const theta = THREE.MathUtils.degToRad(thetaDeg);
+            const mag1 = 6;
+
+            // --- Medium 1 (Incoming) ---
+            // We define B1 as pointing TOWARDS the origin (0,0,0) from below
+            // OR B1 starts at origin and points downwards?
+            // Convention: Field line PASSES through origin.
+            // B1 is the field IN Medium 1 (y < 0).
+            // Let's draw B1 starting at some (-x, -y) and ending at (0,0,0).
+            
+            // Components relative to axes:
+            // y = cos(theta), x = sin(theta)
+            // Since we are mapping 0->Up, 180->Down:
+            const dirY = Math.cos(theta); 
+            const dirX = Math.sin(theta); 
+
+            // Decompose
+            const b1_perp_mag = mag1 * dirY; // Vertical component
+            const b1_para_mag = mag1 * dirX; // Horizontal component
+
+            // Position B1: It exists in y < 0.
+            // To visualize a continuous line through origin, B1 tail is at (-x, -y).
+            const b1_x = -b1_para_mag;
+            const b1_y = -b1_perp_mag;
+
+            // Update B1 Arrows
+            const v1_dir = new THREE.Vector3(dirX, dirY, 0).normalize();
+            
+            // Total B1
+            vecB1.position.set(b1_x, b1_y, 0);
+            vecB1.setDirection(v1_dir);
+            vecB1.setLength(mag1, 0.6, 0.3);
+
+            // B1 Components
+            // Perp (Yellow)
+            vecB1_perp.position.set(0, b1_y, 0); 
+            vecB1_perp.setDirection(new THREE.Vector3(0, Math.sign(dirY) || 1, 0)); // Handle 0 case
+            vecB1_perp.setLength(Math.abs(b1_perp_mag), 0.5, 0.25);
+            vecB1_perp.visible = Math.abs(b1_perp_mag) > 0.01;
+
+            // Para (Blue)
+            vecB1_para.position.set(b1_x, 0, 0);
+            vecB1_para.setDirection(new THREE.Vector3(Math.sign(dirX) || 1, 0, 0));
+            vecB1_para.setLength(Math.abs(b1_para_mag), 0.5, 0.25);
+            vecB1_para.visible = Math.abs(b1_para_mag) > 0.01;
+
+
+            // --- Medium 2 (Outgoing) ---
+            // Exists in y > 0 (or y < 0 if theta > 90? No, Material is only above).
+            // This simulation assumes Vector moves FROM Medium 1 TO Medium 2.
+            // If Theta > 90, vector points DOWN into Medium 1. Refraction logic flips.
+            // But let's keep it simple: We just apply boundary conditions at interface.
+            
+            // BCs:
+            // B_perp_2 = B_perp_1
+            // B_para_2 = B_para_1 * ratio
+            
+            const b2_perp_mag = b1_perp_mag;
+            const b2_para_mag = b1_para_mag * ratio;
+
+            const b2_mag = Math.sqrt(b2_perp_mag**2 + b2_para_mag**2);
+            
+            // Direction for B2
+            // x component is b2_para_mag, y component is b2_perp_mag
+            const v2_dir = new THREE.Vector3(b2_para_mag, b2_perp_mag, 0).normalize();
+
+            // Total B2 (Starts at origin)
+            vecB2.position.set(0, 0, 0);
+            vecB2.setDirection(v2_dir);
+            vecB2.setLength(b2_mag, 0.6, 0.3);
+            vecB2.visible = b2_mag > 0.01;
+
+            // B2 Components
+            // Perp
+            vecB2_perp.position.set(0, 0, 0);
+            vecB2_perp.setDirection(new THREE.Vector3(0, Math.sign(b2_perp_mag) || 1, 0));
+            vecB2_perp.setLength(Math.abs(b2_perp_mag), 0.5, 0.25);
+            vecB2_perp.visible = Math.abs(b2_perp_mag) > 0.01;
+
+            // Para
+            vecB2_para.position.set(0, 0.1, 0); // Slight offset
+            vecB2_para.setDirection(new THREE.Vector3(Math.sign(b2_para_mag) || 1, 0, 0));
+            vecB2_para.setLength(Math.abs(b2_para_mag), 0.5, 0.25);
+            vecB2_para.visible = Math.abs(b2_para_mag) > 0.01;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="boundary_conditions_mag.0.offline.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Coulomb's Law</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                packages: { '[+]': ['ams'] },
+                macros: {
+                    rsep: "{\\text{𝓻}}",
+                    vecrsep: "{\\vec{\\text{𝓻}}}",
+                    hatrsep: "{\\hat{\\text{𝓻}}}"
+                }
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        ul,
+        ol {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            padding-left: 1.4rem;
+        }
+
+        li {
+            margin-bottom: 0.65rem;
+        }
+
+        .note-card {
+            background: var(--card-bg);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            border-radius: 0 12px 12px 0;
+            margin: 2rem 0;
+        }
+
+        .note-card p {
+            margin-bottom: 0;
+        }
+
+        .force-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .force-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.1rem;
+            min-width: 0;
+        }
+
+        .force-card h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .equation-line {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            margin: 1rem 0;
+        }
+
+        .math-block {
+            overflow-x: visible;
+        }
+
+        .worked-math {
+            font-size: 0.94rem;
+            line-height: 1.45;
+        }
+
+        .worked-math mjx-container[display="true"] {
+            margin: 0.55rem 0;
+            overflow: visible;
+        }
+
+        .worked-math mjx-container {
+            max-width: 100%;
+        }
+
+        .sim-frame {
+            height: 600px;
+        }
+
+        @media (max-width: 920px) {
+            .force-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="electrostatics_index.html">Electrostatics</a> &gt;
+                <a href="ch1_1_electric_field.html">The Electric Field</a> &gt;
+                Coulomb's Law
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Coulomb's Law</h1>
+
+        <p>
+            This deep dive keeps the same geometry as the main lesson and focuses on how Coulomb's law gives a
+            vector force, not just a number.
+        </p>
+        <div class="note-card">
+            <p>
+                <strong>Notation and idea.</strong> The source charge \(q\) sits at \(\vec{r}'\), and the test charge
+                \(Q\) sits at \(\vec{r}\). The separation vector
+                \(\vecrsep=\vec{r}-\vec{r}'\) points from the source to the test charge; its length is
+                \(\rsep=|\vecrsep|\), and its direction-only version is
+                \(\hatrsep=\vecrsep/\rsep\). In Coulomb's law, the scalar factor
+                \(\frac{1}{4\pi\epsilon_0}\frac{qQ}{\rsep^2}\) sets the force size and sign, while
+                \(\hatrsep\) supplies the direction. Multiplying them gives the vector force
+                \(\vec{F}_Q\).
+            </p>
+        </div>
+
+        <section>
+            <h2>Interactive Laboratory</h2>
+            <p>
+                Before diving into the mathematical nuances, explore the physical behavior of charges using the
+                simulator below. Observe how the force vector changes as you manipulate the magnitude of the charges and
+                the distance between them. The notation is the same as in the pinned note above.
+            </p>
+
+            <!-- Simulator Iframe -->
+            <div class="iframe-container">
+                <iframe class="sim-frame" src="diagrams/coulombs_law_geometry.html"
+                    title="Coulomb Law Simulator"></iframe>
+            </div>
+        </section>
+
+        <section>
+            <h2>Physical Limits & Behavior</h2>
+
+            <h3>The Idea of Proportionality</h3>
+            <p>
+                Coulomb's Law is more than just a calculation; it is a statement of <strong>proportionality</strong>.
+                Specifically, it tells us that:
+            </p>
+            <ul>
+                <li>The force is <strong>jointly proportional</strong> to the product of the charges ($F \propto qQ$).
+                    Doubling one charge doubles the force; doubling both quadruples it.</li>
+                <li>The force is <strong>inversely proportional</strong> to the square of the separation length
+                    ($F \propto 1/\rsep^2$). This "Inverse Square Law" is a hallmark of physical phenomena that spread out from a
+                    point
+                    source into three-dimensional space.</li>
+            </ul>
+            <p>
+                The sign of the product also gives the direction. If the charges have the same sign, then \(qQ >
+                0\), so the force points in the same direction as \(\hatrsep\). Since \(\hatrsep\) points from the
+                source charge toward the test charge, the test charge is pushed away: like charges repel. If the signs
+                are opposite, then \(qQ < 0\), so the force reverses direction and the charges attract.
+            </p>
+            <p class="equation-line">
+                $$ \vec{F}_Q =
+                \frac{1}{4\pi\epsilon_0}\frac{qQ}{\rsep^2}\hatrsep $$
+            </p>
+
+            <h3>What happens as $\rsep \to \infty$?</h3>
+            <p>
+                As the distance between the charges increases, the denominator $\rsep^2$ grows very large, causing the
+                force
+                $F$ to approach zero. This aligns with our intuition: objects extremely far away from each other have
+                negligible influence. We say the electrostatic force is "long-range" (it never technically hits zero),
+                but effectively vanishes at great distances.
+            </p>
+
+            <h3>What happens as $\rsep \to 0$?</h3>
+            <p>
+                Mathematically, if $\rsep$ approaches zero, the force approaches infinity ($F \to \infty$). This is a
+                <strong>singularity</strong>. In classical electrostatics, we treat charges as "point particles" with
+                zero size, which leads to this mathematical explosion.
+            </p>
+
+            <div class="note-card">
+                <p>
+                    <strong>Concept Check: Self-Force.</strong> Coulomb's Law
+                    ($F = k \frac{qQ}{\rsep^2}$) fundamentally describes an
+                    <strong>interaction</strong>.
+                    It requires two parties: a source ($q$) and a responder ($Q$). A single isolated charge creates
+                    a potential for force (an electric field), but it cannot exert a force on itself. No second charge
+                    means no force.
+                </p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Worked Vector Calculation</h2>
+            <p>
+                Let the source charge be \(q = +2.0\,\mu\text{C}\) at
+                \(\vec{r}'=(1,1,0)\,\text{m}\). Put the test charge
+                \(Q=-3.0\,\mu\text{C}\) at \(\vec{r}=(4,5,0)\,\text{m}\).
+            </p>
+
+            <div class="force-grid">
+                <div class="force-card">
+                    <h3>1. Separation</h3>
+                    <p>
+                        Build the vector from source to test:
+                    </p>
+                    <div class="math-block worked-math">
+                        $$ \begin{aligned}
+                        \vecrsep&=\vec{r}-\vec{r}'\\
+                        &=(4-1,\,5-1,\,0-0)\\
+                        &=(3,4,0)\,\text{m}
+                        \end{aligned} $$
+                        $$ \rsep=|\vecrsep|=\sqrt{3^2+4^2}=5\,\text{m} $$
+                        $$ \hatrsep=\left(\frac{3}{5},\frac{4}{5},0\right) $$
+                        $$ \hatrsep=(0.60,0.80,0) $$
+                    </div>
+                </div>
+
+                <div class="force-card">
+                    <h3>2. Magnitude scale</h3>
+                    <p>
+                        Use Coulomb's constant \(k=8.99\times10^9\):
+                    </p>
+                    <div class="math-block worked-math">
+                        $$ \begin{aligned}
+                        qQ&=(+2.0)(-3.0)\times10^{-12}\\
+                        &=-6.0\times10^{-12}\,\text{C}^2
+                        \end{aligned} $$
+                        $$ \begin{aligned}
+                        k\frac{qQ}{\rsep^2}
+                        &=(8.99\times10^9)
+                        \frac{-6.0\times10^{-12}}{5^2}\\
+                        &=-2.16\times10^{-3}\,\text{N}
+                        \end{aligned} $$
+                    </div>
+                </div>
+
+                <div class="force-card">
+                    <h3>3. Force vector</h3>
+                    <p>
+                        Attach the unit vector:
+                    </p>
+                    <div class="math-block worked-math" style="border-left-color: var(--success-color);">
+                        $$ \vec{F}_Q=\left(k\frac{qQ}{\rsep^2}\right)\hatrsep $$
+                        $$ \vec{F}_Q=(-2.16\times10^{-3})(0.60,0.80,0) $$
+                        $$ \vec{F}_Q=(-1.30,\,-1.73,\,0)\times10^{-3}\,\text{N} $$
+                    </div>
+                </div>
+            </div>
+
+            <div class="note-card">
+                <p>
+                    The force magnitude is \(2.16\times10^{-3}\,\text{N}\). Because \(qQ<0\), the force points opposite
+                    \(\hatrsep\): back toward the positive source charge at \(\vec{r}'\).
+                </p>
+            </div>
+        </section>
+
+
+        <section>
+            <h2>The Constants: Why $4\pi$?</h2>
+            <p>
+                You will often see the proportionality constant written in two ways. In introductory physics, we often
+                use $k$. In advanced electromagnetism, we strictly use $\epsilon_0$.
+            </p>
+            <p class="equation-line">
+                $$ k \approx 9 \times 10^9 \, \frac{\text{N}\cdot\text{m}^2}{\text{C}^2} \quad \equiv \quad
+                \frac{1}{4\pi\epsilon_0} $$
+            </p>
+
+            <h3>The Geometry of Space</h3>
+            <p>
+                Why include the factor $4\pi$? This is a deliberate choice called <strong>rationalization</strong>.
+            </p>
+            <p>
+                The electric field spreads out spherically from a point charge. The surface area of a sphere is $4\pi
+                \rsep^2$. By putting the $4\pi$ in the denominator of Coulomb's Law, we ensure that it <em>cancels
+                    out</em>
+                in Maxwell's Equations (specifically Gauss's Law), which are the fundamental laws of electromagnetism.
+            </p>
+            <p>
+                If we didn't put $4\pi$ here, it would appear in every single equation involving derivatives and
+                integrals of fields later in the course. We choose to have the "ugly" factor in the algebraic formula
+                (Coulomb's Law) to keep the calculus formulas (Maxwell's Equations) clean.
+            </p>
+
+            <h3>$\epsilon_0$: The Permittivity of Free Space</h3>
+            <p>
+                $$ \epsilon_0 = 8.85 \times 10^{-12} \, \frac{\text{C}^2}{\text{N}\cdot\text{m}^2} $$
+            </p>
+            <p>
+                This constant, $\epsilon_0$ (epsilon-nought), represents the capability of a vacuum to permit electric
+                field lines. It is essentially a scaling factor that translates our arbitrary human units of force
+                (Newtons) and distance (meters) into the physical reality of electric charge (Coulombs).
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

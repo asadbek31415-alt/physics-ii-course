@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Field Symmetry Cancellation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+        }
+
+        #container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            width: 300px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 10px 0;
+            color: #0ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        p {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #f0f;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            width: 100%;
+            background: transparent;
+            -webkit-appearance: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #0f0;
+            cursor: pointer;
+            margin-top: -5px;
+            box-shadow: 0 0 5px #0f0;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            display: inline-block;
+        }
+
+        .legend-cyan { background-color: #0ff; box-shadow: 0 0 5px #0ff; }
+        .legend-magenta { background-color: #f0f; box-shadow: 0 0 5px #f0f; }
+        .legend-lime { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
+        .legend-white { background-color: #fff; }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            padding: 5px 10px;
+            border: 1px solid #555;
+            pointer-events: none;
+            display: none;
+            font-size: 0.8rem;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h1>B-Field Symmetry</h1>
+        <p>Visualizing the Biot-Savart Law on the axis of a current loop. See how horizontal components from opposite elements cancel out.</p>
+        
+        <div class="control-group">
+            <label>Point Height (z) <span id="val-z">2.0</span></label>
+            <input type="range" id="slider-z" min="-6" max="6" step="0.1" value="2.5">
+        </div>
+
+        <div class="control-group">
+            <label>Current Element Angle <span id="val-angle">0°</span></label>
+            <input type="range" id="slider-angle" min="0" max="180" step="1" value="45">
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="dot legend-cyan"></span>Current Loop (I)</div>
+            <div class="legend-item"><span class="dot legend-magenta"></span>dB Vectors (Total)</div>
+            <div class="legend-item"><span class="dot legend-lime"></span>Components (dB<sub>z</sub>, dB<sub>⊥</sub>)</div>
+            <div class="legend-item"><span class="dot legend-white"></span>Axis Point P</div>
+        </div>
+    </div>
+
+    <div id="container"></div>
+
+    <!-- Import Three.js as ES Modules -->
+    <script type="text/offline-module">
+        import * as THREE from '../vendor/three/build/three.module.js';
+        import { OrbitControls } from '../vendor/three/examples/jsm/controls/OrbitControls.js';
+
+        // --- Configuration ---
+        const CONFIG = {
+            loopRadius: 4,
+            tubeRadius: 0.05,
+            arrowHeadLength: 0.4,
+            arrowHeadWidth: 0.3,
+            colors: {
+                loop: 0x00ffff,    // Cyan
+                dB: 0xff00ff,      // Magenta
+                comp: 0x00ff00,    // Lime
+                axis: 0x333333,
+                point: 0xffffff,
+                source: 0xffff00   // Yellow for source elements
+            }
+        };
+
+        // --- Global Variables ---
+        let scene, camera, renderer, controls;
+        let loopMesh, pointMesh, zAxisLine;
+        
+        // Dynamic Objects
+        let source1, source2;
+        let arrowB1, arrowB2;
+        let arrowH1, arrowH2;
+        let arrowV1, arrowV2;
+        let line1, line2; // Connectors for visual projection
+        
+        // State
+        let state = {
+            z: 2.5,
+            angle: 45 * (Math.PI / 180) // Convert to radians
+        };
+
+        // --- Initialization ---
+        function init() {
+            const container = document.getElementById('container');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(10, 8, 12);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights (Ambient for base visibility + Point for specularity)
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambLight);
+            const pLight = new THREE.PointLight(0xffffff, 1);
+            pLight.position.set(10, 20, 10);
+            scene.add(pLight);
+
+            createStaticObjects();
+            createDynamicObjects();
+            
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('slider-z').addEventListener('input', updateState);
+            document.getElementById('slider-angle').addEventListener('input', updateState);
+
+            animate();
+            updateVisualization(); // Initial draw
+        }
+
+        function createStaticObjects() {
+            // 1. Current Loop (Torus)
+            const geometry = new THREE.TorusGeometry(CONFIG.loopRadius, CONFIG.tubeRadius, 16, 100);
+            const material = new THREE.MeshBasicMaterial({ color: CONFIG.colors.loop });
+            loopMesh = new THREE.Mesh(geometry, material);
+            loopMesh.rotation.x = Math.PI / 2; // Lay flat on XZ plane (which is actually XY in ThreeJS default if we rotate camera, but let's rotate mesh to sit on XZ)
+            // Wait, standard physics: Loop in XY plane, Z is axis.
+            // ThreeJS: Y is up. So we rotate loop 90deg around X to lie in XZ plane? No, let's keep ThreeJS coords: Y is up.
+            // Physics mapping: z_phys -> y_threejs. x_phys -> x_threejs. y_phys -> z_threejs.
+            // Let's stick to: Loop in XZ plane (Y=0). Axis is Y-axis.
+            scene.add(loopMesh);
+
+            // Current Direction Arrows on the loop
+            const arrowGeo = new THREE.ConeGeometry(0.2, 0.6, 8);
+            const arrowMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.loop });
+            
+            // Arrow 1
+            const arr1 = new THREE.Mesh(arrowGeo, arrowMat);
+            arr1.position.set(CONFIG.loopRadius, 0, 0);
+            arr1.rotation.x = Math.PI/2; // Pointing along tangent
+            scene.add(arr1);
+            
+            // Arrow 2
+            const arr2 = new THREE.Mesh(arrowGeo, arrowMat);
+            arr2.position.set(-CONFIG.loopRadius, 0, 0);
+            arr2.rotation.x = -Math.PI/2;
+            scene.add(arr2);
+
+            // 2. The Axis Line (Y-axis)
+            const points = [];
+            points.push(new THREE.Vector3(0, -10, 0));
+            points.push(new THREE.Vector3(0, 10, 0));
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineDashedMaterial({ 
+                color: 0x555555, 
+                dashSize: 0.5, 
+                gapSize: 0.3 
+            });
+            zAxisLine = new THREE.Line(lineGeo, lineMat);
+            zAxisLine.computeLineDistances();
+            scene.add(zAxisLine);
+
+            // 3. Point P
+            const sphereGeo = new THREE.SphereGeometry(0.15, 16, 16);
+            const sphereMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.point });
+            pointMesh = new THREE.Mesh(sphereGeo, sphereMat);
+            scene.add(pointMesh);
+        }
+
+        function createDynamicObjects() {
+            // Helpers to create arrows
+            function createArrow(color) {
+                return new THREE.ArrowHelper(
+                    new THREE.Vector3(0, 1, 0), 
+                    new THREE.Vector3(0, 0, 0), 
+                    1, 
+                    color, 
+                    CONFIG.arrowHeadLength, 
+                    CONFIG.arrowHeadWidth
+                );
+            }
+
+            // Source Elements (bits of wire)
+            const sourceGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const sourceMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.source });
+            source1 = new THREE.Mesh(sourceGeo, sourceMat);
+            source2 = new THREE.Mesh(sourceGeo, sourceMat);
+            scene.add(source1);
+            scene.add(source2);
+
+            // Vectors for Element 1
+            arrowB1 = createArrow(CONFIG.colors.dB);
+            arrowH1 = createArrow(CONFIG.colors.comp);
+            arrowV1 = createArrow(CONFIG.colors.comp);
+            scene.add(arrowB1);
+            scene.add(arrowH1);
+            scene.add(arrowV1);
+
+            // Vectors for Element 2
+            arrowB2 = createArrow(CONFIG.colors.dB);
+            arrowH2 = createArrow(CONFIG.colors.comp);
+            arrowV2 = createArrow(CONFIG.colors.comp);
+            scene.add(arrowB2);
+            scene.add(arrowH2);
+            scene.add(arrowV2);
+        }
+
+        function updateState(e) {
+            if(e.target.id === 'slider-z') {
+                state.z = parseFloat(e.target.value);
+                document.getElementById('val-z').innerText = state.z.toFixed(1);
+            } else {
+                const deg = parseFloat(e.target.value);
+                state.angle = deg * (Math.PI / 180);
+                document.getElementById('val-angle').innerText = deg + "°";
+            }
+            updateVisualization();
+        }
+
+        function updateVisualization() {
+            const R = CONFIG.loopRadius;
+            const y = state.z; // Y in ThreeJS is Z in physics problem
+            
+            // Update Point P position
+            pointMesh.position.set(0, y, 0);
+
+            // --- Element 1 ---
+            // Position on ring (XZ plane)
+            const theta = state.angle;
+            const x1 = R * Math.cos(theta);
+            const z1 = R * Math.sin(theta);
+            
+            source1.position.set(x1, 0, z1);
+            // Orient source box to align with tangent
+            source1.rotation.y = -theta; 
+
+            // Tangent Vector (current direction)
+            // At angle theta, tangent is (-sin, 0, cos)
+            const tan1 = new THREE.Vector3(-Math.sin(theta), 0, Math.cos(theta));
+
+            // Radius Vector (Source to Point)
+            // r = P - Source
+            const rVec1 = new THREE.Vector3(0 - x1, y - 0, 0 - z1);
+            const dist = rVec1.length();
+            
+            // Biot Savart: dB ~ dl x r
+            // We want direction only for visualization, scaled for visibility
+            const dB1 = new THREE.Vector3().crossVectors(tan1, rVec1).normalize();
+            
+            // Scaling factor for visualization
+            const scale = 2.5; 
+            
+            // Set Arrow B1
+            arrowB1.position.copy(pointMesh.position);
+            arrowB1.setDirection(dB1);
+            arrowB1.setLength(scale);
+
+            // Components B1
+            const dB1_y = new THREE.Vector3(0, dB1.y, 0); // Vertical
+            const dB1_h = new THREE.Vector3(dB1.x, 0, dB1.z); // Horizontal
+
+            arrowV1.position.copy(pointMesh.position);
+            arrowV1.setDirection(new THREE.Vector3(0, 1, 0)); // Always up if y>0? Let's check logic
+            // Actually, if cross product y component is negative, we need to flip.
+            // But for a loop, axial field is always along axis.
+            // Let's just project dB1
+            if(dB1.y !== 0) {
+                arrowV1.setDirection(dB1_y.clone().normalize());
+                arrowV1.setLength(Math.abs(dB1.y) * scale);
+            } else {
+                arrowV1.setLength(0);
+            }
+
+            if(dB1_h.lengthSq() > 0.0001) {
+                arrowH1.position.copy(pointMesh.position);
+                arrowH1.setDirection(dB1_h.clone().normalize());
+                arrowH1.setLength(dB1_h.length() * scale);
+            } else {
+                arrowH1.setLength(0);
+            }
+
+
+            // --- Element 2 (Symmetric, theta + PI) ---
+            const theta2 = theta + Math.PI;
+            const x2 = R * Math.cos(theta2);
+            const z2 = R * Math.sin(theta2);
+
+            source2.position.set(x2, 0, z2);
+            source2.rotation.y = -theta2;
+
+            const tan2 = new THREE.Vector3(-Math.sin(theta2), 0, Math.cos(theta2));
+            const rVec2 = new THREE.Vector3(0 - x2, y - 0, 0 - z2);
+            
+            const dB2 = new THREE.Vector3().crossVectors(tan2, rVec2).normalize();
+
+            // Set Arrow B2
+            arrowB2.position.copy(pointMesh.position);
+            arrowB2.setDirection(dB2);
+            arrowB2.setLength(scale);
+
+            // Components B2
+            const dB2_y = new THREE.Vector3(0, dB2.y, 0);
+            const dB2_h = new THREE.Vector3(dB2.x, 0, dB2.z);
+
+            if(dB2.y !== 0) {
+                arrowV2.position.copy(pointMesh.position);
+                arrowV2.setDirection(dB2_y.clone().normalize());
+                arrowV2.setLength(Math.abs(dB2.y) * scale);
+            } else {
+                arrowV2.setLength(0);
+            }
+
+            if(dB2_h.lengthSq() > 0.0001) {
+                arrowH2.position.copy(pointMesh.position);
+                arrowH2.setDirection(dB2_h.clone().normalize());
+                arrowH2.setLength(dB2_h.length() * scale);
+            } else {
+                arrowH2.setLength(0);
+            }
+
+            // --- Symmetry Check Visuals ---
+            // We want to highlight that ArrowH1 and ArrowH2 are opposite.
+            // They originate from the same point.
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Boot
+        init();
+
+    </script>
+<script defer data-offline-bundle src="dd_derivation_field_on_axis.0.offline.js"></script>
+
+
+</body>
+</html>

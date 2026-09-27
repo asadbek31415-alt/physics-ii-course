@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Symmetries</title>
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #eee; }
+        
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: min(310px, calc(100vw - 32px));
+            background: rgba(17, 26, 37, 0.92);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            box-sizing: border-box;
+        }
+
+        .panel-title {
+            color: #27aaff;
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .panel-kicker {
+            color: #b9c8d8;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin: 0 0 2px;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid #555;
+            color: #d7e4f4;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: left;
+        }
+
+        button:hover { background: #444; color: #fff; }
+        
+        button.active {
+            background: #3498db;
+            color: #fff;
+            border-color: #3498db;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.4);
+        }
+
+        #canvas-label {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+        h2 { margin: 0; font-size: 1.35rem; color: #fff; }
+        p { margin: 5px 0 0; color: #bdd0e4; font-size: 0.9rem; line-height: 1.45; }
+        .key { font-size: 0.8rem; margin-top: 5px; color: #888; }
+        .dot-red { color: #ff5252; font-weight: bold; }
+        .dot-green { color: #69f0ae; font-weight: bold; }
+        .result-card {
+            background: rgba(5, 12, 20, 0.78);
+            border: 1px solid rgba(80, 116, 151, 0.72);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .result-card strong {
+            color: #ffd400;
+        }
+        .equation {
+            margin-top: 8px;
+            color: #fff;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+        .legend {
+            display: grid;
+            gap: 7px;
+            border-top: 1px solid rgba(141, 163, 185, 0.25);
+            padding-top: 10px;
+            color: #c7d6e8;
+            font-size: 0.86rem;
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .swatch {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            flex: 0 0 auto;
+        }
+        .swatch.charge { background: #ff5252; }
+        .swatch.surface { background: #69f0ae; }
+        .swatch.field { background: #ffff00; }
+        @media (max-width: 760px) {
+            #ui-container {
+                width: 100%;
+                gap: 10px;
+                padding: 12px;
+            }
+            .mode-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            button {
+                text-align: center;
+                padding: 9px 6px;
+            }
+            .legend {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+            .legend-row {
+                align-items: flex-start;
+                font-size: 0.78rem;
+            }
+        }
+    </style>
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-label">
+        <h2 id="title">Spherical Symmetry</h2>
+        <p id="desc">Gaussian Surface: Concentric Sphere</p>
+    </div>
+
+    <div id="ui-container">
+        <div>
+            <h3 class="panel-title">Gaussian Symmetry</h3>
+            <p>Choose the charge symmetry, then match it with the Gaussian surface that makes <strong>E</strong> constant or zero on each useful part of the surface.</p>
+        </div>
+        <div>
+            <p class="panel-kicker">Symmetry</p>
+            <div class="mode-grid">
+                <button id="btn-sphere" class="active" onclick="setMode('sphere')">Spherical</button>
+                <button id="btn-cylinder" onclick="setMode('cylinder')">Cylindrical</button>
+                <button id="btn-plane" onclick="setMode('plane')">Planar</button>
+            </div>
+        </div>
+        <div class="result-card">
+            <p class="panel-kicker">Current Match</p>
+            <p id="surface-text"><strong>Surface:</strong> concentric sphere around a point charge.</p>
+            <div class="equation" id="equation-text">Flux: E(4 pi r^2) = Qenc / epsilon0</div>
+        </div>
+        <div class="legend">
+            <div class="legend-row"><span class="swatch charge"></span><span>Charge source</span></div>
+            <div class="legend-row"><span class="swatch surface"></span><span>Gaussian surface</span></div>
+            <div class="legend-row"><span class="swatch field"></span><span>Electric field</span></div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(6, 4, 8);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+        const backLight = new THREE.DirectionalLight(0x4444ff, 0.3);
+        backLight.position.set(-5, -5, -10);
+        scene.add(backLight);
+
+        // --- MATERIALS ---
+        const chargeMat = new THREE.MeshPhongMaterial({ color: 0xff5252, shininess: 30 });
+        const gaussMat = new THREE.MeshPhongMaterial({ 
+            color: 0x69f0ae, 
+            transparent: true, 
+            opacity: 0.3, 
+            side: THREE.DoubleSide,
+            wireframe: false,
+            depthWrite: false
+        });
+        const wireMat = new THREE.LineBasicMaterial({ color: 0x69f0ae, transparent: true, opacity: 0.5 });
+        const arrowColor = 0xffff00;
+
+        // --- GROUPS ---
+        const sphereGroup = new THREE.Group();
+        const cylGroup = new THREE.Group();
+        const planeGroup = new THREE.Group();
+        scene.add(sphereGroup);
+        scene.add(cylGroup);
+        scene.add(planeGroup);
+
+        // --- 1. SPHERICAL ---
+        function buildSphere() {
+            // Charge (Point/Solid Sphere)
+            const qGeo = new THREE.SphereGeometry(0.8, 32, 32);
+            sphereGroup.add(new THREE.Mesh(qGeo, chargeMat));
+
+            // Gaussian Surface (Larger Sphere)
+            const gGeo = new THREE.SphereGeometry(2.2, 32, 32);
+            sphereGroup.add(new THREE.Mesh(gGeo, gaussMat));
+            
+            // Wireframe overlay for visibility
+            const edges = new THREE.EdgesGeometry(gGeo);
+            sphereGroup.add(new THREE.LineSegments(edges, wireMat));
+
+            // Field Vectors
+            const dirs = [
+                new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0),
+                new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0),
+                new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)
+            ];
+            dirs.forEach(dir => {
+                const arrow = new THREE.ArrowHelper(dir, dir.clone().multiplyScalar(2.2), 1.0, arrowColor, 0.3, 0.2);
+                sphereGroup.add(arrow);
+            });
+        }
+
+        // --- 2. CYLINDRICAL ---
+        function buildCylinder() {
+            // Charge (Line/Rod)
+            const qGeo = new THREE.CylinderGeometry(0.2, 0.2, 8, 16);
+            const qMesh = new THREE.Mesh(qGeo, chargeMat);
+            cylGroup.add(qMesh);
+
+            // Gaussian Surface (Coaxial Cylinder)
+            const gGeo = new THREE.CylinderGeometry(1.5, 1.5, 4, 32, 1, true); // Open ended for visual clarity of "infinite"
+            const gMesh = new THREE.Mesh(gGeo, gaussMat);
+            cylGroup.add(gMesh);
+
+            // Caps (Wireframe only to imply closed surface but keep inside visible)
+            const capGeo = new THREE.CircleGeometry(1.5, 32);
+            const topCap = new THREE.Line(new THREE.EdgesGeometry(capGeo), wireMat);
+            topCap.rotation.x = -Math.PI/2; topCap.position.y = 2;
+            cylGroup.add(topCap);
+            const botCap = new THREE.Line(new THREE.EdgesGeometry(capGeo), wireMat);
+            botCap.rotation.x = Math.PI/2; botCap.position.y = -2;
+            cylGroup.add(botCap);
+
+            // Field Vectors (Radial)
+            for(let i=0; i<8; i++) {
+                const theta = (i/8) * Math.PI * 2;
+                const x = Math.cos(theta);
+                const z = Math.sin(theta);
+                const dir = new THREE.Vector3(x, 0, z);
+                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(x*1.5, 0, z*1.5), 1.0, arrowColor, 0.3, 0.2);
+                cylGroup.add(arrow);
+            }
+        }
+
+        // --- 3. PLANAR ---
+        function buildPlane() {
+            // Charge (Infinite Sheet)
+            const qGeo = new THREE.PlaneGeometry(8, 8);
+            const qMesh = new THREE.Mesh(qGeo, new THREE.MeshPhongMaterial({ color: 0xff5252, side: THREE.DoubleSide, transparent:true, opacity:0.8 }));
+            qMesh.rotation.x = -Math.PI/2;
+            planeGroup.add(qMesh);
+
+            // Gaussian Surface (Pillbox / Cylinder)
+            // It pierces the plane.
+            const gGeo = new THREE.CylinderGeometry(0.8, 0.8, 3, 16);
+            const gMesh = new THREE.Mesh(gGeo, gaussMat);
+            // Rotate to stand vertically (Three.js cylinder is Y-up, plane is flat on XZ)
+            // Actually, cylinder defaults to vertical. Plane is horizontal.
+            // Let's make the pillbox vertical piercing the horizontal plane.
+            planeGroup.add(gMesh);
+            
+            // Wireframe edges
+            const edges = new THREE.EdgesGeometry(gGeo);
+            planeGroup.add(new THREE.LineSegments(edges, wireMat));
+
+            // Field Vectors (Up and Down from caps)
+            const up = new THREE.Vector3(0, 1, 0);
+            const down = new THREE.Vector3(0, -1, 0);
+            
+            // Top Cap Arrow
+            planeGroup.add(new THREE.ArrowHelper(up, new THREE.Vector3(0, 1.5, 0), 1.0, arrowColor, 0.3, 0.2));
+            // Bottom Cap Arrow
+            planeGroup.add(new THREE.ArrowHelper(down, new THREE.Vector3(0, -1.5, 0), 1.0, arrowColor, 0.3, 0.2));
+        }
+
+        // --- INIT ---
+        buildSphere();
+        buildCylinder();
+        buildPlane();
+
+        // Hide all initially except sphere
+        cylGroup.visible = false;
+        planeGroup.visible = false;
+
+        // --- UI LOGIC ---
+        window.setMode = function(mode) {
+            // Reset Visibility
+            sphereGroup.visible = false;
+            cylGroup.visible = false;
+            planeGroup.visible = false;
+
+            // Reset Buttons
+            document.querySelectorAll('#ui-container .mode-grid button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+
+            // Update Text
+            const title = document.getElementById('title');
+            const desc = document.getElementById('desc');
+            const surfaceText = document.getElementById('surface-text');
+            const equationText = document.getElementById('equation-text');
+
+            if (mode === 'sphere') {
+                sphereGroup.visible = true;
+                title.innerText = "Spherical Symmetry";
+                desc.innerText = "Gaussian Surface: Concentric Sphere";
+                surfaceText.innerHTML = "<strong>Surface:</strong> concentric sphere around a point charge.";
+                equationText.innerText = "Flux: E(4 pi r^2) = Qenc / epsilon0";
+                camera.position.set(6, 4, 8);
+            } else if (mode === 'cylinder') {
+                cylGroup.visible = true;
+                title.innerText = "Cylindrical Symmetry";
+                desc.innerText = "Gaussian Surface: Coaxial Cylinder";
+                surfaceText.innerHTML = "<strong>Surface:</strong> cylinder coaxial with a long line charge.";
+                equationText.innerText = "Flux: E(2 pi rL) = lambda L / epsilon0";
+                camera.position.set(6, 6, 6);
+            } else if (mode === 'plane') {
+                planeGroup.visible = true;
+                title.innerText = "Planar Symmetry";
+                desc.innerText = "Gaussian Surface: Pillbox";
+                surfaceText.innerHTML = "<strong>Surface:</strong> pillbox crossing a broad charged sheet.";
+                equationText.innerText = "Flux: 2EA = sigma A / epsilon0";
+                camera.position.set(6, 5, 6);
+            }
+        };
+
+        // --- ANIMATION ---
+        function resizeRenderer() {
+            const width = Math.max(1, renderer.domElement.clientWidth || window.innerWidth);
+            const height = Math.max(1, renderer.domElement.clientHeight || window.innerHeight);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeRenderer();
+        });
+        resizeRenderer();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+<script defer data-offline-bundle src="gauss_symmetry.0.offline.js"></script>
+
+
+</body>
+</html>

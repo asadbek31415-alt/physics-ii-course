@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Electric Field Visualizations</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = { 
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --accent-purple: #bb86fc;
+        }
+
+        body { 
+            margin: 0; 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-primary); 
+            line-height: 1.7; 
+        }
+
+        /* Header & Nav */
+        .header-bar { 
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color); 
+            padding: 1rem 0;
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        
+        /* Layout */
+        .container { width: 90%; max-width: 960px; margin: 0 auto; padding: 2rem 20px; }
+        
+        /* Typography */
+        h1 { font-size: 2.5rem; border-bottom: 2px solid var(--accent-color); padding-bottom: 1rem; margin-bottom: 2rem; }
+        h2 { color: var(--accent-color); margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        h3 { color: #fff; margin-top: 1.5rem; font-size: 1.2rem; }
+        p { margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-secondary); }
+        ol, ul { color: var(--text-secondary); font-size: 1.05rem; padding-left: 1.4rem; }
+        li { margin-bottom: 0.65rem; }
+
+        /* Cards & Boxes */
+        section { 
+            background-color: var(--card-bg); 
+            border: 1px solid var(--border-color); 
+            border-radius: 12px; 
+            padding: 2rem; 
+            margin-bottom: 2rem; 
+        }
+        
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+        .concept-box strong { color: var(--accent-color); display: block; margin-bottom: 0.5rem; font-size: 1.1em; }
+
+        .formula-box { 
+            background-color: rgba(0, 0, 0, 0.3); 
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem; 
+            margin: 1.5rem 0; 
+            border-radius: 8px; 
+            text-align: center;
+            font-size: 1.3rem;
+        }
+        
+        /* Experiment Cards */
+        .experiment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .experiment-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .experiment-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-purple);
+        }
+        .experiment-card h4 { margin-top: 0; color: var(--accent-purple); font-size: 1.1rem; }
+
+        /* Simulation Embeds */
+        .sim-container {
+            width: 100%;
+            height: 640px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 3rem 0;
+            background: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Footer & Buttons */
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); margin-top: 2rem; }
+        
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                width: 92%;
+                padding: 1.5rem 0;
+            }
+
+            section {
+                padding: 1.25rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .sim-container {
+                height: 760px;
+            }
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; 
+                <a href="electrostatics_index.html">Electrostatics</a> &gt; 
+                <a href="ch1_1_electric_field.html">The Electric Field</a> &gt; 
+                Field Visualizations
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Deep Dive: Electric Field Visualizations</h1>
+
+        <p>
+            Before we dive into complex integrals, we must build a strong mental model. How does one charge "know" that another charge is nearby? Does it reach out with invisible arms?
+        </p>
+
+        <section>
+            <h2>1. What is the Electric Field?</h2>
+            
+            <div class="concept-box">
+                <strong>Action at a Distance vs. Field Theory</strong>
+                <p>
+                    Instead of saying "Charge A pushes Charge B directly," we adopt the Field perspective:
+                </p>
+                <ol>
+                    <li>Charge A modifies the space around it, creating an <strong>Electric Field ($\vec{E}$)</strong>.</li>
+                    <li>Charge B sits in this field and feels a force $\vec{F}$ exerted <em>by the field</em> at that specific location.</li>
+                </ol>
+            </div>
+
+            <p>
+                Mathematically, the electric field is simply the <strong>force per unit charge</strong>. If you place a tiny "test charge" $Q$ at a point, the field is defined as:
+            </p>
+
+            <div class="formula-box">
+                $$ \vec{E} = \frac{\vec{F}}{Q} $$
+            </div>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                (Units: Newtons per Coulomb, N/C)
+            </p>
+        </section>
+
+        <section>
+            <h2>2. Interactive Simulator</h2>
+            <p>
+                Use the simulator below to visualize how charges alter the space around them. Add charges in 3D, switch to a 2D top view when useful, compare field lines with vector arrows, and notice that the probe arrow is just the field vector at one chosen point.
+            </p>
+            
+            <!-- Embedded Simulator -->
+            <div class="sim-container">
+                <iframe src="simulators/electric-field-simulator-v3.html" title="Electric Field Simulator"></iframe>
+            </div>
+        </section>
+
+        <section>
+            <h2>3. Understanding Field Lines</h2>
+            <p>
+                The simulator above draws yellow curves through space. These are <strong>field lines</strong>. They are not physical strings, but they are useful because their direction matches the electric field direction at each point.
+            </p>
+
+            <div class="experiment-grid">
+                <div class="experiment-card">
+                    <h4>1. Direction</h4>
+                    <p>Field lines always originate from <strong>Positive (+)</strong> charges and terminate on <strong>Negative (-)</strong> charges (or go to infinity).</p>
+                </div>
+                <div class="experiment-card">
+                    <h4>2. Strength (Density)</h4>
+                    <p>The <strong>density</strong> of the lines represents the strength of the field. Where lines are bunched close together (near the charge), the field is strong. Where they spread out, the field is weak.</p>
+                </div>
+                <div class="experiment-card">
+                    <h4>3. The Tangent</h4>
+                    <p>At any specific point on a curved line, the direction of the electric force vector is <strong>tangent</strong> to the line.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>4. Experiments to Try</h2>
+            <p>Try these specific setups in the simulator above to build your intuition:</p>
+
+            <div class="experiment-grid">
+                <div class="experiment-card">
+                    <h4>The Dipole</h4>
+                    <p><strong>Setup:</strong> Place one +5nC charge and one -5nC charge near each other.</p>
+                    <p><strong>Observe:</strong> Notice how the lines connect directly from the positive to the negative. This is the classic "magnetic" shape (though this is electric).</p>
+                </div>
+
+                <div class="experiment-card">
+                    <h4>The Zero-Field Point</h4>
+                    <p><strong>Setup:</strong> Place two positive charges (+5nC and +5nC) side by side.</p>
+                    <p><strong>Observe:</strong> Look at the space exactly between them. The field lines repel each other, leaving a gap. The field is <strong>zero</strong> in the center because the pushes cancel out.</p>
+                </div>
+
+                <div class="experiment-card">
+                    <h4>Single Charge to Infinity</h4>
+                    <p><strong>Setup:</strong> Use the Single + or Single - preset.</p>
+                    <p><strong>Observe:</strong> With no opposite charge nearby, field lines do not terminate on another source. They continue to the edge of the view, representing lines that go to or come from infinity.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer></footer>
+
+</body>
+</html>

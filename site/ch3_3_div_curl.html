@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Flux Scanner</title>
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0d1117; font-family: 'Segoe UI', sans-serif; color: #c9d1d9; display: flex; height: 100vh; }
+        
+        /* Flex Layout Fix */
+        #ui-panel {
+            flex: 0 0 320px; /* Fixed width */
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        h3 { margin: 0; color: #58a6ff; font-size: 1.1rem; }
+        p { font-size: 0.85rem; color: #8b949e; margin: 5px 0; line-height: 1.4; }
+
+        .control-group { background: #21262d; padding: 12px; border-radius: 6px; border: 1px solid #30363d; }
+        .group-title { font-weight: 600; font-size: 0.85rem; color: #c9d1d9; margin-bottom: 8px; display: block; }
+
+        .btn-row { display: flex; gap: 5px; margin-bottom: 8px; }
+        button {
+            flex: 1; padding: 8px; border: 1px solid rgba(240,246,252,0.1);
+            background: #30363d; color: #c9d1d9; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
+        }
+        button:hover { background: #3f4650; }
+        button.active { background: #1f6feb; color: white; border-color: #1f6feb; }
+        button.clear-btn { background: #da3633; color: white; width: 100%; margin-top: 5px;}
+        
+        #flux-readout {
+            text-align: center; background: #0d1117; border: 1px solid #30363d;
+            border-radius: 6px; padding: 12px; margin-top: 5px;
+        }
+        #flux-val { font-family: monospace; font-size: 1.4rem; font-weight: bold; color: #8b949e; }
+        #flux-label { font-size: 0.8rem; color: #8b949e; margin-top: 4px; }
+
+        #canvas-container { flex: 1; position: relative; overflow: hidden; }
+        
+        .legend { font-size: 0.75rem; display: flex; justify-content: space-between; margin-top: 10px;}
+        .l-item { display: flex; align-items: center; gap: 5px; }
+        .swatch { width: 10px; height: 10px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <div>
+            <h3>Flux Scanner 3D</h3>
+            <p>Drag the translucent sphere to measure flux:</p>
+            <div id="tex-formula"></div>
+        </div>
+
+        <div class="control-group">
+            <span class="group-title">1. Field Mode</span>
+            <div class="btn-row">
+                <button id="btn-elec" class="active" onclick="setMode('electric')">Electrostatic (E)</button>
+                <button id="btn-mag" onclick="setMode('magnetic')">Magnetostatic (B)</button>
+            </div>
+            <p id="mode-desc">Electric charges act as sources.</p>
+        </div>
+
+        <div class="control-group">
+            <span class="group-title">2. Add Sources</span>
+            <!-- Electric Controls -->
+            <div id="elec-controls">
+                <div class="btn-row">
+                    <button onclick="addCharge(1)">Add (+)</button>
+                    <button onclick="addCharge(-1)">Add (-)</button>
+                </div>
+            </div>
+            <!-- Magnetic Controls -->
+            <div id="mag-controls" style="display:none;">
+                <div class="btn-row">
+                    <button onclick="addCurrentLoop()">Add Current Loop</button>
+                </div>
+                <div class="btn-row">
+                    <button onclick="tryMonopole()">🧪 "Hypothetical Monopole"</button>
+                </div>
+            </div>
+            <button class="clear-btn" onclick="clearScene()">Clear Scene</button>
+        </div>
+
+        <div class="control-group">
+            <span class="group-title">3. Net Flux (Gauss's Law)</span>
+            <div id="flux-readout">
+                <div id="flux-val">0.00</div>
+                <div id="flux-label">Zero Divergence</div>
+            </div>
+            <div class="legend">
+                <div class="l-item"><div class="swatch" style="background:#ff4757"></div> Leaving</div>
+                <div class="l-item"><div class="swatch" style="background:#1e90ff"></div> Entering</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Scripts -->
+    <script src="vendor/three-legacy/three.min.js"></script>
+    <script src="vendor/three-legacy/OrbitControls.js"></script>
+
+    <script>
+        // --- 1. Math Rendering ---
+        document.addEventListener("DOMContentLoaded", function() {
+            katex.render("\\oint \\mathbf{F} \\cdot d\\mathbf{a}", document.getElementById('tex-formula'));
+            setMode('electric');
+        });
+
+        // --- 2. Three.js Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0d1117);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(20, 15, 20);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Grid
+        const grid = new THREE.GridHelper(50, 50, 0x30363d, 0x161b22);
+        scene.add(grid);
+
+        // --- 3. Simulation State ---
+        let mode = 'electric';
+        let sources = []; 
+        let currentLoops = [];
+        let arrows = []; // Arrows attached to the probe surface
+        const PROBE_RADIUS = 4;
+        
+        // --- 4. The Probe (Gaussian Sphere) ---
+        const probeGeo = new THREE.IcosahedronGeometry(PROBE_RADIUS, 1);
+        const probeMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff,
+            transparent: true, 
+            opacity: 0.1,
+            wireframe: true
+        });
+        const probe = new THREE.Mesh(probeGeo, probeMat);
+        probe.position.set(0, 0, 0);
+        scene.add(probe);
+
+        // Create arrows on the probe surface
+        const posAttr = probeGeo.attributes.position;
+        const arrowGroup = new THREE.Group();
+        probe.add(arrowGroup);
+
+        for (let i = 0; i < posAttr.count; i++) {
+            // Get vertex position relative to sphere center
+            const v = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+            const dir = v.clone().normalize(); // Normal vector
+
+            // Create arrow (Cone + Line for better visibility?) Just Cone for now
+            const arrowLen = 1.5;
+            const arrowColor = 0x888888;
+            const arrowHelper = new THREE.ArrowHelper(dir, v, arrowLen, arrowColor, 0.5, 0.3);
+            
+            // Store original normal direction for reference
+            arrowHelper.userData = { normal: dir.clone(), origin: v.clone() };
+            arrowGroup.add(arrowHelper);
+            arrows.push(arrowHelper);
+        }
+
+        // --- 5. Physics Logic ---
+
+        // Biot-Savart Segment Pre-calc
+        function createLoopSegments(radius, segments) {
+            let segs = [];
+            for(let i=0; i<segments; i++) {
+                let theta = (i/segments) * Math.PI * 2;
+                let nextTheta = ((i+1)/segments) * Math.PI * 2;
+                let p1 = new THREE.Vector3(Math.cos(theta)*radius, 0, Math.sin(theta)*radius);
+                let p2 = new THREE.Vector3(Math.cos(nextTheta)*radius, 0, Math.sin(nextTheta)*radius);
+                // dl vector
+                let dl = new THREE.Vector3().subVectors(p2, p1);
+                // mid point
+                let mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+                segs.push({ pos: mid, dl: dl });
+            }
+            return segs;
+        }
+
+        function calculateField(pos) {
+            let E = new THREE.Vector3(0, 0, 0);
+            
+            if(mode === 'electric') {
+                sources.forEach(src => {
+                    const rVec = new THREE.Vector3().subVectors(pos, src.position);
+                    const distSq = rVec.lengthSq();
+                    const dist = Math.sqrt(distSq);
+                    if(dist < 0.5) return;
+                    
+                    const mag = src.charge * 15 / distSq; // Arbitrary scale constant
+                    const contribution = rVec.normalize().multiplyScalar(mag);
+                    E.add(contribution);
+                });
+            } else {
+                // Biot Savart Summation
+                currentLoops.forEach(loop => {
+                    // Loop is at loop.position, assumes flat on XZ plane for simplicity
+                    // Convert pos to local space of loop
+                    const localPos = pos.clone().sub(loop.mesh.position);
+                    
+                    loop.segments.forEach(seg => {
+                        // r = vector from source (seg) to point (localPos)
+                        const rVec = new THREE.Vector3().subVectors(localPos, seg.pos);
+                        const distSq = rVec.lengthSq();
+                        const dist = Math.sqrt(distSq);
+                        if(dist < 0.5) return;
+
+                        // dl x r
+                        const cross = new THREE.Vector3().crossVectors(seg.dl, rVec);
+                        // B ~ dl x r / r^3
+                        cross.multiplyScalar(1 / (dist*dist*dist));
+                        E.add(cross.multiplyScalar(5)); // Scale factor
+                    });
+                });
+            }
+            return E;
+        }
+
+        function updateProbe() {
+            let totalFlux = 0;
+            
+            // For each arrow on the surface
+            arrows.forEach(arrow => {
+                // Get world position of the arrow base
+                const worldPos = arrow.userData.origin.clone().applyMatrix4(probe.matrixWorld);
+                const surfaceNormal = arrow.userData.normal.clone(); // Since probe doesn't rotate, this is fine
+                
+                // Calculate Field Vector at this surface point
+                const field = calculateField(worldPos);
+                const mag = field.length();
+
+                if(mag > 0.1) {
+                    arrow.visible = true;
+                    // Orient arrow to match field direction
+                    arrow.setDirection(field.clone().normalize());
+                    
+                    // Length proportional to strength (clamped)
+                    const len = Math.min(mag, 2.5);
+                    arrow.setLength(len, 0.4*len, 0.2*len);
+
+                    // Color based on Dot Product (Entering or Leaving?)
+                    // Flux = E dot Normal
+                    const fluxContribution = field.dot(surfaceNormal);
+                    totalFlux += fluxContribution;
+
+                    if(fluxContribution > 0.1) {
+                        // Leaving (Source-like local behavior)
+                        arrow.setColor(0xff4757); // Red
+                    } else if (fluxContribution < -0.1) {
+                        // Entering (Sink-like local behavior)
+                        arrow.setColor(0x1e90ff); // Blue
+                    } else {
+                        arrow.setColor(0x888888); // Tangential
+                    }
+                } else {
+                    arrow.visible = false;
+                }
+            });
+
+            updateUI(totalFlux);
+        }
+
+        // --- 6. Interaction ---
+
+        function setMode(m) {
+            mode = m;
+            clearScene();
+            document.getElementById('btn-elec').className = m==='electric'?'active':'';
+            document.getElementById('btn-mag').className = m==='magnetic'?'active':'';
+            document.getElementById('elec-controls').style.display = m==='electric'?'block':'none';
+            document.getElementById('mag-controls').style.display = m==='magnetic'?'block':'none';
+            
+            const desc = document.getElementById('mode-desc');
+            if(m==='electric') {
+                desc.innerHTML = "Electric charges are sources/sinks.<br>Net flux $\\neq 0$ if charge is enclosed.";
+                addCharge(1); // Default
+            } else {
+                desc.innerHTML = "Current Loops create circulation.<br>Lines entering must equal lines leaving.";
+                addCurrentLoop(); // Default
+            }
+        }
+
+        function addCharge(val) {
+            const geo = new THREE.SphereGeometry(0.8, 16, 16);
+            const mat = new THREE.MeshBasicMaterial({ color: val > 0 ? 0xff4757 : 0x1e90ff });
+            const mesh = new THREE.Mesh(geo, mat);
+            // Random pos near center but avoiding exact 0,0,0
+            mesh.position.set((Math.random()-0.5)*10, (Math.random()-0.5)*10, (Math.random()-0.5)*10);
+            scene.add(mesh);
+            sources.push({ position: mesh.position, charge: val * 50, mesh: mesh });
+        }
+
+        function addCurrentLoop() {
+            // Visual Ring
+            const radius = 6;
+            const tubeGeo = new THREE.TorusGeometry(radius, 0.2, 8, 50);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffa502 });
+            const mesh = new THREE.Mesh(tubeGeo, mat);
+            mesh.rotation.x = Math.PI / 2; // Lie flat
+            mesh.position.set((Math.random()-0.5)*5, 0, (Math.random()-0.5)*5);
+            scene.add(mesh);
+
+            // Add Direction Arrows on the ring
+            for(let i=0; i<4; i++) {
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
+                const angle = i * (Math.PI/2);
+                cone.position.set(Math.cos(angle)*radius, Math.sin(angle)*radius, 0);
+                // Rotate to follow tangent: Tangent of circle at (cos, sin) is (-sin, cos)
+                // Look at (pos + tangent)
+                const tangent = new THREE.Vector3(-Math.sin(angle), Math.cos(angle), 0);
+                const look = cone.position.clone().add(tangent);
+                cone.lookAt(look);
+                cone.rotateX(Math.PI/2);
+                mesh.add(cone);
+            }
+
+            // Calculation Segments
+            const segments = createLoopSegments(radius, 32);
+            
+            currentLoops.push({ mesh: mesh, segments: segments });
+        }
+
+        function tryMonopole() {
+            // Creative visual:
+            // Spawn a sphere that looks like a monopole, but is actually a tiny current loop or a dipole
+            // that forces lines to loop.
+            clearScene();
+            
+            // Visual "Monopole" sphere
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(1, 16, 16),
+                new THREE.MeshBasicMaterial({color: 0xff4757, wireframe: true}) // Red "North"
+            );
+            scene.add(sphere);
+            
+            // But physically, let's treat it as a very tight solenoid/dipole
+            // We add a POS charge and a NEG charge very close to each other
+            // Or better, a small current loop inside the sphere
+            const radius = 0.5;
+            const segments = createLoopSegments(radius, 20);
+            const mesh = new THREE.Object3D(); // Invisible container
+            currentLoops.push({ mesh: mesh, segments: segments });
+            
+            // Add Label
+            const div = document.createElement('div');
+            div.style.position = 'absolute';
+            div.style.background = 'rgba(0,0,0,0.8)';
+            div.style.color = 'white';
+            div.style.padding = '5px';
+            div.style.top = '10px';
+            div.style.left = '50%';
+            div.style.transform = 'translateX(-50%)';
+            div.innerText = "Simulating Monopole... Physics check: Lines loop back!";
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function clearScene() {
+            sources.forEach(s => scene.remove(s.mesh));
+            sources = [];
+            currentLoops.forEach(l => scene.remove(l.mesh));
+            currentLoops = [];
+        }
+
+        function updateUI(flux) {
+            const valDiv = document.getElementById('flux-val');
+            const lblDiv = document.getElementById('flux-label');
+            const box = document.getElementById('flux-readout');
+            
+            // Scale flux for readability
+            let displayFlux = flux / 10;
+            if(Math.abs(displayFlux) < 0.5) displayFlux = 0;
+
+            valDiv.innerText = displayFlux.toFixed(2);
+
+            if (mode === 'magnetic') {
+                // Force nearly zero display for magnetic (numerical errors might give 0.01)
+                if(Math.abs(displayFlux) < 1.0) {
+                    valDiv.style.color = "#8b949e";
+                    lblDiv.innerText = "Net Flux ≈ 0 (Solenoidal)";
+                    box.style.borderColor = "#30363d";
+                } else {
+                    // This happens if probe intersects the wire singularity
+                    valDiv.innerText = "Error";
+                    lblDiv.innerText = "Probe intersects wire";
+                }
+            } else {
+                // Electric
+                if (displayFlux > 1) {
+                    valDiv.style.color = "#ff4757";
+                    lblDiv.innerText = "Source Enclosed";
+                    box.style.borderColor = "#ff4757";
+                } else if (displayFlux < -1) {
+                    valDiv.style.color = "#1e90ff";
+                    lblDiv.innerText = "Sink Enclosed";
+                    box.style.borderColor = "#1e90ff";
+                } else {
+                    valDiv.style.color = "#8b949e";
+                    lblDiv.innerText = "Zero Net Flux (Empty/Balanced)";
+                    box.style.borderColor = "#30363d";
+                }
+            }
+        }
+
+        // --- 7. Draggable Probe Logic ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+        let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        window.addEventListener('mousedown', (e) => {
+            mouse.x = (e.clientX / container.clientWidth) * 2 - 1;
+            mouse.y = -(e.clientY / container.clientHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(probe);
+            if(intersects.length > 0) {
+                isDragging = true;
+                controls.enabled = false;
+                dragPlane.constant = -probe.position.y; // Drag on horizontal plane at current height
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if(isDragging) {
+                mouse.x = (e.clientX / container.clientWidth) * 2 - 1;
+                mouse.y = -(e.clientY / container.clientHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const target = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, target);
+                if(target) probe.position.copy(target);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            controls.enabled = true;
+        });
+        
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            updateProbe();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+</body>
+</html>

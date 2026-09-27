@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Radiation Pressure</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ],
+                macros: {
+                    "\\vec": "\\mathbf{#1}"
+                }
+            });
+        });
+    </script>
+    <style>
+        .def-item {
+            grid-template-columns: 120px 1fr !important;
+            margin-bottom: 20px;
+        }
+
+        .def-symbol {
+            font-size: 1.1rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt;
+                <a href="ch6_3_energy_momentum.html">Energy & Momentum</a> &gt; Radiation Pressure
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Radiation Pressure</h1>
+
+        <section class="topic-section">
+            <h2>Momentum in Fields</h2>
+            <p>
+                Just as fields store energy, they also store <strong>momentum</strong>. This is a crucial realization:
+                momentum is not exclusive to matter! The momentum density $\vec{g}$ (momentum per unit volume) is given
+                by:
+            </p>
+            <div class="equation-box">
+                $$ \vec{g} = \mu_0 \epsilon_0 \vec{S} = \frac{1}{c^2} \vec{S} = \epsilon_0 (\vec{E} \times \vec{B}) $$
+            </div>
+            <p>
+                The total momentum stored in a volume $V$ is $\vec{p}_{field} = \int_V \vec{g} \, d\tau$.
+                If the field configuration changes, momentum is transferred to the charges in that volume,
+                satisfying a conservation law analogous to Poynting's Theorem.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>Radiation Pressure Cases</h2>
+            <p>
+                When a wave strikes a surface, it transfers its momentum. From Newton's Second Law, the force is the
+                rate of momentum transfer ($\vec{F} = d\vec{p}/dt$). The pressure $P$ is this force per unit area:
+            </p>
+            <div class="def-list"
+                style="background: rgba(var(--accent-rgb), 0.02); border: 1px solid var(--border-color); padding: 1.5rem;">
+                <div class="def-item">
+                    <span class="def-symbol">$P = I/c$</span>
+                    <span class="def-text"><strong>Perfect Absorption</strong>. The surface "stops" the light, absorbing
+                        $100\%$ of its momentum. $P = \langle g \rangle c = I/c$.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$P = 2I/c$</span>
+                    <span class="def-text"><strong>Perfect Reflection</strong>. The surface reverses the direction of
+                        the light. The momentum change is $\Delta p = p_{final} - p_{initial} = (-p) - p = -2p$,
+                        doubling the pressure.</span>
+                </div>
+            </div>
+            <p style="font-style: italic; margin-top: 1rem; color: var(--text-secondary);">
+                Note: In most everyday scenarios, radiation pressure is incredibly weak (a few micronewtons per square
+                meter), yet it is sufficient to push comet tails away from the sun.
+            </p>
+        </section>
+
+        <section class="topic-section"
+            style="background: rgba(231, 76, 60, 0.05); border-left: 4px solid #e74c3c; padding: 1.5rem;">
+            <h2>Advance Concept: The Maxwell Stress Tensor</h2>
+            <p>
+                In general, the force on a surface isn't always from a simple plane wave hitting it head-on. Physicists
+                use
+                the <strong>Maxwell Stress Tensor ($T_{ij}$)</strong> to calculate the total force on a volume by
+                integrating
+                over its surface:
+                $$ \vec{F}_{total} = \oint_S \overleftrightarrow{\mathbf{T}} \cdot d\vec{a} - \frac{d}{dt} \int_V
+                \vec{g} \, d\tau $$
+                The tensor $T_{ij}$ represents the flow of momentum through the surface, describing both pressure
+                (normal to surface)
+                and shear stress (tangential to surface).
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

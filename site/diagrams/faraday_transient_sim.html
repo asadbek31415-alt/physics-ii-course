@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faraday Cage Transient Response</title>
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --text-color: #e0e0e0;
+            --metal-color: #5c5c5c;
+            --cavity-color: #1a1a1a;
+            --safe-green: #51cf66;
+            --danger-red: #ff6b6b;
+            --field-yellow: #fcc419;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            gap: 10px;
+        }
+
+        .instruction {
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text-color);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 15px;
+            border: 1px solid rgba(255,255,255,0.15);
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .status-badge {
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        <div class="ui-overlay">
+            <div id="statusDisplay" class="status-badge" style="background:var(--safe-green); color:#000;">Equilibrium (E=0)</div>
+            <div class="instruction">
+                1. Drag <strong>+Q</strong> quickly. (Field penetrates!)<br>
+                2. Stop and wait. (Charges adjust, Field becomes 0)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusDisplay = document.getElementById('statusDisplay');
+
+        // --- Configuration ---
+        const OUTER_RADIUS = 120;
+        const INNER_RADIUS = 90;
+        const CHARGE_COUNT = 20;
+        
+        // --- State ---
+        let width, height, centerX, centerY;
+        let isEquilibrium = true;
+        
+        const cage = { x: 0, y: 0 };
+        
+        const externalCharge = {
+            x: 0, y: 0,
+            radius: 22,
+            dragging: false
+        };
+
+        // Induced charges on the conductor surface
+        let surfaceCharges = [];
+
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+
+            externalCharge.x = centerX + 300;
+            externalCharge.y = centerY;
+
+            // Initialize charges evenly distributed
+            for(let i=0; i<CHARGE_COUNT; i++) {
+                surfaceCharges.push({
+                    currentAngle: (i / CHARGE_COUNT) * Math.PI * 2,
+                    type: i % 2 === 0 ? 'pos' : 'neg'
+                });
+            }
+
+            loop();
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2;
+            cage.x = centerX;
+            cage.y = centerY;
+        }
+
+        // --- Physics Logic ---
+
+        function update() {
+            const dx = externalCharge.x - cage.x;
+            const dy = externalCharge.y - cage.y;
+            const angleToSource = Math.atan2(dy, dx);
+            
+            // Calculate "Equilibrium Error"
+            // This measures how far the charges are from where they SHOULD be.
+            let totalError = 0;
+
+            surfaceCharges.forEach((p, index) => {
+                // 1. Determine Target Angle (Where they want to be)
+                let targetAngle;
+                if (p.type === 'neg') {
+                    targetAngle = angleToSource; // Electrons want to be close
+                } else {
+                    targetAngle = angleToSource + Math.PI; // Positives want to be far
+                }
+
+                // Add spread so they don't stack
+                const spread = Math.sin(index * 132.1) * 1.0; 
+                targetAngle += spread;
+
+                // 2. Move towards target (Lag Effect)
+                // We use vector interpolation to handle the 0 -> 360 wrap around smoothly
+                const curX = Math.cos(p.currentAngle);
+                const curY = Math.sin(p.currentAngle);
+                const tarX = Math.cos(targetAngle);
+                const tarY = Math.sin(targetAngle);
+
+                // SPEED FACTOR: This determines how fast they adjust.
+                // Lower = more lag = easier to see the effect.
+                const speed = 0.08; 
+
+                const newX = curX + (tarX - curX) * speed;
+                const newY = curY + (tarY - curY) * speed;
+
+                p.currentAngle = Math.atan2(newY, newX);
+
+                // 3. Calculate Error (Distance between current and target vector)
+                const distSq = (tarX - newX)**2 + (tarY - newY)**2;
+                totalError += distSq;
+            });
+
+            // Determine if we are in Equilibrium
+            // If error is high, charges are still moving -> Field exists inside
+            if (totalError > 0.1) {
+                isEquilibrium = false;
+                statusDisplay.innerText = "Charges Moving... Field Penetrating!";
+                statusDisplay.style.background = "#ff6b6b"; // Red
+            } else {
+                isEquilibrium = true;
+                statusDisplay.innerText = "Equilibrium Reached (E = 0)";
+                statusDisplay.style.background = "#51cf66"; // Green
+            }
+        }
+
+        // --- Drawing ---
+
+        function drawHashedWall(ctx, cx, cy, rOut, rIn) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, rOut, 0, Math.PI*2);
+            ctx.arc(cx, cy, rIn, 0, Math.PI*2, true);
+            ctx.clip();
+
+            // Metal Look
+            const grad = ctx.createRadialGradient(cx, cy, rIn, cx, cy, rOut);
+            grad.addColorStop(0, '#555');
+            grad.addColorStop(1, '#333');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Hatching
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i = -rOut; i < rOut; i+=12) {
+                ctx.moveTo(cx + i, cy - rOut);
+                ctx.lineTo(cx + i - 25, cy + rOut);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Borders
+            ctx.strokeStyle = '#777';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, rOut, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, rIn, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        function drawInternalField(ctx) {
+            // Only draw if NOT in equilibrium
+            if (isEquilibrium) return;
+
+            const dx = cage.x - externalCharge.x;
+            const dy = cage.y - externalCharge.y;
+            const angle = Math.atan2(dy, dx); // Direction of external field
+
+            ctx.save();
+            ctx.strokeStyle = '#ff6b6b'; // Red for Danger
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]); // Dashed to show it's transient
+
+            // Draw parallel field lines passing through the cavity
+            const spacing = 20;
+            for(let i = -2; i <= 2; i++) {
+                const offset = i * spacing;
+                
+                // Rotate offset to match field direction
+                const offX = offset * Math.cos(angle + Math.PI/2);
+                const offY = offset * Math.sin(angle + Math.PI/2);
+
+                const startX = cage.x - Math.cos(angle) * (INNER_RADIUS - 5) + offX;
+                const startY = cage.y - Math.sin(angle) * (INNER_RADIUS - 5) + offY;
+                const endX = cage.x + Math.cos(angle) * (INNER_RADIUS - 5) + offX;
+                const endY = cage.y + Math.sin(angle) * (INNER_RADIUS - 5) + offY;
+
+                // Draw arrow
+                drawArrow(ctx, startX, startY, endX, endY);
+            }
+            ctx.restore();
+        }
+
+        function drawArrow(ctx, x1, y1, x2, y2) {
+            const headlen = 8;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Conductor Walls
+            drawHashedWall(ctx, cage.x, cage.y, OUTER_RADIUS, INNER_RADIUS);
+
+            // 2. Draw Cavity Background
+            ctx.beginPath();
+            ctx.arc(cage.x, cage.y, INNER_RADIUS-1, 0, Math.PI*2);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fill();
+
+            // 3. Draw Internal State (The "Lie" vs Truth)
+            if (isEquilibrium) {
+                // SAFE STATE
+                ctx.fillStyle = '#51cf66';
+                ctx.font = "bold 24px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("E = 0", cage.x, cage.y);
+                
+                ctx.font = "14px Arial";
+                ctx.fillStyle = '#888';
+                ctx.fillText("Charges Cancel Field", cage.x, cage.y + 25);
+            } else {
+                // TRANSIENT STATE
+                drawInternalField(ctx);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = "bold 16px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("Adjusting...", cage.x, cage.y + 40);
+            }
+
+            // 4. Draw Surface Charges
+            ctx.font = "bold 18px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            surfaceCharges.forEach(p => {
+                const r = OUTER_RADIUS + 12;
+                const x = cage.x + Math.cos(p.currentAngle) * r;
+                const y = cage.y + Math.sin(p.currentAngle) * r;
+
+                if (p.type === 'neg') {
+                    ctx.fillStyle = '#4dabf7';
+                    ctx.fillText("-", x, y);
+                } else {
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.fillText("+", x, y);
+                }
+            });
+
+            // 5. Draw External Charge
+            ctx.beginPath();
+            ctx.arc(externalCharge.x, externalCharge.y, externalCharge.radius, 0, Math.PI*2);
+            const grad = ctx.createRadialGradient(externalCharge.x, externalCharge.y, 5, externalCharge.x, externalCharge.y, externalCharge.radius);
+            grad.addColorStop(0, '#ff8787');
+            grad.addColorStop(1, '#c92a2a');
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = "bold 16px Arial";
+            ctx.fillText("+Q", externalCharge.x, externalCharge.y);
+
+            // 6. Labels
+            ctx.fillStyle = '#aaa';
+            ctx.font = "12px sans-serif";
+            ctx.fillText("Metal Wall", cage.x, cage.y - OUTER_RADIUS - 10);
+            ctx.fillText("Cavity", cage.x, cage.y - INNER_RADIUS + 20);
+        }
+
+        // --- Interaction ---
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
+
+        function onDown(e) {
+            const pos = getMousePos(e.touches ? e.touches[0] : e);
+            const dx = pos.x - externalCharge.x;
+            const dy = pos.y - externalCharge.y;
+            if (Math.sqrt(dx*dx + dy*dy) < 40) externalCharge.dragging = true;
+        }
+
+        function onMove(e) {
+            if (!externalCharge.dragging) return;
+            const pos = getMousePos(e.touches ? e.touches[0] : e);
+            
+            // Keep outside
+            const dx = pos.x - cage.x;
+            const dy = pos.y - cage.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const minDist = OUTER_RADIUS + 30;
+
+            if (dist < minDist) {
+                const angle = Math.atan2(dy, dx);
+                externalCharge.x = cage.x + Math.cos(angle) * minDist;
+                externalCharge.y = cage.y + Math.sin(angle) * minDist;
+            } else {
+                externalCharge.x = pos.x;
+                externalCharge.y = pos.y;
+            }
+        }
+
+        function onUp() { externalCharge.dragging = false; }
+
+        canvas.addEventListener('mousedown', onDown);
+        canvas.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        canvas.addEventListener('touchstart', onDown);
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); });
+        window.addEventListener('touchend', onUp);
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

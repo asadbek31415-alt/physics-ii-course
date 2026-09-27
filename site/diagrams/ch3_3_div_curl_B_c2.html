@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toroid Simulation V3</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js & Utils -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script src="../vendor/tween.umd.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.95);
+            --accent: #58a6ff;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(240px, 28vw, 320px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas-container { position: relative; grid-column: 2; grid-row: 1; width: 100%; height: 100%; z-index: 0; }
+        #canvas-container canvas { display: block; width: 100%; height: 100%; }
+
+        /* --- UI OVERLAY --- */
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* Top Centered Toggle */
+        .top-bar {
+            position: relative; top: auto; width: 100%;
+            display: flex; justify-content: center; pointer-events: auto;
+            margin-bottom: 12px;
+        }
+        
+        .mode-toggle {
+            background: #21262d; border: 1px solid var(--accent); color: #fff;
+            padding: 10px 24px; border-radius: 30px; cursor: pointer; font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: 0.3s;
+        }
+        .mode-toggle:hover { background: #1f6feb; border-color: #fff; }
+
+        /* Left Collapsible Panel */
+        .side-panel {
+            position: relative; bottom: auto; left: auto;
+            width: 100%; max-height: none;
+            background: var(--panel-bg);
+            border-radius: 8px; border: 1px solid var(--border-color);
+            border-left: 5px solid var(--accent);
+            display: flex; flex-direction: column;
+            pointer-events: auto;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .side-panel.collapsed {
+            display: none;
+            transform: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Close Button (Inside Panel, Top Right) */
+        .close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; color: #888;
+            border: none; font-size: 1.5rem; cursor: pointer;
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        /* Open Button (Floating on screen when panel closed) */
+        .open-btn {
+            position: relative; bottom: auto; left: auto;
+            width: 100%; height: 40px;
+            background: var(--accent); color: white;
+            border: none; border-radius: 6px;
+            font-weight: bold; font-size: 0.95rem; cursor: pointer;
+            pointer-events: auto;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: transform 0.3s;
+            z-index: 5;
+            opacity: 0; transform: none; /* Hidden by default */
+            margin-bottom: 12px;
+        }
+        .open-btn.visible { opacity: 1; transform: none; }
+        .open-btn:hover { transform: none; }
+
+        /* Panel Content */
+        .panel-content {
+            padding: 20px 20px 30px 20px;
+            overflow-y: auto;
+        }
+
+        /* Typography */
+        h2 { margin: 0 0 15px 0; font-size: 1.3rem; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; margin-right: 30px; }
+        h3 { margin: 20px 0 8px 0; font-size: 1rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+        p { font-size: 0.95rem; line-height: 1.6; color: #c9d1d9; margin-bottom: 10px; }
+        li { font-size: 0.9rem; color: #aaa; margin-bottom: 5px; }
+        
+        .math-display {
+            background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px;
+            margin: 12px 0; text-align: center; font-size: 1.1em;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid var(--border-color);
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+        }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        
+        <!-- Mode Switcher -->
+        <div class="top-bar">
+            <button class="mode-toggle" onclick="toggleMode()">
+                Mode: <span id="mode-label" style="font-weight:bold">Result (3D)</span>
+            </button>
+        </div>
+
+        <!-- Floating Open Button (Initially Hidden) -->
+        <button class="open-btn" onclick="openPanel()" id="btn-open" title="Show Info">i</button>
+
+        <!-- Main Info Panel -->
+        <div class="side-panel" id="info-panel">
+            <button class="close-btn" onclick="closePanel()" title="Hide Panel">←</button>
+
+            <div class="panel-content">
+                
+                <!-- CALCULATION CONTENT -->
+                <div id="content-calc" class="hidden">
+                    <h2>Derivation Steps</h2>
+                    
+                    <h3>1. Symmetry & Loop</h3>
+                    <p>We choose a circular <strong>Amperian Loop</strong> (yellow ring) of radius $r$. Due to symmetry, the magnetic field magnitude $B$ is constant along this path.</p>
+                    <div class="math-display">$$ \oint \mathbf{B} \cdot d\mathbf{l} = B(2\pi r) $$</div>
+
+                    <h3>2. Enclosed Current</h3>
+                    <p>The loop is placed inside the donut structure. It encloses the central hole. Every wire turn ($N$ total) passes through the center of our loop.</p>
+                    <p>Total Enclosed Current: <strong style="color:var(--accent)">$I_{\text{enc}} = N I$</strong></p>
+
+                    <h3>3. Solve</h3>
+                    <p>Using Ampère's Law:</p>
+                    <div class="math-display">$$ B(2\pi r) = \mu_0 N I \implies B = \frac{\mu_0 N I}{2\pi r} $$</div>
+                </div>
+
+                <!-- RESULT CONTENT -->
+                <div id="content-result">
+                    <h2>Magnetic Field Result</h2>
+                    <p>The magnetic field is confined entirely inside the toroid coil.</p>
+                    
+                    <h3>Visualization</h3>
+                    <p>The simulation uses particle brightness and speed to show field strength ($1/r$).</p>
+                    <ul>
+                        <li><strong>Inner Radius:</strong> <span style="color:#fff; font-weight:bold">Bright & Fast</span> ($B$ is Strong)</li>
+                        <li><strong>Outer Radius:</strong> <span style="color:#5588aa; font-weight:bold">Dim & Slow</span> ($B$ is Weak)</li>
+                    </ul>
+                    
+                    <div class="math-display">$$ B \propto \frac{1}{r} $$</div>
+                    <p style="font-size:0.85rem; opacity:0.7">Note: Outside the coil, $B \approx 0$.</p>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // --- CONFIG ---
+    const CONFIG = {
+        R: 12,       // Major radius
+        r: 4.5,      // Tube radius
+        N: 40,       // Turns
+        colors: {
+            wire: 0xcd7f32,
+            fieldBase: new THREE.Color(0x58a6ff),
+            loop: 0xffff00,
+            arrow: 0xffffff
+        }
+    };
+
+    let state = {
+        mode: 'result', // 'result' | 'calc'
+    };
+
+    // --- SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.localClippingEnabled = true;
+    container.appendChild(renderer.domElement);
+
+    function resizeRenderer() {
+        const rect = container.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(rect.width));
+        const height = Math.max(1, Math.floor(rect.height));
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+    }
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Lights
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambLight);
+    const pLight = new THREE.PointLight(0xffffff, 0.8);
+    pLight.position.set(10, 20, 20);
+    scene.add(pLight);
+
+    // --- OBJECTS ---
+    const world = new THREE.Group();
+    scene.add(world);
+
+    // 1. Toroid Wire
+    class ToroidCurve extends THREE.Curve {
+        getPoint(t) {
+            const u = t * Math.PI * 2 * CONFIG.N;
+            const v = t * Math.PI * 2;
+            const cx = (CONFIG.R + CONFIG.r * Math.cos(u)) * Math.cos(v);
+            const cy = (CONFIG.R + CONFIG.r * Math.cos(u)) * Math.sin(v);
+            const cz = CONFIG.r * Math.sin(u);
+            return new THREE.Vector3(cx, cy, cz);
+        }
+    }
+    const path = new ToroidCurve();
+    const tubeGeo = new THREE.TubeGeometry(path, 600, 0.15, 8, true);
+    const tubeMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.wire, roughness: 0.4, side: THREE.DoubleSide });
+    
+    // Cut Plane (for Calc Mode)
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+    
+    const wireMesh = new THREE.Mesh(tubeGeo, tubeMat);
+    world.add(wireMesh);
+
+    // 2. Ghost Core
+    const coreGeo = new THREE.TorusGeometry(CONFIG.R, CONFIG.r - 0.2, 16, 50);
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.5, wireframe:true });
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    world.add(coreMesh);
+
+    // 3. Amperian Loop
+    const loopRadius = CONFIG.R; 
+    const loopGeo = new THREE.RingGeometry(loopRadius - 0.15, loopRadius + 0.15, 64);
+    const loopMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.loop, side: THREE.DoubleSide });
+    const loopMesh = new THREE.Mesh(loopGeo, loopMat);
+    loopMesh.position.z = 0.1; 
+    loopMesh.visible = false;
+    world.add(loopMesh);
+
+    // 4. Labels & Indicators Group (Calc Mode)
+    const labelGroup = new THREE.Group();
+    labelGroup.visible = false;
+    world.add(labelGroup);
+
+    // Labels...
+    const arrowDir = new THREE.Vector3(1, 0, 0);
+    const arrowOrigin = new THREE.Vector3(0, 0, 0.1);
+    const arrowLen = loopRadius - 0.5;
+    const arrowHelper = new THREE.ArrowHelper(arrowDir, arrowOrigin, arrowLen, CONFIG.colors.arrow, 1, 0.8);
+    labelGroup.add(arrowHelper);
+
+    for(let i=0; i<CONFIG.N; i++) {
+        const angle = (i / CONFIG.N) * Math.PI * 2;
+        const xIn = (CONFIG.R - CONFIG.r) * Math.cos(angle);
+        const yIn = (CONFIG.R - CONFIG.r) * Math.sin(angle);
+        const dotGeo = new THREE.CircleGeometry(0.3, 8);
+        const dotMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+        const dot = new THREE.Mesh(dotGeo, dotMat);
+        dot.position.set(xIn, yIn, 0.1);
+        labelGroup.add(dot);
+    }
+
+    function createTextSprite(message, scale, color) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 256; canvas.height = 128;
+        ctx.fillStyle = color;
+        ctx.font = "Bold 40px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(message, 128, 64);
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(scale * 2, scale, 1);
+        return sprite;
+    }
+    const lblR = createTextSprite("r", 4, "white");
+    lblR.position.set(loopRadius/2, 1, 0.5);
+    labelGroup.add(lblR);
+    const lblNI = createTextSprite("Enclosed NI", 5, "#ff3333");
+    lblNI.position.set(0, -(CONFIG.R - CONFIG.r) + 2, 0.5);
+    labelGroup.add(lblNI);
+
+
+    // 5. ENHANCED Particle System
+    const pCount = 1000;
+    const dummy = new THREE.Object3D();
+    const pGeo = new THREE.SphereGeometry(0.12, 4, 4);
+    
+    // NOTE: MeshBasicMaterial is used, but we will use InstanceColor for brightness
+    const pMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); 
+    const particlesMesh = new THREE.InstancedMesh(pGeo, pMat, pCount);
+    particlesMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    world.add(particlesMesh);
+
+    let particlesData = [];
+    for(let i=0; i<pCount; i++) {
+        particlesData.push({
+            angle: Math.random() * Math.PI * 2,
+            // Distribute radius: skewed slightly inward for density
+            rOffset: (Math.random() - 0.5) * (CONFIG.r * 1.6), 
+            zOffset: (Math.random() - 0.5) * 2
+        });
+    }
+
+    // Temp color object
+    const tempColor = new THREE.Color();
+
+    function updateParticles() {
+        if(!particlesMesh.visible) return;
+
+        for(let i=0; i<pCount; i++) {
+            const d = particlesData[i];
+            
+            // 1. PHYSICS: Speed ~ 1/r^2 (Exaggerated for visual effect)
+            const r = CONFIG.R + d.rOffset;
+            const rMin = CONFIG.R - CONFIG.r; // ~7.5
+            const rMax = CONFIG.R + CONFIG.r; // ~16.5
+            
+            // Inverse square for striking visual speed diff
+            // Inner (7.5) -> High speed, Outer (16.5) -> Low speed
+            const speed = 15 / (r * r); 
+            d.angle += speed;
+
+            const x = r * Math.cos(d.angle);
+            const y = r * Math.sin(d.angle);
+            const z = d.zOffset * Math.sin(d.angle * 4);
+
+            dummy.position.set(x, y, z);
+            
+            // 2. VISUALS: Scale & Brightness based on r
+            // Normalized radius 0 (Inner) to 1 (Outer)
+            const normR = (r - rMin) / (rMax - rMin);
+            
+            // Scale: Inner larger
+            const s = 1.5 * (1 - normR * 0.6); 
+            dummy.scale.set(s, s, s);
+            
+            // Color: Inner = Bright White/Cyan, Outer = Dim Blue
+            // HSL: Blue Hue (0.6), Saturation 1.0, Lightness varies 1.0 -> 0.2
+            const lightness = 1.0 - (normR * 0.8); 
+            tempColor.setHSL(0.58, 1.0, lightness);
+            
+            dummy.updateMatrix();
+            particlesMesh.setMatrixAt(i, dummy.matrix);
+            particlesMesh.setColorAt(i, tempColor);
+        }
+        particlesMesh.instanceMatrix.needsUpdate = true;
+        if(particlesMesh.instanceColor) particlesMesh.instanceColor.needsUpdate = true;
+    }
+
+    // Camera
+    const camRes = { x: 0, y: -35, z: 20 };
+    const camCalc = { x: 0, y: 0, z: 40 };
+    camera.position.set(camRes.x, camRes.y, camRes.z);
+
+    // --- UI LOGIC ---
+
+    function toggleMode() {
+        state.mode = state.mode === 'result' ? 'calc' : 'result';
+        
+        const label = document.getElementById('mode-label');
+        const calcDiv = document.getElementById('content-calc');
+        const resDiv = document.getElementById('content-result');
+
+        if(state.mode === 'calc') {
+            label.innerText = "Calculation (Slice)";
+            label.style.color = "#ffff00";
+            calcDiv.classList.remove('hidden');
+            resDiv.classList.add('hidden');
+            
+            new TWEEN.Tween(camera.position).to(camCalc, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            new TWEEN.Tween(controls.target).to({x:0, y:0, z:0}, 1000).start();
+
+            tubeMat.clippingPlanes = [clipPlane];
+            coreMesh.visible = false;
+            particlesMesh.visible = false;
+            
+            setTimeout(() => {
+                loopMesh.visible = true;
+                labelGroup.visible = true;
+            }, 600);
+
+        } else {
+            label.innerText = "Result (3D)";
+            label.style.color = "#fff";
+            calcDiv.classList.add('hidden');
+            resDiv.classList.remove('hidden');
+
+            new TWEEN.Tween(camera.position).to(camRes, 1000).easing(TWEEN.Easing.Cubic.InOut).start();
+            
+            tubeMat.clippingPlanes = [];
+            loopMesh.visible = false;
+            labelGroup.visible = false;
+            coreMesh.visible = true;
+            particlesMesh.visible = true;
+        }
+        renderMathInElement(document.body);
+    }
+
+    function closePanel() {
+        const panel = document.getElementById('info-panel');
+        const openBtn = document.getElementById('btn-open');
+        panel.classList.add('collapsed');
+        openBtn.classList.add('visible');
+    }
+
+    function openPanel() {
+        const panel = document.getElementById('info-panel');
+        const openBtn = document.getElementById('btn-open');
+        panel.classList.remove('collapsed');
+        openBtn.classList.remove('visible');
+    }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        TWEEN.update(time);
+        controls.update();
+        updateParticles();
+        renderer.render(scene, camera);
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.body, {
+            delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        resizeRenderer();
+    });
+
+    resizeRenderer();
+    animate();
+
+</script>
+</body>
+</html>

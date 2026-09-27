@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Plane Diagram</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            color: #eee;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        #scene-container {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #scene-container canvas {
+            display: block;
+        }
+
+        /* KaTeX sizing */
+        .math-label {
+            font-size: 1.1rem;
+            color: #eee;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #controls {
+            position: relative;
+            z-index: 10;
+            width: 250px;
+            padding: 14px 12px;
+            background: rgba(30, 30, 30, 0.94);
+            border-right: 1px solid #444;
+            overflow-y: auto;
+        }
+
+        h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+            color: #03dac6;
+            border-bottom: 1px solid #555;
+            padding-bottom: 4px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type=checkbox] {
+            margin-right: 8px;
+            accent-color: #03dac6;
+            transform: scale(0.9);
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #03dac6;
+            margin-top: 3px;
+        }
+
+        .val-display {
+            float: right;
+            font-weight: bold;
+            color: #fff;
+            font-family: monospace;
+        }
+
+        .sub-label {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: -3px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        @media (max-width: 680px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #controls {
+                width: 100%;
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid #444;
+            }
+        }
+    </style>
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            macros: {
+                '\\rsep': '{\\text{𝓇}}',
+                '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+            }
+        });">
+        </script>
+
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="app">
+        <div id="controls">
+            <h3>Infinite Plane Charge</h3>
+
+            <label>
+                Density (&sigma;): <span id="val" class="val-display">5.0</span>
+            </label>
+            <input type="range" id="slider" min="-10" max="10" step="0.1" value="5.0">
+            <span class="sub-label">Controls total charge</span>
+
+            <label style="margin-top: 10px;">
+                Ring Radius (r'): <span id="rad-val" class="val-display">2.5</span>
+            </label>
+            <input type="range" id="rad-slider" min="0.1" max="5.5" step="0.1" value="2.5">
+            <span class="sub-label">Adjust integration element</span>
+
+            <hr style="border-color: #444; margin: 8px 0;">
+
+            <label>
+                <input type="checkbox" id="show-field" checked> Show Field
+            </label>
+
+            <label>
+                <input type="checkbox" id="show-calc"> Show Integration
+            </label>
+
+            <label>
+                <input type="checkbox" id="show-coords"> Show Coordinates ($\vec{r}, \vec{r}'$)
+            </label>
+        </div>
+        <div id="scene-container"></div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const sceneContainer = document.getElementById('scene-container');
+        const camera = new THREE.PerspectiveCamera(45, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 100);
+        camera.position.set(10, 8, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        sceneContainer.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.inset = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        sceneContainer.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(0, 10, 5);
+        scene.add(dirLight);
+        const bottomLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        bottomLight.position.set(0, -10, 0);
+        scene.add(bottomLight);
+
+        // --- GROUPS ---
+        const plateGroup = new THREE.Group();
+        const fieldGroup = new THREE.Group();
+        const calcGroup = new THREE.Group();
+        scene.add(plateGroup);
+        scene.add(fieldGroup);
+        scene.add(calcGroup);
+
+        // --- 1. THE PLANE ---
+        const plateGeo = new THREE.PlaneGeometry(12, 12);
+        const plateMat = new THREE.MeshPhongMaterial({
+            color: 0x448aff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.8
+        });
+        const plate = new THREE.Mesh(plateGeo, plateMat);
+        plate.rotation.x = -Math.PI / 2;
+        plateGroup.add(plate);
+
+        // --- 1b. COORDINATE SYSTEM (Added to coordGroup below) ---
+        const axes = new THREE.AxesHelper(10);
+        const originNode = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+
+        // --- 2. THE FIELD (ARROWS) ---
+        const arrows = [];
+        for (let x = -4; x <= 4; x += 2.5) {
+            for (let z = -4; z <= 4; z += 2.5) {
+                [-3, -1.5, 1.5, 3].forEach(y => {
+                    const origin = new THREE.Vector3(x, y, z);
+                    const dir = new THREE.Vector3(0, Math.sign(y), 0);
+                    const arrow = new THREE.ArrowHelper(dir, origin, 1, 0xffffff, 0.3, 0.2);
+                    arrow.userData = { baseDir: dir.clone() };
+                    fieldGroup.add(arrow);
+                    arrows.push(arrow);
+                });
+            }
+        }
+
+        // --- 3. CALCULATION ELEMENTS (RING INTEGRATION) ---
+        calcGroup.visible = false;
+
+        // Point P
+        const pHeight = 4;
+        const pPos = new THREE.Vector3(0, pHeight, 0);
+        const pGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        const pMesh = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        pMesh.position.copy(pPos);
+        calcGroup.add(pMesh);
+
+        // The Ring Element (da) - Dynamic Geometry
+        // We'll create a dummy geometry first, updated in loop
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.9, 32), ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.05;
+        calcGroup.add(ring);
+
+        // Geometry Lines
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa });
+
+        // Line z (height)
+        const zLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), pPos]);
+        calcGroup.add(new THREE.Line(zLineGeo, lineMat));
+
+        // Line r (radius on plane)
+        const rLineGeo = new THREE.BufferGeometry();
+        const rLine = new THREE.Line(rLineGeo, lineMat);
+        calcGroup.add(rLine);
+
+        // Line script-r (hypotenuse)
+        const hypLineGeo = new THREE.BufferGeometry();
+        const hypLine = new THREE.Line(hypLineGeo, new THREE.LineBasicMaterial({ color: 0xffff00 }));
+        calcGroup.add(hypLine);
+
+        // dE Vector at P (Net field from ring is Vertical)
+        const deArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), pPos, 2, 0x00ffff, 0.4, 0.2);
+        deArrow.visible = false;
+        calcGroup.add(deArrow);
+
+        // Coordinate Vectors
+        const coordGroup = new THREE.Group();
+        coordGroup.visible = false;
+        scene.add(coordGroup);
+
+        const arrowRPrime = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 2.5, 0xbb86fc, 0.4, 0.2);
+        const arrowR = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 4, 0x64b5f6, 0.4, 0.2);
+        coordGroup.add(arrowRPrime, arrowR, axes, originNode);
+
+        // --- LABELS (KaTeX) ---
+        function createMathLabel(str, pos, color = "white") {
+            const div = document.createElement('div');
+            div.className = 'math-label';
+            div.style.color = color;
+
+            if (window.katex) {
+                try {
+                    div.innerHTML = katex.renderToString(str, {
+                        macros: {
+                            '\\rsep': '{\\text{𝓇}}',
+                            '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                            '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                        }
+                    });
+                } catch (e) { div.textContent = str; }
+            } else {
+                div.textContent = str;
+            }
+
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            return label;
+        }
+
+        const lblP = createMathLabel("P", new THREE.Vector3(0.5, pHeight, 0), "white");
+        const lblDa = createMathLabel("da", new THREE.Vector3(0, 0, 0), "yellow");
+        const lblZ = createMathLabel("z", new THREE.Vector3(-0.3, pHeight / 2, 0), "#aaa");
+        const lblR = createMathLabel("r'", new THREE.Vector3(0, 0, 0), "#aaa");
+        const lblDq = createMathLabel("dq", new THREE.Vector3(0, 0, 0), "yellow");
+        const lblDe = createMathLabel("d\\vec{E}", new THREE.Vector3(0, 0, 0), "#00ffff");
+        const lblRsep = createMathLabel("\\rsep", new THREE.Vector3(0, 0, 0), "yellow");
+
+        const lblO = createMathLabel("O", new THREE.Vector3(-0.4, -0.4, 0), "#aaa");
+        const lblRVec = createMathLabel("\\vec{r}", new THREE.Vector3(-0.5, 2, 0), "#64b5f6");
+        const lblRPrimeVec = createMathLabel("\\vec{r}'", new THREE.Vector3(1.2, -0.4, 0), "#bb86fc");
+
+        calcGroup.add(lblP, lblDa, lblZ, lblR, lblDq, lblDe, lblRsep);
+        coordGroup.add(lblO, lblRVec, lblRPrimeVec);
+
+        // --- INTERACTION LOGIC ---
+        const slider = document.getElementById('slider');
+        const radSlider = document.getElementById('rad-slider');
+        const valDisplay = document.getElementById('val');
+        const radValDisplay = document.getElementById('rad-val');
+        const checkField = document.getElementById('show-field');
+        const checkCalc = document.getElementById('show-calc');
+        const checkCoords = document.getElementById('show-coords');
+
+        function updateScene() {
+            const sigma = parseFloat(slider.value);
+            const rVal = parseFloat(radSlider.value);
+
+            valDisplay.innerText = sigma.toFixed(1);
+            radValDisplay.innerText = rVal.toFixed(1);
+
+            // 1. Update Plane Color
+            const color = sigma > 0 ? 0xff5252 : (sigma < 0 ? 0x448aff : 0x888888);
+            plate.material.color.setHex(color);
+
+            // 2. Update Field Arrows
+            const mag = Math.abs(sigma);
+            const sign = Math.sign(sigma);
+
+            fieldGroup.visible = checkField.checked;
+
+            arrows.forEach(arrow => {
+                const length = mag * 0.25;
+                if (length < 0.1 || mag === 0) {
+                    arrow.visible = false;
+                } else {
+                    arrow.visible = true;
+                    const dir = arrow.userData.baseDir.clone().multiplyScalar(sign);
+                    arrow.setDirection(dir);
+                    arrow.setLength(length, length * 0.3, length * 0.2);
+                    arrow.setColor(color);
+                }
+            });
+
+            // 3. Update Integration Element
+            if (checkCalc.checked) {
+                calcGroup.visible = true;
+
+                // Rebuild Ring Geometry (expensive loop but fine for low poly count updates)
+                ring.geometry.dispose();
+                ring.geometry = new THREE.RingGeometry(rVal, rVal + 0.4, 32);
+
+                // Update Lines
+                // Line r
+                rLine.geometry.setFromPoints([new THREE.Vector3(0, 0.05, 0), new THREE.Vector3(rVal, 0.05, 0)]);
+                // Line hyp
+                hypLine.geometry.setFromPoints([new THREE.Vector3(rVal, 0.05, 0), pPos]);
+
+                // Update r' arrow
+                arrowRPrime.setDirection(new THREE.Vector3(1, 0, 0));
+                arrowRPrime.setLength(rVal, 0.3, 0.15);
+                lblRPrimeVec.position.set(rVal / 2, -0.4, 0);
+
+                lblR.position.set(rVal / 2, 0.4, 0);
+                lblDa.position.set(rVal + 0.8, 0.2, 0);
+                lblDq.position.set(rVal, 0.5, 0);
+
+                // Ensure labels are visible
+                [lblP, lblDa, lblZ, lblR, lblDq, lblDe, lblRsep].forEach(l => l.visible = true);
+                [lblO, lblRVec, lblRPrimeVec].forEach(l => l.visible = checkCoords.checked);
+
+                // Update dE Vector
+                // dE from a ring at P is strictly vertical (z-component)
+                // dE_z ~ (z * r) / (r^2 + z^2)^(3/2) ... roughly
+                const z = pHeight;
+                const distSq = rVal * rVal + z * z;
+                // Proportional to sigma * r  / dist^1.5 * cos(theta) ... basically the formula
+                // Scaling for visual:
+                const factor = (mag * rVal * z) / Math.pow(distSq, 1.5);
+                const deLen = factor * 5; // Scale up
+
+                const deDir = new THREE.Vector3(0, Math.sign(z) * (sign || 1), 0);
+
+                deArrow.position.copy(pPos);
+                deArrow.setDirection(deDir);
+
+                if (deLen > 0.1) {
+                    deArrow.visible = true;
+                    deArrow.setLength(deLen, deLen * 0.25, deLen * 0.15);
+                    lblDe.visible = true;
+                    lblDe.position.copy(pPos.clone().add(deDir.clone().multiplyScalar(deLen + 0.5)));
+
+                    // Position Rsep (hypotenuse center)
+                    const midHyp = new THREE.Vector3(rVal / 2, pHeight / 2, 0);
+                    lblRsep.position.copy(midHyp).add(new THREE.Vector3(0.4, 0.4, 0));
+                    lblRsep.visible = true;
+                } else {
+                    deArrow.visible = false;
+                    lblDe.visible = false;
+                    lblRsep.visible = false;
+                }
+
+            } else {
+                calcGroup.visible = false;
+                [lblP, lblDa, lblZ, lblR, lblDq, lblDe, lblRsep].forEach(l => l.visible = false);
+            }
+
+            coordGroup.visible = checkCoords.checked;
+            [lblO, lblRVec, lblRPrimeVec].forEach(l => l.visible = checkCoords.checked);
+        }
+
+        // Event Listeners
+        slider.addEventListener('input', updateScene);
+        radSlider.addEventListener('input', updateScene);
+
+        checkField.addEventListener('change', updateScene);
+        checkCalc.addEventListener('change', updateScene);
+        checkCoords.addEventListener('change', updateScene);
+
+        // Window Resize
+        function resizeScene() {
+            const width = Math.max(sceneContainer.clientWidth, 1);
+            const height = Math.max(sceneContainer.clientHeight, 1);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+        }
+
+        window.addEventListener('resize', resizeScene);
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        // Init
+        resizeScene();
+        updateScene();
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="diagram_plate.0.offline.js"></script>
+
+
+</body>
+
+</html>

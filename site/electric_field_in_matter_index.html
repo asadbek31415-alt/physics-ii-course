@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Fields in Matter - Topics</title>
+    
+    
+    
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #8899a6;
+            --primary-color: #3498db;
+            --border-color: #3a4a5c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .header-bar {
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 5%;
+            width: 100%;
+            box-sizing: border-box;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .breadcrumb { 
+            font-size: 1.1rem; 
+            color: var(--text-secondary); 
+            font-weight: 500;
+        }
+        .breadcrumb a { 
+            text-decoration: none; 
+            color: var(--primary-color); 
+        }
+        .breadcrumb a:hover { 
+            text-decoration: underline; 
+        }
+        
+        .author-link { text-decoration: none; color: var(--text-secondary); font-size: 0.9rem; }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2.5rem 1rem;
+        }
+
+        .main-title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 1rem 0;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 1rem;
+            display: inline-block;
+        }
+
+        .intro-text {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 3rem;
+        }
+        .intro-text strong { color: var(--text-primary); font-weight: 500; }
+
+        .topic-list { display: flex; flex-direction: column; gap: 1rem; }
+
+        .topic-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--card-bg);
+            padding: 18px 25px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            text-decoration: none;
+            color: inherit;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .topic-row:hover {
+            transform: translateY(-3px);
+            background-color: #2c3e50;
+            border-color: var(--primary-color);
+        }
+
+        .topic-row .text-content h2 {
+            margin: 0 0 4px 0;
+            font-size: 1.3em;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .topic-row .text-content p {
+            margin: 0;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .topic-row .arrow-icon {
+            font-size: 1.5em;
+            color: var(--border-color);
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .topic-row:hover .arrow-icon {
+            transform: translateX(5px);
+            color: var(--primary-color);
+        }
+
+        footer { text-align: center; padding: 2rem 0; color: #667; font-size: 0.85rem; }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; Electric Fields in Matter
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">author Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Electric Fields in Matter</h1>
+        <p class="intro-text">
+            So far, we have studied electric fields in a vacuum. In this section, we explore how <strong>matter</strong> influences electrostatics. Matter comes in two main varieties: <strong>conductors</strong> and <strong>dielectrics</strong> (insulators). 
+            <br><br>
+            We will examine how external fields induce charges on conductors or polarize the atoms within insulators. This leads to the concept of <strong>bound charges</strong> and necessitates the introduction of a new auxiliary field, the <strong>Electric Displacement (D)</strong>.
+        </p>
+
+        <div class="topic-list">
+            
+            <a href="ch2_1_conductors.html" class="topic-row">
+                <div class="text-content">
+                    <h2>Conductors</h2>
+                    <p>Basic properties, induced charges, surface charge density, and cavities.</p>
+                </div>
+                <div class="arrow-icon">→</div>
+            </a>
+
+            <a href="ch2_2_polarization.html" class="topic-row">
+                <div class="text-content">
+                    <h2>Polarization</h2>
+                    <p>Induced dipoles, alignment of polar molecules, and the polarization vector P.</p>
+                </div>
+                <div class="arrow-icon">→</div>
+            </a>
+
+            <a href="ch2_3_field_external.html" class="topic-row">
+                <div class="text-content">
+                    <h2>The Field of a Polarized Object</h2>
+                    <p>Bound surface and volume charges, and the physical interpretation of polarization.</p>
+                </div>
+                <div class="arrow-icon">→</div>
+            </a>
+
+            <a href="ch2_4_electric_displacement.html" class="topic-row">
+                <div class="text-content">
+                    <h2>The Electric Displacement</h2>
+                    <p>Gauss's Law in the presence of dielectrics and the auxiliary field D.</p>
+                </div>
+                <div class="arrow-icon">→</div>
+            </a>
+            
+            <a href="ch2_5_linear_dielectrics.html" class="topic-row">
+                <div class="text-content">
+                    <h2>Linear Dielectrics</h2>
+                    <p>Susceptibility, permittivity, dielectric constants, and boundary value problems.</p>
+                </div>
+                <div class="arrow-icon">→</div>
+            </a>
+
+        </div>
+    </main>
+    
+    <footer></footer>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Cyclotron Physics Visualization</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #eeeeee;
+            --accent-cyan: #00ffff;
+            --accent-magenta: #ff00ff;
+            --accent-lime: #00ff00;
+            --panel-bg: rgba(20, 20, 20, 0.85);
+            --border-color: #333;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 310px) minmax(0, 1fr);
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            background: var(--panel-bg);
+            padding: 14px;
+            border-radius: 0;
+            border: 1px solid var(--border-color);
+            border-top: 0;
+            border-left: 0;
+            border-bottom: 0;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            height: 100%;
+            justify-content: flex-start;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 150px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #aaa;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+
+        button {
+            background: transparent;
+            border: 2px solid;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        button.proton { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        button.proton:hover { background: rgba(0, 255, 255, 0.1); }
+
+        button.deuteron { border-color: var(--accent-magenta); color: var(--accent-magenta); }
+        button.deuteron:hover { background: rgba(255, 0, 255, 0.1); }
+
+        button.alpha { border-color: var(--accent-lime); color: var(--accent-lime); }
+        button.alpha:hover { background: rgba(0, 255, 0, 0.1); }
+
+        button.clear { border-color: #666; color: #888; }
+        button.clear:hover { border-color: #eee; color: #eee; background: rgba(255,255,255,0.1); }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        .overlay-text {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+            pointer-events: none;
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 1;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid var(--border-color);
+                padding: 10px;
+                gap: 10px;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            .control-group {
+                min-width: 0;
+                width: 100%;
+            }
+        }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        
+        <div class="legend">
+            <div style="margin-bottom:8px; border-bottom:1px solid #444; padding-bottom:5px; font-weight:bold;">Particles</div>
+            <div class="legend-item"><div class="dot" style="background:var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan)"></div>Proton (m=1, q=1)</div>
+            <div class="legend-item"><div class="dot" style="background:var(--accent-magenta); box-shadow: 0 0 8px var(--accent-magenta)"></div>Deuteron (m=2, q=1)</div>
+            <div class="legend-item"><div class="dot" style="background:var(--accent-lime); box-shadow: 0 0 8px var(--accent-lime)"></div>Alpha (m=4, q=2)</div>
+            <div style="margin-top:10px; font-size: 0.75rem; color:#aaa;">
+                B-Field: Out of screen (Dots)<br>
+                Gap: Electric Kick
+            </div>
+        </div>
+
+        <div class="overlay-text">
+            Cyclotron Simulator<br>
+            Top-Down View
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="control-group">
+            <label>Magnetic Field (B) <span id="val-b">1.0</span> T</label>
+            <input type="range" id="input-b" min="0.5" max="3.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Acc. Voltage (V) <span id="val-v">50</span> kV</label>
+            <input type="range" id="input-v" min="10" max="200" step="10" value="50">
+        </div>
+        <div class="btn-group">
+            <button class="proton" onclick="spawnParticle(1, 1, '#00ffff')">Fire Proton</button>
+            <button class="deuteron" onclick="spawnParticle(2, 1, '#ff00ff')">Fire Deuteron</button>
+            <button class="alpha" onclick="spawnParticle(4, 2, '#00ff00')">Fire Alpha</button>
+        </div>
+        <button class="clear" onclick="clearParticles()">Reset</button>
+    </div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Config
+    const GAP_WIDTH = 40;
+    const DEE_GAP = 10;
+    
+    let width, height, centerX, centerY;
+    let particles = [];
+    
+    // Physics Parameters (Scaled for visual)
+    const TIME_STEP = 0.5;
+    let B_FIELD = 1.0;     // Tesla (arbitrary unit)
+    let E_VOLTAGE = 50.0;  // kV (arbitrary unit boost)
+    
+    // UI Elements
+    const bLabel = document.getElementById('val-b');
+    const vLabel = document.getElementById('val-v');
+    const bInput = document.getElementById('input-b');
+    const vInput = document.getElementById('input-v');
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight; // Take full height of container
+        const container = document.getElementById('canvas-container');
+        width = container.clientWidth;
+        height = container.clientHeight;
+
+        canvas.width = width;
+        canvas.height = height;
+        centerX = width / 2;
+        centerY = height / 2;
+    }
+    
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Inputs
+    bInput.addEventListener('input', (e) => {
+        B_FIELD = parseFloat(e.target.value);
+        bLabel.innerText = B_FIELD.toFixed(1);
+    });
+
+    vInput.addEventListener('input', (e) => {
+        E_VOLTAGE = parseFloat(e.target.value);
+        vLabel.innerText = E_VOLTAGE.toFixed(0);
+    });
+
+    class Particle {
+        constructor(mass, charge, color) {
+            this.m = mass;
+            this.q = charge;
+            this.color = color;
+            
+            // Initial position slightly offset to start movement
+            this.x = 0;
+            this.y = 0;
+            
+            // Initial small velocity in Y direction to start spiral
+            this.vx = 0;
+            this.vy = 2; 
+
+            this.trail = [];
+            this.maxTrail = 150;
+            this.dead = false;
+        }
+
+        update() {
+            if (this.dead) return;
+
+            // 1. Magnetic Force (Lorentz): F = q(v x B) => Circular motion
+            // In 2D with B perpendicular: changes direction of v, magnitude constant
+            // Angular velocity w = (q * B) / m
+            const omega = (this.q * B_FIELD) / this.m;
+            
+            // Rotate velocity vector by angle dTheta = omega * dt
+            const dTheta = omega * 0.05 * TIME_STEP; // Scaling factor for sim stability
+            
+            // Standard Rotation Matrix
+            const cos = Math.cos(dTheta);
+            const sin = Math.sin(dTheta);
+            
+            let newVx = this.vx * cos - this.vy * sin;
+            let newVy = this.vx * sin + this.vy * cos;
+            
+            this.vx = newVx;
+            this.vy = newVy;
+
+            // 2. Electric Field Acceleration (The Gap)
+            // Resonance assumption: The field always switches to accelerate the particle
+            // when it crosses the Y-axis (x=0) within the gap.
+            
+            // Check crossing
+            const nextX = this.x + this.vx * TIME_STEP;
+            
+            // If crossed x=0
+            if ((this.x < 0 && nextX >= 0) || (this.x > 0 && nextX <= 0)) {
+                // Calculate current Kinetic Energy: K = 0.5 * m * v^2
+                let vSq = this.vx*this.vx + this.vy*this.vy;
+                let K = 0.5 * this.m * vSq;
+                
+                // Add energy qV
+                // Scaling: Voltage needs to be scaled to pixel units appropriate for mass
+                K += (this.q * E_VOLTAGE * 0.5); 
+                
+                // New speed
+                let newSpeed = Math.sqrt((2 * K) / this.m);
+                let oldSpeed = Math.sqrt(vSq);
+                
+                // Normalize and apply new speed
+                if (oldSpeed > 0) {
+                    this.vx = (this.vx / oldSpeed) * newSpeed;
+                    this.vy = (this.vy / oldSpeed) * newSpeed;
+                }
+            }
+
+            // Update Position
+            this.x += this.vx * TIME_STEP;
+            this.y += this.vy * TIME_STEP;
+
+            // Trail logic
+            this.trail.push({x: this.x, y: this.y});
+            if (this.trail.length > this.maxTrail) {
+                this.trail.shift();
+            }
+
+            // Boundary Check (Cyclotron Radius)
+            const r = Math.sqrt(this.x*this.x + this.y*this.y);
+            // Dee radius is roughly min(width, height)/2 - padding
+            const maxR = Math.min(width, height) / 2 - 20;
+            
+            if (r > maxR) {
+                this.dead = true; // Ejected
+                // Draw ejection arrow visual later?
+            }
+        }
+
+        draw(ctx) {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
+            // Draw Trail
+            if (this.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                for (let i = 1; i < this.trail.length; i++) {
+                    ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                }
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.stroke();
+            }
+
+            // Draw Head
+            if (!this.dead) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4 + (this.m), 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    function spawnParticle(m, q, color) {
+        particles.push(new Particle(m, q, color));
+        // Limit number of particles for performance
+        if(particles.length > 20) particles.shift();
+    }
+
+    function clearParticles() {
+        particles = [];
+    }
+
+    function drawDees() {
+        const r = Math.min(width, height) / 2 - 20;
+        const gap = GAP_WIDTH / 2;
+
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 4;
+        ctx.fillStyle = 'rgba(30, 30, 30, 0.5)';
+
+        // Left Dee
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, r, Math.PI/2, 3*Math.PI/2); // Outer arc
+        ctx.lineTo(centerX - gap, centerY - r); // Close gap side (approx)
+        ctx.moveTo(centerX, centerY + r);
+        ctx.lineTo(centerX - gap, centerY + r);
+        ctx.closePath();
+        // The D shape is actually a semi-circle closed by a straight line
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, r, Math.PI/2, 1.5*Math.PI);
+        ctx.lineTo(centerX - gap, centerY - r);
+        ctx.lineTo(centerX - gap, centerY + r);
+        ctx.fill();
+        ctx.stroke();
+
+        // Right Dee
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, r, -Math.PI/2, Math.PI/2);
+        ctx.lineTo(centerX + gap, centerY + r);
+        ctx.lineTo(centerX + gap, centerY - r);
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw Gap Electric Field Indicator
+        ctx.save();
+        ctx.globalAlpha = (Math.sin(Date.now() / 100) + 1) / 4 + 0.1; // Pulsing
+        ctx.fillStyle = '#FFD700'; // Gold
+        ctx.fillRect(centerX - gap, centerY - r, GAP_WIDTH, r * 2);
+        ctx.restore();
+    }
+
+    function drawBField() {
+        // Draw grid of dots to represent B-field coming out of page
+        ctx.fillStyle = '#222';
+        const step = 40;
+        for (let x = 0; x < width; x += step) {
+            for (let y = 0; y < height; y += step) {
+                // Offset checks to make it look like a pattern
+                if ((x % (step*2) === 0 && y % (step*2) === 0) || 
+                    (x % (step*2) !== 0 && y % (step*2) !== 0)) {
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    function animate() {
+        // Clear screen with slight opacity? No, simple clear for this style, let trail handle history
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+
+        drawBField();
+        drawDees();
+
+        // Update and Draw Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw(ctx);
+            
+            // Remove dead particles that have finished fading (optional, here we just keep the trail)
+            // But if we want them to disappear:
+            if (particles[i].dead) {
+                 // For now, let them freeze at the edge or disappear
+                 // particles.splice(i, 1); 
+                 // Let's just draw the trail of dead particles until it's pushed out of array
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+
+</script>
+</body>
+</html>

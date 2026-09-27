@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multipole Expansion Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 300px) minmax(0, 1fr);
+        }
+        canvas { display: block; }
+        #scene-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        #ui-container {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            border-left: 0;
+            border-top: 0;
+            border-bottom: 0;
+            padding: 16px;
+            border-radius: 0;
+            color: #e2e8f0;
+            font-size: 14px;
+            width: 240px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            width: 100%;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        select {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #475569;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: inherit;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            display: inline-block;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        .info-text {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+            border-top: 1px solid #334155;
+            padding-top: 10px;
+        }
+
+        .math-symbol {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            font-weight: bold;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #scene-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            #ui-container {
+                grid-column: 1;
+                grid-row: 2;
+                border-right: 0;
+                border-top: 1px solid #334155;
+                padding: 10px 12px;
+                max-height: none;
+            }
+        }
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="scene-container"></div>
+
+    <div id="ui-container">
+        <div class="control-group">
+            <select id="multipoleSelect">
+                <option value="dipole">Magnetic Dipole</option>
+                <option value="quadrupole">Magnetic Quadrupole</option>
+            </select>
+        </div>
+
+        <label class="toggle-row">
+            <span class="legend-color" style="background: #fbbf24;"></span>
+            <input type="checkbox" id="toggleSource" checked> Source (Current)
+        </label>
+        
+        <label class="toggle-row">
+            <span class="legend-color" style="background: #3b82f6;"></span>
+            <input type="checkbox" id="toggleA" checked> Potential <span class="math-symbol" style="margin-left:4px">A</span> (Arrows)
+        </label>
+        
+        <label class="toggle-row">
+            <span class="legend-color" style="background: #ef4444;"></span>
+            <input type="checkbox" id="toggleB" checked> Field <span class="math-symbol" style="margin-left:4px">B</span> (Lines)
+        </label>
+
+        <div class="info-text" id="infoText">
+            <strong>Dipole:</strong> <span class="math-symbol">A</span> swirls around the axis ($\sim 1/r^2$). <span class="math-symbol">B</span> forms closed loops ($\sim 1/r^3$).
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Configuration ---
+        const CONFIG = {
+            mode: 'dipole', // 'dipole' or 'quadrupole'
+            fieldLineSteps: 300,
+            fieldLineStepSize: 0.1,
+            colorA: 0x3b82f6,
+            colorB: 0xef4444,
+            colorSource: 0xfbbf24
+        };
+
+        // --- Scene Setup ---
+        const container = document.getElementById('scene-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#0f172a');
+        scene.fog = new THREE.Fog('#0f172a', 10, 60);
+
+        function getSceneSize() {
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+        const initialSize = getSceneSize();
+        const camera = new THREE.PerspectiveCamera(45, initialSize.width / initialSize.height, 0.1, 100);
+        camera.position.set(15, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(initialSize.width, initialSize.height);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- Lights ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // --- Groups ---
+        const groupSource = new THREE.Group();
+        const groupA = new THREE.Group();
+        const groupB = new THREE.Group();
+        scene.add(groupSource);
+        scene.add(groupA);
+        scene.add(groupB);
+
+        // --- Physics Calculations ---
+
+        // Helper: Calculate B from a single magnetic moment m at position origin
+        function getDipoleB(pos, m, origin) {
+            const rVec = new THREE.Vector3().subVectors(pos, origin);
+            const r = rVec.length();
+            if (r < 0.1) return new THREE.Vector3(0,0,0); // Singularity check
+
+            const rHat = rVec.clone().normalize();
+            const mDotR = m.dot(rHat);
+
+            // B = (3(m.r)r - m) / r^3  (ignoring constants for visualization shape)
+            const term1 = rHat.clone().multiplyScalar(3 * mDotR);
+            const B = term1.sub(m).divideScalar(Math.pow(r, 3));
+            return B;
+        }
+
+        // Helper: Calculate A from a single magnetic moment m at position origin
+        function getDipoleA(pos, m, origin) {
+            const rVec = new THREE.Vector3().subVectors(pos, origin);
+            const r = rVec.length();
+            if (r < 0.1) return new THREE.Vector3(0,0,0);
+
+            // A = (m x r) / r^3 (Dipole term)
+            const cross = new THREE.Vector3().crossVectors(m, rVec);
+            return cross.divideScalar(Math.pow(r, 3));
+        }
+
+        // Get total B field based on current mode
+        function getTotalB(pos) {
+            const B = new THREE.Vector3(0,0,0);
+            if (CONFIG.mode === 'dipole') {
+                B.add(getDipoleB(pos, new THREE.Vector3(0, 10, 0), new THREE.Vector3(0,0,0)));
+            } else {
+                // Quadrupole: Two opposing dipoles
+                B.add(getDipoleB(pos, new THREE.Vector3(0, 10, 0), new THREE.Vector3(0, 1.5, 0)));
+                B.add(getDipoleB(pos, new THREE.Vector3(0, -10, 0), new THREE.Vector3(0, -1.5, 0)));
+            }
+            return B;
+        }
+
+        // Get total A field based on current mode
+        function getTotalA(pos) {
+            const A = new THREE.Vector3(0,0,0);
+            if (CONFIG.mode === 'dipole') {
+                A.add(getDipoleA(pos, new THREE.Vector3(0, 10, 0), new THREE.Vector3(0,0,0)));
+            } else {
+                A.add(getDipoleA(pos, new THREE.Vector3(0, 10, 0), new THREE.Vector3(0, 1.5, 0)));
+                A.add(getDipoleA(pos, new THREE.Vector3(0, -10, 0), new THREE.Vector3(0, -1.5, 0)));
+            }
+            return A;
+        }
+
+        // --- Generators ---
+
+        function generateSource() {
+            groupSource.clear();
+            
+            const createLoop = (yPos, color, inverted) => {
+                const geo = new THREE.TorusGeometry(1.5, 0.1, 16, 60);
+                const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.rotation.x = Math.PI / 2;
+                mesh.position.y = yPos;
+                groupSource.add(mesh);
+
+                // Current Arrow
+                const arrowDir = new THREE.Vector3(0, 0, inverted ? -1 : 1);
+                const arrowPos = new THREE.Vector3(1.5, yPos, 0);
+                const arrow = new THREE.ArrowHelper(arrowDir, arrowPos, 1, color, 0.4, 0.3);
+                groupSource.add(arrow);
+            };
+
+            if (CONFIG.mode === 'dipole') {
+                createLoop(0, CONFIG.colorSource, false);
+            } else {
+                createLoop(1.5, CONFIG.colorSource, false);
+                createLoop(-1.5, '#f59e0b', true); // Slightly different color for contrast
+            }
+        }
+
+        function generateAField() {
+            groupA.clear();
+            // Create a grid of arrows
+            const layers = CONFIG.mode === 'dipole' ? [-2, 0, 2] : [-3, -1, 1, 3];
+            const radii = [2.5, 4.5, 6.5];
+
+            layers.forEach(y => {
+                radii.forEach(r => {
+                    const count = Math.floor(r * 3);
+                    for(let i=0; i<count; i++) {
+                        const theta = (i/count) * Math.PI * 2;
+                        const x = r * Math.cos(theta);
+                        const z = r * Math.sin(theta);
+                        const pos = new THREE.Vector3(x, y, z);
+
+                        const A = getTotalA(pos);
+                        const len = A.length();
+                        
+                        // Scale for visualization
+                        const visualLen = Math.min(len * 5, 1.5);
+                        
+                        if (visualLen > 0.1) {
+                            const arrow = new THREE.ArrowHelper(
+                                A.normalize(), 
+                                pos, 
+                                visualLen, 
+                                CONFIG.colorA, 
+                                0.2 * visualLen, 
+                                0.15 * visualLen
+                            );
+                            groupA.add(arrow);
+                        }
+                    }
+                });
+            });
+        }
+
+        function generateBFieldLines() {
+            groupB.clear();
+
+            // Seed points for field lines
+            const seeds = [];
+            
+            if (CONFIG.mode === 'dipole') {
+                // Seeds along the x-axis
+                for(let x = 0.5; x < 6; x += 0.8) seeds.push(new THREE.Vector3(x, 0, 0));
+                for(let x = 0.5; x < 6; x += 0.8) seeds.push(new THREE.Vector3(-x, 0, 0));
+            } else {
+                // Quadrupole seeds
+                for(let x = 0.5; x < 7; x += 0.8) seeds.push(new THREE.Vector3(x, 0, 0));
+                for(let x = 0.5; x < 7; x += 0.8) seeds.push(new THREE.Vector3(x, 3, 0));
+                for(let x = 0.5; x < 7; x += 0.8) seeds.push(new THREE.Vector3(x, -3, 0));
+            }
+
+            const material = new THREE.LineBasicMaterial({ 
+                color: CONFIG.colorB, 
+                opacity: 0.7, 
+                transparent: true 
+            });
+
+            seeds.forEach(seed => {
+                const points = [];
+                let curr = seed.clone();
+                points.push(curr.clone());
+
+                // Trace forward
+                for(let i=0; i<CONFIG.fieldLineSteps; i++) {
+                    const B = getTotalB(curr);
+                    if (B.lengthSq() < 0.0001) break; // Field too weak
+                    
+                    const dir = B.normalize().multiplyScalar(CONFIG.fieldLineStepSize);
+                    curr.add(dir);
+                    
+                    if(curr.length() > 20) break; // Out of bounds
+                    if(curr.length() < 0.5) break; // Too close to center singularity
+                    
+                    points.push(curr.clone());
+                }
+
+                // Trace backward from seed (to complete the line)
+                curr = seed.clone();
+                for(let i=0; i<CONFIG.fieldLineSteps; i++) {
+                    const B = getTotalB(curr);
+                    if (B.lengthSq() < 0.0001) break;
+                    
+                    // Subtract direction
+                    const dir = B.normalize().multiplyScalar(CONFIG.fieldLineStepSize);
+                    curr.sub(dir);
+                    
+                    if(curr.length() > 20) break;
+                    if(curr.length() < 0.5) break;
+                    
+                    points.unshift(curr.clone()); // Add to beginning
+                }
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                groupB.add(line);
+            });
+        }
+
+        function updateScene() {
+            generateSource();
+            generateAField();
+            generateBFieldLines();
+            
+            // Update Text
+            const info = document.getElementById('infoText');
+            if (CONFIG.mode === 'dipole') {
+                info.innerHTML = `<strong>Dipole:</strong> <span class="math-symbol">A</span> swirls (blue arrows). <span class="math-symbol">B</span> loops N to S (red lines). Dominant term $\\sim 1/r^2$.`;
+            } else {
+                info.innerHTML = `<strong>Quadrupole:</strong> Two opposing dipoles. <span class="math-symbol">A</span> reverses direction. <span class="math-symbol">B</span> field is more confined. Dominant term $\\sim 1/r^3$.`;
+            }
+        }
+
+        // --- Initialization ---
+        updateScene();
+
+        // --- Event Listeners ---
+        document.getElementById('multipoleSelect').addEventListener('change', (e) => {
+            CONFIG.mode = e.target.value;
+            updateScene();
+        });
+
+        document.getElementById('toggleSource').addEventListener('change', (e) => groupSource.visible = e.target.checked);
+        document.getElementById('toggleA').addEventListener('change', (e) => groupA.visible = e.target.checked);
+        document.getElementById('toggleB').addEventListener('change', (e) => groupB.visible = e.target.checked);
+
+        // --- Animation ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Rotate A field slightly to suggest flow
+            groupA.rotation.y -= 0.002;
+            
+            // Rotate B field lines group slowly for 3D effect
+            groupB.rotation.y -= 0.002;
+            
+            // Keep source static relative to fields or rotate everything? 
+            // Let's rotate the whole system logic visually by rotating the camera or the groups.
+            // Actually, rotating the groups A and B relative to source might look weird if source doesn't rotate.
+            // Let's rotate Source too.
+            groupSource.rotation.y -= 0.002;
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            const { width, height } = getSceneSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ch3_4_vector_potential_c1.0.offline.js"></script>
+
+
+</body>
+</html>

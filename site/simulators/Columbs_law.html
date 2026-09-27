@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coulomb's Law - Two Charges</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    rsep: "{\\text{𝓻}}",
+                    vecrsep: "{\\vec{\\text{𝓻}}}",
+                    hatrsep: "{\\hat{\\text{𝓻}}}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --primary-color: #bb86fc;
+            --secondary-color: #03dac6;
+            --accent-color: #cf6679;
+            --positive-color: #ff5252;
+            --negative-color: #448aff;
+            --neutral-color: #ffffff;
+            --warning-color: #ff9800;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            /* Force it to fit the iframe exactly */
+            overflow: hidden;
+            /* KILL THE SCROLLBAR */
+        }
+
+        /* Compact Header */
+        header {
+            padding: 5px 20px;
+            background-color: var(--panel-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            /* Prevents double scrollbars */
+            height: 100%;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-color: #0a0a0a;
+            overflow: hidden;
+        }
+
+        canvas {
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            cursor: default;
+            /* Make canvas responsive */
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* The Control Panel - This is what was causing the scrollbar */
+        .control-panel {
+            width: 280px;
+            /* Slightly narrower */
+            background-color: var(--panel-color);
+            padding: 15px;
+            overflow-y: auto;
+            /* Only scroll the panel if needed */
+            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2);
+            font-size: 0.9rem;
+            /* Smaller text to fit more */
+        }
+
+        /* Compact Controls */
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: var(--text-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #9a67ea;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .checkbox-container input {
+            margin-right: 8px;
+        }
+
+        .readouts {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .readout-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .readout-value {
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+        }
+
+        .charge-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .positive-indicator {
+            background-color: var(--positive-color);
+        }
+
+        .negative-indicator {
+            background-color: var(--negative-color);
+        }
+
+        .warning-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--panel-color);
+            border: 2px solid var(--warning-color);
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 200;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .warning-content {
+            color: var(--warning-color);
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .warning-button {
+            background-color: var(--warning-color);
+            color: var(--bg-color);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+        }
+
+        .warning-button:hover {
+            background-color: #f57c00;
+        }
+
+        .arrow-scale-info {
+            background-color: rgba(255, 152, 0, 0.1);
+            border-left: 3px solid var(--warning-color);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <header>
+        <h1>Coulomb's Law - Two Charges Interaction</h1>
+    </header>
+
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="simulationCanvas"></canvas>
+        </div>
+
+        <div class="control-panel">
+            <div class="control-group">
+                <h2>Charge 1</h2>
+                <label><span class="charge-indicator positive-indicator"></span>Charge q₁ (μC): <span
+                        id="q1Value">10.0</span></label>
+                <input type="range" id="q1Slider" min="-50" max="50" value="10" step="1">
+                <label>Position X: <span id="q1xValue">250</span></label>
+                <input type="range" id="q1xSlider" min="100" max="700" value="250" step="10">
+                <label>Position Y: <span id="q1yValue">300</span></label>
+                <input type="range" id="q1ySlider" min="100" max="500" value="300" step="10">
+            </div>
+
+            <div class="control-group">
+                <h2>Charge 2</h2>
+                <label><span class="charge-indicator negative-indicator"></span>Charge q₂ (μC): <span
+                        id="q2Value">-10.0</span></label>
+                <input type="range" id="q2Slider" min="-50" max="50" value="-10" step="1">
+                <label>Position X: <span id="q2xValue">550</span></label>
+                <input type="range" id="q2xSlider" min="100" max="700" value="550" step="10">
+                <label>Position Y: <span id="q2yValue">300</span></label>
+                <input type="range" id="q2ySlider" min="100" max="500" value="300" step="10">
+            </div>
+
+            <div class="control-group">
+                <h2>Visualization</h2>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="showForceVector" checked>
+                    <label for="showForceVector">Show Force Vector</label>
+                </div>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="showDistance" checked>
+                    <label for="showDistance">Show Distance</label>
+                </div>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="showGrid" checked>
+                    <label for="showGrid">Show Grid</label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h2>Measurements</h2>
+                <div class="readouts">
+                    <div class="readout-item">
+                        <span>Distance ($\rsep$):</span>
+                        <span class="readout-value" id="distanceValue">0.30 m</span>
+                    </div>
+                    <div class="readout-item">
+                        <span>Force Magnitude:</span>
+                        <span class="readout-value" id="forceValue">0.00 N</span>
+                    </div>
+                    <div class="readout-item">
+                        <span>Arrow Length:</span>
+                        <span class="readout-value" id="arrowLengthValue">0.0 px</span>
+                    </div>
+                    <div class="readout-item">
+                        <span>Force Type:</span>
+                        <span class="readout-value" id="forceType">Attractive</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="formula-box">
+                    $$F = k \frac{qQ}{\rsep^2}$$ </div>
+                <div class="arrow-scale-info">
+                    <strong>Arrow Length:</strong> Directly proportional to force magnitude.
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="resetButton">Reset Positions</button>
+                <button id="randomizeButton">Randomize</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="warning-modal" id="warningModal">
+        <div class="warning-content">
+            ⚠️ Warning: Charges Too Close!
+        </div>
+        <p>The distance between charges is approaching zero, which would cause infinite force according to Coulomb's
+            law.</p>
+        <p>Please increase the separation between charges.</p>
+        <button class="warning-button" id="closeWarning">OK</button>
+    </div>
+
+    <script>
+        // ==================== CONSTANTS AND CONFIGURATION ====================
+
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Physics constants
+        const K_COULOMB = 8.99e9; // Coulomb's constant (N·m²/C²)
+        const SCALE_FACTOR = 1e-6; // Convert μC to C
+        const PIXELS_PER_METER = 1000; // Scale factor for visualization
+        const MIN_DISTANCE = 0.01; // Minimum distance in meters (1 cm)
+
+        // Arrow scaling
+        const ARROW_SCALE = 15; // Scale factor to convert force to pixels
+
+        // Canvas settings
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 600;
+
+        // Colors
+        const COLORS = {
+            background: '#0a0a0a',
+            grid: 'rgba(255, 255, 255, 0.1)',
+            positiveCharge: '#ff5252',
+            negativeCharge: '#448aff',
+            forceVector: '#03dac6',
+            distanceLine: 'rgba(255, 255, 255, 0.5)',
+            annotation: 'rgba(255, 255, 255, 0.7)'
+        };
+
+        // ==================== SIMULATION STATE ====================
+
+        let charge1 = {
+            x: 250,
+            y: 300,
+            q: 10 // μC
+        };
+
+        let charge2 = {
+            x: 550,
+            y: 300,
+            q: -10 // μC
+        };
+
+        let showForceVector = true;
+        let showDistance = true;
+        let showGrid = true;
+        let isDragging = null;
+        let warningShown = false;
+
+        // ==================== INITIALIZATION ====================
+
+        function init() {
+            // Set canvas size
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+
+            // Set up event listeners
+            setupEventListeners();
+
+            // Start animation
+            animate();
+        }
+
+        // ==================== EVENT LISTENERS ====================
+
+        function setupEventListeners() {
+            // Charge 1 controls
+            document.getElementById('q1Slider').addEventListener('input', (e) => {
+                charge1.q = parseFloat(e.target.value);
+                document.getElementById('q1Value').textContent = charge1.q.toFixed(1);
+            });
+
+            document.getElementById('q1xSlider').addEventListener('input', (e) => {
+                charge1.x = parseInt(e.target.value);
+                document.getElementById('q1xValue').textContent = charge1.x;
+                checkDistance();
+            });
+
+            document.getElementById('q1ySlider').addEventListener('input', (e) => {
+                charge1.y = parseInt(e.target.value);
+                document.getElementById('q1yValue').textContent = charge1.y;
+                checkDistance();
+            });
+
+            // Charge 2 controls
+            document.getElementById('q2Slider').addEventListener('input', (e) => {
+                charge2.q = parseFloat(e.target.value);
+                document.getElementById('q2Value').textContent = charge2.q.toFixed(1);
+            });
+
+            document.getElementById('q2xSlider').addEventListener('input', (e) => {
+                charge2.x = parseInt(e.target.value);
+                document.getElementById('q2xValue').textContent = charge2.x;
+                checkDistance();
+            });
+
+            document.getElementById('q2ySlider').addEventListener('input', (e) => {
+                charge2.y = parseInt(e.target.value);
+                document.getElementById('q2yValue').textContent = charge2.y;
+                checkDistance();
+            });
+
+            // Visualization options
+            document.getElementById('showForceVector').addEventListener('change', (e) => {
+                showForceVector = e.target.checked;
+            });
+
+            document.getElementById('showDistance').addEventListener('change', (e) => {
+                showDistance = e.target.checked;
+            });
+
+            document.getElementById('showGrid').addEventListener('change', (e) => {
+                showGrid = e.target.checked;
+            });
+
+            // Control buttons
+            document.getElementById('resetButton').addEventListener('click', () => {
+                charge1 = { x: 250, y: 300, q: 10 };
+                charge2 = { x: 550, y: 300, q: -10 };
+                updateSliders();
+                hideWarning();
+            });
+
+            document.getElementById('randomizeButton').addEventListener('click', () => {
+                charge1.q = (Math.random() - 0.5) * 100;
+                charge2.q = (Math.random() - 0.5) * 100;
+                charge1.x = 100 + Math.random() * 600;
+                charge1.y = 100 + Math.random() * 400;
+                charge2.x = 100 + Math.random() * 600;
+                charge2.y = 100 + Math.random() * 400;
+                updateSliders();
+                checkDistance();
+            });
+
+            // Warning modal
+            document.getElementById('closeWarning').addEventListener('click', hideWarning);
+
+            // Canvas mouse events
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+        }
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Scale mouse coordinates to canvas resolution
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Hit detection radius
+            const hitRadius = 30;
+
+            // Check if clicking on charge 1
+            const dist1 = Math.sqrt((x - charge1.x) ** 2 + (y - charge1.y) ** 2);
+            if (dist1 < hitRadius) {
+                isDragging = 1;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Check if clicking on charge 2
+            const dist2 = Math.sqrt((x - charge2.x) ** 2 + (y - charge2.y) ** 2);
+            if (dist2 < hitRadius) {
+                isDragging = 2;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            if (isDragging === 1) {
+                // Constrain to canvas bounds with some padding
+                charge1.x = Math.max(30, Math.min(CANVAS_WIDTH - 30, x));
+                charge1.y = Math.max(30, Math.min(CANVAS_HEIGHT - 30, y));
+                updateSliders();
+                checkDistance();
+            } else if (isDragging === 2) {
+                charge2.x = Math.max(30, Math.min(CANVAS_WIDTH - 30, x));
+                charge2.y = Math.max(30, Math.min(CANVAS_HEIGHT - 30, y));
+                updateSliders();
+                checkDistance();
+            } else {
+                // Update cursor hover state
+                const hitRadius = 30;
+                const dist1 = Math.sqrt((x - charge1.x) ** 2 + (y - charge1.y) ** 2);
+                const dist2 = Math.sqrt((x - charge2.x) ** 2 + (y - charge2.y) ** 2);
+
+                if (dist1 < hitRadius || dist2 < hitRadius) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        }
+
+        function handleMouseUp() {
+            isDragging = null;
+            canvas.style.cursor = 'default';
+        }
+
+        function updateSliders() {
+            document.getElementById('q1Slider').value = charge1.q;
+            document.getElementById('q1Value').textContent = charge1.q.toFixed(1);
+            document.getElementById('q1xSlider').value = charge1.x;
+            document.getElementById('q1xValue').textContent = Math.round(charge1.x);
+            document.getElementById('q1ySlider').value = charge1.y;
+            document.getElementById('q1yValue').textContent = Math.round(charge1.y);
+
+            document.getElementById('q2Slider').value = charge2.q;
+            document.getElementById('q2Value').textContent = charge2.q.toFixed(1);
+            document.getElementById('q2xSlider').value = charge2.x;
+            document.getElementById('q2xValue').textContent = Math.round(charge2.x);
+            document.getElementById('q2ySlider').value = charge2.y;
+            document.getElementById('q2yValue').textContent = Math.round(charge2.y);
+        }
+
+        function checkDistance() {
+            const force = calculateForce();
+            if (force.distance < MIN_DISTANCE && !warningShown) {
+                showWarning();
+            } else if (force.distance >= MIN_DISTANCE && warningShown) {
+                hideWarning();
+            }
+        }
+
+        function showWarning() {
+            warningShown = true;
+            document.getElementById('warningModal').style.display = 'block';
+        }
+
+        function hideWarning() {
+            warningShown = false;
+            document.getElementById('warningModal').style.display = 'none';
+        }
+
+        // ==================== CALCULATION FUNCTIONS ====================
+
+        function calculateForce() {
+            const dx = charge2.x - charge1.x;
+            const dy = charge2.y - charge1.y;
+            const rPixels = Math.sqrt(dx * dx + dy * dy);
+            const rMeters = rPixels / PIXELS_PER_METER;
+
+            if (rMeters < 0.001) return { magnitude: 0, fx: 0, fy: 0, distance: 0 };
+
+            // Coulomb's law: F = k * qQ / |separation vector|^2
+            const forceMagnitude = K_COULOMB * Math.abs(charge1.q * SCALE_FACTOR) * Math.abs(charge2.q * SCALE_FACTOR) / (rMeters * rMeters);
+
+            // Force direction (unit vector from charge1 to charge2)
+            const fx = forceMagnitude * dx / rPixels;
+            const fy = forceMagnitude * dy / rPixels;
+
+            return {
+                magnitude: forceMagnitude + 0.01,
+                fx: fx,
+                fy: fy,
+                distance: rMeters,
+                isAttractive: (charge1.q * charge2.q < 0)
+            };
+        }
+
+        function calculateArrowLength(force) {
+            return force.magnitude * ARROW_SCALE;
+        }
+
+        function formatForce(forceInNewtons) {
+            if (forceInNewtons === 0) return "0.00 N";
+
+            if (forceInNewtons >= 1) {
+                return forceInNewtons.toFixed(2) + " N";
+            } else if (forceInNewtons >= 0.001) {
+                return (forceInNewtons * 1000).toFixed(2) + " mN";
+            } else if (forceInNewtons >= 0.000001) {
+                return (forceInNewtons * 1000000).toFixed(2) + " μN";
+            } else {
+                return (forceInNewtons * 1000000000).toFixed(2) + " nN";
+            }
+        }
+
+        // ==================== VISUALIZATION FUNCTIONS ====================
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = COLORS.background;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Draw grid
+            if (showGrid) {
+                drawGrid();
+            }
+
+            // Draw distance line
+            if (showDistance) {
+                drawDistance();
+            }
+
+            // Draw force vector
+            if (showForceVector) {
+                drawForceVector();
+            }
+
+            // Draw charges
+            drawCharge(charge1);
+            drawCharge(charge2);
+
+            // Update measurements
+            updateMeasurements();
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 1;
+
+            const gridSize = 50;
+
+            for (let x = 0; x <= CANVAS_WIDTH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, CANVAS_HEIGHT);
+                ctx.stroke();
+            }
+
+            for (let y = 0; y <= CANVAS_HEIGHT; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(CANVAS_WIDTH, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawDistance() {
+            ctx.strokeStyle = COLORS.distanceLine;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            ctx.beginPath();
+            ctx.moveTo(charge1.x, charge1.y);
+            ctx.lineTo(charge2.x, charge2.y);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+
+            // Draw distance label
+            const midX = (charge1.x + charge2.x) / 2;
+            const midY = (charge1.y + charge2.y) / 2;
+
+            const force = calculateForce();
+
+            ctx.fillStyle = COLORS.annotation;
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`𝓻 = ${force.distance.toFixed(3)} m`, midX, midY - 10);
+        }
+
+        function drawForceVector() {
+            const force = calculateForce();
+
+            if (force.magnitude < 1e-10) return;
+
+            // Calculate arrow length using direct proportionality
+            const arrowLength = calculateArrowLength(force);
+
+            // Draw force on charge 1
+            const direction1 = force.isAttractive ? 1 : -1;
+            const end1X = charge1.x + (force.fx / force.magnitude) * arrowLength * direction1;
+            const end1Y = charge1.y + (force.fy / force.magnitude) * arrowLength * direction1;
+
+            drawArrow(charge1.x, charge1.y, end1X, end1Y, COLORS.forceVector);
+
+            // Draw force on charge 2 (opposite direction)
+            const end2X = charge2.x - (force.fx / force.magnitude) * arrowLength * direction1;
+            const end2Y = charge2.y - (force.fy / force.magnitude) * arrowLength * direction1;
+
+            drawArrow(charge2.x, charge2.y, end2X, end2Y, COLORS.forceVector);
+
+            // Draw force magnitude label
+            ctx.fillStyle = COLORS.forceVector;
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`F = ${formatForce(force.magnitude)}`, CANVAS_WIDTH / 2, 50);
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, color) {
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+
+            // Draw line
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // Draw arrowhead
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            const arrowLength = 10;
+
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - arrowLength * Math.cos(angle - Math.PI / 6),
+                toY - arrowLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - arrowLength * Math.cos(angle + Math.PI / 6),
+                toY - arrowLength * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawCharge(charge) {
+            const radius = Math.min(25, 15 + Math.abs(charge.q) * 0.3);
+
+            // Draw charge
+            ctx.fillStyle = charge.q > 0 ? COLORS.positiveCharge : COLORS.negativeCharge;
+            ctx.beginPath();
+            ctx.arc(charge.x, charge.y, radius, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Draw charge symbol
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(charge.q > 0 ? '+' : '-', charge.x, charge.y);
+
+            // Draw charge label
+            ctx.font = '14px Arial';
+            ctx.fillText(`q = ${charge.q.toFixed(1)} μC`, charge.x, charge.y + radius + 20);
+        }
+
+        function updateMeasurements() {
+            const force = calculateForce();
+            const arrowLength = calculateArrowLength(force);
+
+            document.getElementById('distanceValue').textContent = `${force.distance.toFixed(3)} m`;
+            document.getElementById('forceValue').textContent = formatForce(force.magnitude);
+            document.getElementById('arrowLengthValue').textContent = `${arrowLength.toFixed(1)} px`;
+            document.getElementById('forceType').textContent = force.isAttractive ? 'Attractive' : 'Repulsive';
+        }
+
+        // ==================== ANIMATION LOOP ====================
+
+        function animate() {
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // ==================== INITIALIZATION ====================
+
+        // Initialize the simulation when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+
+</html>

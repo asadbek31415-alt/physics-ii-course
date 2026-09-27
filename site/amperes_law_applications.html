@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Applications of Ampere's Law</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-svg.js">
+    </script>
+
+    <style>
+        /* Consistent styling with main pages */
+        .derivation-step {
+            margin-bottom: 1.5rem;
+            padding-left: 1rem;
+            border-left: 3px solid #38bdf8; /* Cyan accent */
+        }
+        .step-label {
+            font-weight: 600;
+            color: #38bdf8;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        /* Style for the "Why is B=0" insight box */
+        .insight-box {
+            background-color: rgba(251, 191, 36, 0.1); /* Low opacity amber */
+            border-left: 3px solid #fbbf24; /* Amber accent */
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1.5rem;
+        }
+        .insight-label {
+            font-weight: 600;
+            color: #fbbf24;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .iframe-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 2rem 0;
+            background: #0f172a;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                <a href="ch3_3_div_curl_B.html">Divergence and Curl</a> >
+                Applications of Ampere's Law
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Applications of Ampere's Law</h1>
+        
+        <p class="intro-text">
+            Ampere's Law allows us to calculate magnetic fields with ease, provided the current distribution possesses enough symmetry. The general strategy involves four steps:
+        </p>
+        <ol style="color: #cbd5e1; line-height: 1.6; margin-bottom: 3rem;">
+            <li>Identify the <strong>symmetry</strong> of the problem.</li>
+            <li>Choose an <strong>Amperian Loop</strong> such that $\mathbf{B}$ is constant or zero along the path.</li>
+            <li>Calculate the line integral $\oint \mathbf{B} \cdot d\mathbf{l}$.</li>
+            <li>Calculate the enclosed current $I_{\text{enc}}$ and solve for $B$.</li>
+        </ol>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+
+        <!-- 1. INFINITE WIRE -->
+        <section id="infinite-wire">
+            <h2>1. The Infinite Straight Wire</h2>
+            <p>
+                Consider a long straight wire carrying a steady current $I$. We want to find the magnetic field at a distance $r$ from the wire.
+            </p>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 1: Symmetry & Loop Choice</span>
+                <p>
+                    Due to <strong>Cylindrical Symmetry</strong>, the magnetic field must have the same magnitude at any point equidistant from the wire. The field lines form circles around the wire. We choose a <strong>circular Amperian loop</strong> of radius $r$, centered on the wire.
+                </p>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 2: Evaluate the Integral</span>
+                <p>
+                    Along this circle, the magnetic field $\mathbf{B}$ is always parallel to the path element $d\mathbf{l}$, and its magnitude $B$ is constant.
+                </p>
+                <div class="math-block">
+                    $$ \oint \mathbf{B} \cdot d\mathbf{l} = \oint B \, dl = B \oint dl = B(2\pi r) $$
+                </div>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 3: Solve</span>
+                <p>
+                    The total current enclosed by the circle is simply $I$. Equating the two sides:
+                </p>
+                <div class="math-block">
+                    $$ B(2\pi r) = \mu_0 I \implies \mathbf{B} = \frac{\mu_0 I}{2\pi r} \hat{\phi} $$
+                </div>
+            </div>
+
+            <!-- Simulation: Wire Integral Verification -->
+            <div class="iframe-container">
+                <iframe src="diagrams/infinite_wire.html" title="Infinite Wire Simulation"></iframe>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 3rem 0;">
+
+        <!-- 2. SOLENOID -->
+        <section id="solenoid">
+            <h2>2. The Ideal Solenoid</h2>
+            <p>
+                A solenoid is a long coil of wire. An "ideal" solenoid is infinitely long with tightly wound turns. We assume the field outside is zero and the field inside is uniform.
+            </p>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 1: Symmetry & Loop Choice</span>
+                <p>
+                    Due to <strong>Translational Symmetry</strong> along the axis, the field must be uniform inside. We choose a <strong>rectangular Amperian loop</strong> of length $L$ and width $w$. One side is inside the solenoid, and the opposite side is outside.
+                </p>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 2: Evaluate the Integral</span>
+                <p>
+                    We break the integral into four segments:
+                </p>
+                <ul>
+                    <li><strong>Side 1 (Inside):</strong> $\mathbf{B}$ is parallel to $d\mathbf{l}$. Contribution = $B L$.</li>
+                    <li><strong>Sides 2 & 4 (Perpendicular):</strong> $\mathbf{B}$ is perpendicular to $d\mathbf{l}$. Dot product is 0.</li>
+                    <li><strong>Side 3 (Outside):</strong> $\mathbf{B} \approx 0$. Contribution = 0.</li>
+                </ul>
+                <div class="math-block">
+                    $$ \oint \mathbf{B} \cdot d\mathbf{l} = B L + 0 + 0 + 0 = B L $$
+                </div>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 3: Solve</span>
+                <p>
+                    Let $n$ be the number of turns per unit length. The loop of length $L$ encloses $nL$ turns. Each turn carries current $I$. Therefore, $I_{\text{enc}} = (nL)I$.
+                </p>
+                <div class="math-block">
+                    $$ B L = \mu_0 (n L I) \implies B = \mu_0 n I $$
+                </div>
+            </div>
+
+            <!-- Simulation: 3D Applications Studio (Solenoid Mode) -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_3_div_curl_B_c1.html" title="Solenoid Simulation"></iframe>
+            </div>
+
+            <!-- NEW SECTION: Why is B outside zero? -->
+            <div class="insight-box">
+                <span class="insight-label">Insight: Why is the field outside zero?</span>
+                <p>
+                    In the derivation above, we assumed the field outside was zero. We can prove this using Ampere's Law.
+                </p>
+                <p>
+                    Imagine a second rectangular loop placed <strong>entirely outside</strong> the solenoid. Let the side closest to the solenoid be at distance $a$ from the axis, and the far side be at distance $b$.
+                </p>
+                <p>
+                    Since this loop is outside the coils, it encloses <strong>no current</strong> ($I_{\text{enc}} = 0$). The integral becomes:
+                </p>
+                <div class="math-block">
+                    $$ \oint \mathbf{B} \cdot d\mathbf{l} = [B(a) - B(b)]L = \mu_0(0) = 0 $$
+                </div>
+                <p>
+                    This implies that $B(a) = B(b)$. In other words, the magnetic field outside is independent of the distance from the axis. However, we know physically that the field must vanish as we go infinitely far away ($B \to 0$ as $r \to \infty$). If the field is constant everywhere outside and zero at infinity, it must be <strong>zero everywhere outside</strong>.
+                </p>
+            </div>
+
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 3rem 0;">
+
+        <!-- 3. TOROID -->
+        <section id="toroid">
+            <h2>3. The Toroid</h2>
+            <p>
+                A toroid is essentially a solenoid bent into a donut shape. It has $N$ total turns tightly wound around a core.
+            </p>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 1: Symmetry & Loop Choice</span>
+                <p>
+                    Due to <strong>Azimuthal Symmetry</strong>, the field magnitude is constant along any circle concentric with the center of the torus. We choose a <strong>circular Amperian loop</strong> of radius $r$ inside the coils.
+                </p>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 2: Evaluate the Integral</span>
+                <p>
+                    Similar to the straight wire, the field is parallel to the path.
+                </p>
+                <div class="math-block">
+                    $$ \oint \mathbf{B} \cdot d\mathbf{l} = B(2\pi r) $$
+                </div>
+            </div>
+
+            <div class="derivation-step">
+                <span class="step-label">Step 3: Solve</span>
+                <p>
+                    The loop encloses the central hole. Every single turn of the wire passes through the center of our loop. Since there are $N$ total turns, the enclosed current is $NI$.
+                </p>
+                <div class="math-block">
+                    $$ B(2\pi r) = \mu_0 N I \implies B = \frac{\mu_0 N I}{2\pi r} $$
+                </div>
+                <p>
+                    <em>Note: Unlike the solenoid, the field inside a toroid is not uniform; it is stronger near the inner wall (smaller $r$) and weaker near the outer wall.</em>
+                </p>
+            </div>
+
+            <!-- Simulation: 3D Applications Studio (Toroid Mode) -->
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_3_div_curl_B_c2.html" title="Toroid Simulation"></iframe>
+            </div>
+        </section>
+
+    </main>
+    <footer></footer>
+</body>
+</html>

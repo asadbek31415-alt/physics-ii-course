@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Surface: Infinite Plane</title>
+    
+    
+    <!-- Three.js Imports -->
+    <script async src="../vendor/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../vendor/three/build/three.module.js",
+            "three/addons/": "../vendor/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            background-color: #121a23;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            width: 100%;
+            position: relative;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            width: min(320px, calc(100vw - 32px));
+            box-sizing: border-box;
+            background: rgba(17, 26, 37, 0.94);
+            border: 1px solid #2f4961;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel-title {
+            color: #27aaff;
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .panel-copy {
+            color: #bdd0e4;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            margin: 0;
+        }
+
+        .panel-kicker {
+            color: #b9c8d8;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin: 0 0 6px;
+        }
+
+        .result-card {
+            background: rgba(5, 12, 20, 0.78);
+            border: 1px solid rgba(80, 116, 151, 0.72);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .equation {
+            color: #fff;
+            font-size: 0.96rem;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .legend {
+            display: grid;
+            gap: 7px;
+            border-top: 1px solid rgba(141, 163, 185, 0.25);
+            padding-top: 10px;
+            color: #c7d6e8;
+            font-size: 0.86rem;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .swatch {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            flex: 0 0 auto;
+        }
+
+        .swatch.sheet { background: #3498db; }
+        .swatch.surface { background: rgba(255, 255, 255, 0.72); }
+        .swatch.field { background: #3498db; }
+        .swatch.area { background: #e74c3c; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+            width: auto;
+            min-width: 128px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        @media (max-width: 760px) {
+            .controls {
+                width: 100%;
+                gap: 10px;
+                padding: 12px;
+            }
+
+            .legend {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <div class="controls">
+            <div>
+                <h3 class="panel-title">Planar Symmetry</h3>
+                <p class="panel-copy">An infinite charged sheet sends the electric field straight away from both sides, so only the pillbox caps contribute flux.</p>
+            </div>
+
+            <div class="result-card">
+                <p class="panel-kicker">Gaussian Pillbox</p>
+                <div class="equation">&Phi;<sub>E</sub> = EA + EA = 2EA</div>
+                <div class="equation">2EA = &sigma;A / &epsilon;<sub>0</sub></div>
+            </div>
+
+            <div class="toggle-row">
+                <span class="panel-kicker" style="margin:0;">Field Vectors</span>
+                <button id="toggleFieldBtn">Hide Field</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-row"><span class="swatch sheet"></span><span>Charged sheet</span></div>
+                <div class="legend-row"><span class="swatch surface"></span><span>Gaussian surface</span></div>
+                <div class="legend-row"><span class="swatch field"></span><span>Electric field</span></div>
+                <div class="legend-row"><span class="swatch area"></span><span>Area vectors</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
+        // --- Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        camera.position.set(15, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // Groups
+        const eFieldGroup = new THREE.Group();
+        scene.add(eFieldGroup);
+
+        // --- Geometry Construction ---
+
+        // 1. Infinite Plane
+        const planeGeo = new THREE.PlaneGeometry(12, 12);
+        const planeMat = new THREE.MeshPhongMaterial({ 
+            color: 0x3498db, 
+            side: THREE.DoubleSide, 
+            transparent: true, 
+            opacity: 0.3,
+            shininess: 10
+        });
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        scene.add(plane);
+
+        // Add '+' signs to plane
+        const loader = new FontLoader();
+        loader.load('../vendor/three/examples/fonts/helvetiker_bold.typeface.json', function (font) {
+            const textMat = new THREE.MeshBasicMaterial({ color: 0xaaddff });
+            for(let x=-4; x<=4; x+=2) {
+                for(let z=-4; z<=4; z+=2) {
+                    if (x===0 && z===0) continue; // Skip center for pillbox
+                    const textGeo = new TextGeometry('+', { font: font, size: 0.4, height: 0.05 });
+                    const textMesh = new THREE.Mesh(textGeo, textMat);
+                    textMesh.rotation.x = -Math.PI / 2;
+                    textMesh.position.set(x - 0.2, 0.05, z + 0.2);
+                    scene.add(textMesh);
+                }
+            }
+            
+            // Add 'd' labels - Moved to X=3.7 to avoid overlap
+            const labelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const dTop = new THREE.Mesh(new TextGeometry('d', { font: font, size: 0.4, height: 0.05 }), labelMat);
+            dTop.position.set(3.7, 1.5, 0);
+            dTop.lookAt(camera.position); 
+            scene.add(dTop);
+            
+            const dBot = new THREE.Mesh(new TextGeometry('d', { font: font, size: 0.4, height: 0.05 }), labelMat);
+            dBot.position.set(3.7, -1.8, 0);
+            dBot.lookAt(camera.position); 
+            scene.add(dBot);
+        });
+
+        // 2. Gaussian Pillbox
+        const cylHeight = 6;
+        const cylRadius = 1.5;
+        const cylGeo = new THREE.CylinderGeometry(cylRadius, cylRadius, cylHeight, 32, 1, true); 
+        const cylMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+        const cylinder = new THREE.Mesh(cylGeo, cylMat);
+        scene.add(cylinder);
+
+        // Edges for clarity
+        const edges = new THREE.EdgesGeometry(cylGeo);
+        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x8899a6 }));
+        scene.add(line);
+
+        // Caps
+        const capGeo = new THREE.CircleGeometry(cylRadius, 32);
+        const capMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+        
+        const topCap = new THREE.Mesh(capGeo, capMat);
+        topCap.rotation.x = -Math.PI / 2;
+        topCap.position.y = cylHeight / 2;
+        scene.add(topCap);
+
+        const botCap = new THREE.Mesh(capGeo, capMat);
+        botCap.rotation.x = -Math.PI / 2;
+        botCap.position.y = -cylHeight / 2;
+        scene.add(botCap);
+
+        // 3. Distance Indicators
+        const distLineMat = new THREE.LineBasicMaterial({ color: 0x8899a6 });
+        const distPoints = [];
+        const bracketX = 3.5;
+        // Vertical line
+        distPoints.push(new THREE.Vector3(bracketX, 0, 0));
+        distPoints.push(new THREE.Vector3(bracketX, 3, 0));
+        distPoints.push(new THREE.Vector3(bracketX, 0, 0));
+        distPoints.push(new THREE.Vector3(bracketX, -3, 0));
+        // Horizontal ticks
+        distPoints.push(new THREE.Vector3(bracketX - 0.2, 3, 0));
+        distPoints.push(new THREE.Vector3(bracketX + 0.2, 3, 0));
+        distPoints.push(new THREE.Vector3(bracketX - 0.2, -3, 0));
+        distPoints.push(new THREE.Vector3(bracketX + 0.2, -3, 0));
+        
+        const distGeo = new THREE.BufferGeometry().setFromPoints(distPoints);
+        const distLine = new THREE.LineSegments(distGeo, distLineMat);
+        scene.add(distLine);
+
+
+        // 4. Vectors (Arrows)
+        function createArrow(dir, origin, color, length = 1.5, group = scene) {
+            const arrowHelper = new THREE.ArrowHelper(dir.normalize(), origin, length, color, 0.4, 0.2);
+            group.add(arrowHelper);
+            return arrowHelper;
+        }
+
+        // dA Vectors (Red) - Always visible
+        const aColor = 0xe74c3c;
+        createArrow(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.5, 3, 0.5), aColor, 1.5); // Top dA
+        createArrow(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0.5, -3, 0.5), aColor, 1.5); // Bot dA
+        createArrow(new THREE.Vector3(1, 0, 0), new THREE.Vector3(1.5, 1.5, 0), aColor, 1.5); // Side dA
+
+        // --- E-FIELD VISUALIZATION (Blue) ---
+        const eColor = 0x3498db;
+
+        // A. Arrows piercing Top and Bottom Caps
+        // We create a small grid of arrows to show flux
+        const offsets = [
+            {x: 0, z: 0}, {x: 0.8, z: 0}, {x: -0.8, z: 0}, 
+            {x: 0, z: 0.8}, {x: 0, z: -0.8}
+        ];
+
+        offsets.forEach(offset => {
+            // Top Arrows (Up)
+            createArrow(new THREE.Vector3(0, 1, 0), new THREE.Vector3(offset.x, 2, offset.z), eColor, 2, eFieldGroup);
+            // Bottom Arrows (Down)
+            createArrow(new THREE.Vector3(0, -1, 0), new THREE.Vector3(offset.x, -2, offset.z), eColor, 2, eFieldGroup);
+        });
+
+        // B. Arrows along the Curved Side (Parallel)
+        // These show that the field runs ALONG the side, not through it.
+        const sideCount = 8;
+        for(let i=0; i<sideCount; i++) {
+            const angle = (i / sideCount) * Math.PI * 2;
+            const x = Math.cos(angle) * (cylRadius + 0.3); // Slightly outside cylinder
+            const z = Math.sin(angle) * (cylRadius + 0.3);
+            
+            // Arrow pointing Up (Top half)
+            createArrow(new THREE.Vector3(0, 1, 0), new THREE.Vector3(x, 0.5, z), eColor, 1.5, eFieldGroup);
+            // Arrow pointing Down (Bottom half)
+            createArrow(new THREE.Vector3(0, -1, 0), new THREE.Vector3(x, -0.5, z), eColor, 1.5, eFieldGroup);
+        }
+
+
+        // --- Toggle Logic ---
+        const toggleBtn = document.getElementById('toggleFieldBtn');
+        toggleBtn.addEventListener('click', () => {
+            eFieldGroup.visible = !eFieldGroup.visible;
+            toggleBtn.textContent = eFieldGroup.visible ? "Hide Field" : "Show Field";
+        });
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function resizeRenderer() {
+            const width = Math.max(1, renderer.domElement.clientWidth || container.clientWidth);
+            const height = Math.max(1, renderer.domElement.clientHeight || container.clientHeight);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+
+        animate();
+    </script>
+<script defer data-offline-bundle src="gauss_for_plane.0.offline.js"></script>
+
+
+</body>
+</html>

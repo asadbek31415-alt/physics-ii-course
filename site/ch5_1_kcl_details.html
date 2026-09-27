@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Why Current Cannot Pile Up</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .kcl-diagram {
+            position: relative;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .kcl-diagram svg {
+            width: 100%;
+            display: block;
+        }
+
+        .kcl-label {
+            position: absolute;
+            color: var(--warning-color);
+            font-weight: 800;
+            font-size: clamp(1rem, 2.8vw, 1.45rem);
+            line-height: 1;
+            pointer-events: none;
+            text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
+        }
+
+        .kcl-label-in {
+            left: 20%;
+            top: 28%;
+        }
+
+        .kcl-label-top {
+            right: 23%;
+            top: 10%;
+        }
+
+        .kcl-label-bottom {
+            right: 19%;
+            bottom: 7%;
+        }
+
+        .kcl-node-label {
+            position: absolute;
+            left: 41%;
+            bottom: 21%;
+            color: var(--text-secondary);
+            font-size: clamp(0.82rem, 2vw, 1.05rem);
+            pointer-events: none;
+        }
+    </style>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_1_electromotive_force.html">Electromotive Force</a> > Current at a Junction
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <div class="header-section">
+            <h1>Deep Dive: Why Current Cannot Pile Up</h1>
+            <p class="subtitle-text">Kirchhoff's current law as charge conservation at one node</p>
+        </div>
+
+        <p class="intro-text">
+            A circuit junction is not a place where charge can disappear, appear, or build up forever. It is a small
+            conducting region, so whatever charge flows into it must either flow out or temporarily change the charge
+            stored there.
+        </p>
+
+        <section class="concept-section">
+            <h2>1. Current Counts Charge Per Second</h2>
+            <p>
+                Current is the rate at which charge crosses a surface. If $5\,\mathrm{C}$ of charge passes a wire
+                cross-section each second, the current through that cross-section is $5\,\mathrm{A}$.
+            </p>
+            <div class="math-block">
+                $$ I = \frac{dQ}{dt} $$
+            </div>
+            <p>
+                At a junction, we can draw a small imaginary boundary around the node and count the current crossing
+                that boundary. Currents directed into the boundary add charge to the node; currents directed out remove
+                charge from it.
+            </p>
+        </section>
+
+        <section class="concept-section">
+            <h2>2. The Node Balance</h2>
+            <p>
+                For a node with one incoming branch and two outgoing branches, the stored charge changes according to:
+            </p>
+            <div class="math-block">
+                $$ \frac{dQ_{\mathrm{node}}}{dt}=I_{\mathrm{in}}-I_{\mathrm{top}}-I_{\mathrm{bottom}} $$
+            </div>
+
+            <div class="highlight-box">
+                <div class="kcl-diagram">
+                    <svg viewBox="0 0 640 260" role="img" aria-label="Junction current balance diagram">
+                        <defs>
+                            <marker id="kclArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#3498db"></path>
+                            </marker>
+                        </defs>
+                        <path d="M70 130 H320 L570 55 M320 130 L570 205" fill="none" stroke="#d9e6f2"
+                            stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <circle cx="320" cy="130" r="42" fill="rgba(52, 152, 219, 0.16)" stroke="#3498db"
+                            stroke-width="3"></circle>
+                        <circle cx="320" cy="130" r="7" fill="#2ecc71"></circle>
+
+                        <line x1="105" y1="101" x2="255" y2="101" stroke="#3498db" stroke-width="4"
+                            marker-end="url(#kclArrow)"></line>
+                        <line x1="385" y1="78" x2="525" y2="46" stroke="#3498db" stroke-width="4"
+                            marker-end="url(#kclArrow)"></line>
+                        <line x1="385" y1="180" x2="525" y2="212" stroke="#3498db" stroke-width="4"
+                            marker-end="url(#kclArrow)"></line>
+                    </svg>
+                    <span class="kcl-label kcl-label-in">\(I_{\mathrm{in}}\)</span>
+                    <span class="kcl-label kcl-label-top">\(I_{\mathrm{top}}\)</span>
+                    <span class="kcl-label kcl-label-bottom">\(I_{\mathrm{bottom}}\)</span>
+                    <span class="kcl-node-label">small node region</span>
+                </div>
+            </div>
+
+            <p>
+                This equation is the bookkeeping statement behind KCL. It does not assume the node is already steady.
+                If more current enters than leaves, $Q_{\mathrm{node}}$ increases. If more leaves than enters,
+                $Q_{\mathrm{node}}$ decreases.
+            </p>
+        </section>
+
+        <section class="concept-section">
+            <h2>3. Why Steady Circuits Balance</h2>
+            <p>
+                In an ordinary steady circuit, the junction may hold a tiny amount of surface charge, but it is not
+                storing a growing amount of charge second after second. Once the circuit settles, the node charge is
+                effectively constant:
+            </p>
+            <div class="math-block">
+                $$ \frac{dQ_{\mathrm{node}}}{dt}=0 $$
+            </div>
+            <p>
+                Substituting that into the node balance gives Kirchhoff's current law:
+            </p>
+            <div class="math-block">
+                $$ I_{\mathrm{in}}=I_{\mathrm{top}}+I_{\mathrm{bottom}} $$
+            </div>
+            <p>
+                The important physical idea is not that charge never exists at a junction. The idea is that in a steady
+                circuit, the amount stored at the junction is not continuously growing or draining away.
+            </p>
+        </section>
+
+        <section class="concept-section">
+            <h2>4. What Happens If It Does Not Balance?</h2>
+            <p>
+                Suppose $5\,\mathrm{A}$ enters a junction, but only $4\,\mathrm{A}$ leaves through the branches. Then:
+            </p>
+            <div class="math-block">
+                $$ \frac{dQ_{\mathrm{node}}}{dt}=5\,\mathrm{A}-4\,\mathrm{A}=1\,\mathrm{C/s} $$
+            </div>
+            <p>
+                The node would gain charge. That extra charge changes the electric field near the junction, and the
+                changed field pushes the currents toward a new balance. This adjustment is why KCL is such a good rule
+                for ordinary steady circuits: persistent imbalance would immediately show up as changing stored charge.
+            </p>
+            <ul class="key-points">
+                <li><strong>Balanced:</strong> charge flows through the node without building up.</li>
+                <li><strong>Too much entering:</strong> charge accumulates at the node.</li>
+                <li><strong>Too much leaving:</strong> the stored node charge decreases.</li>
+            </ul>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

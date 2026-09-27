@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Coulomb's Law</title>
+    
+    
+    
+    
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    rsep: "{\\text{𝓻}}",
+                    vecrsep: "{\\vec{\\text{𝓻}}}",
+                    hatrsep: "{\\hat{\\text{𝓻}}}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0b2;
+            --primary-color: #3498db;
+            --border-color: #3a4a5c;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+        }
+
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-primary); line-height: 1.7; }
+        .page-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+        .header-bar { background-color: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 0 5%; width: 100%; box-sizing: border-box; }
+        header { display: flex; justify-content: space-between; align-items: center; height: 64px; max-width: 900px; margin: 0 auto; }
+        .breadcrumb { font-size: 1rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--primary-color); font-weight: 500; }
+        .author-link { text-decoration: none; color: var(--text-secondary); font-size: 0.9rem; }
+
+        .container { width: 90%; max-width: 800px; margin: 0 auto; padding: 2.5rem 1rem; flex-grow: 1; }
+
+        .main-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 2rem 0;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 1rem;
+        }
+
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 { font-size: 1.6rem; color: var(--primary-color); margin-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        h3 { font-size: 1.3rem; color: #fff; margin-top: 1.5rem; }
+        p { margin-bottom: 1.5rem; }
+
+        .formula-box { background-color: rgba(13, 110, 253, 0.1); border-left: 4px solid var(--primary-color); padding: 1rem 1.5rem; margin: 1.5rem 0; border-radius: 0 8px 8px 0; font-size: 1.1em; overflow-x: auto; }
+        
+        .note-box { background-color: rgba(40, 167, 69, 0.1); border-left: 4px solid var(--success-color); padding: 1rem 1.5rem; margin: 1.5rem 0; border-radius: 0 8px 8px 0; }
+        .note-box h4 { margin: 0 0 0.5rem 0; color: var(--success-color); }
+
+        /* Simulator Styles */
+        .sim-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #0a0a0a;
+            margin-bottom: 1rem;
+        }
+        canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+        
+        /* Simulator Controls Overlay */
+        .sim-controls {
+            background: rgba(30, 30, 30, 0.9);
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .control-group label { display: block; font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px; }
+        .control-group input[type=range] { width: 100%; }
+        .value-display { float: right; color: var(--primary-color); font-weight: bold; }
+
+        .sim-notation {
+            grid-column: 1 / -1;
+            background: rgba(0,0,0,0.3);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 0 8px 8px 0;
+            color: var(--text-secondary);
+            padding: 0.75rem 1rem;
+            text-align: center;
+            overflow-x: auto;
+        }
+        
+        .readout-box {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--success-color);
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        footer { text-align: center; padding: 1.5rem 0; color: #667; font-size: 0.9rem; flex-shrink: 0; }
+        
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: left; }
+        th { background-color: rgba(255,255,255,0.05); color: var(--primary-color); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="page-wrapper">
+        <div class="header-bar">
+            <header>
+                <div class="breadcrumb">
+                    <a href="index.html">Home</a> &gt; <a href="electrostatics_index.html">Electrostatics</a> &gt; Coulomb's Law
+                </div>
+                <span class="author-link">author Turin Prep</span>
+            </header>
+        </div>
+
+        <div class="container">
+            <h1 class="main-title">Deep Dive: Coulomb's Law</h1>
+
+            <section>
+                <h2>The Fundamental Law of Force</h2>
+                <p>
+                    In 1785, Charles Coulomb published the results of a series of delicate experiments using a torsion balance. He discovered that the force between two stationary point charges is:
+                </p>
+                <div class="formula-box">
+                    $$ \vec{F} = \frac{1}{4\pi\epsilon_0} \frac{q_1 q_2}{\rsep^2} \hatrsep $$
+                </div>
+                <p>
+                    This equation contains several critical pieces of information:
+                </p>
+                <ul>
+                    <li><strong>Magnitude:</strong> The force is proportional to the product of the charges ($q_1 q_2$) and inversely proportional to the square of the separation distance ($\rsep^2$).</li>
+                    <li><strong>Direction ($\hatrsep$):</strong> The force acts along the line joining the two charges. If $q_1 q_2 > 0$ (like charges), the force is repulsive. If $q_1 q_2 < 0$ (opposite charges), it is attractive.</li>
+                    <li><strong>Vector meaning:</strong> The force is a vector. The scalar factor $\frac{1}{4\pi\epsilon_0}\frac{q_1q_2}{\rsep^2}$ sets the magnitude scale, with its sign encoding attraction or repulsion, while the unit vector supplies the direction from the source charge position $\vec{r}'$ to the test charge position $\vec{r}$.</li>
+                    <li><strong>Point Charges:</strong> Strictly speaking, this law applies only to point charges. For extended objects, we must use integration (superposition).</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Interactive Simulator</h2>
+                <p>Explore the relationship between charge, distance, and force. Drag the charges to move them.</p>
+                
+                <div class="sim-container">
+                    <canvas id="simCanvas"></canvas>
+                </div>
+                
+                <div class="sim-controls">
+                    <div class="control-group">
+                        <label>Charge 1 ($q_1$): <span id="val-q1" class="value-display">10 μC</span></label>
+                        <input type="range" id="input-q1" min="-50" max="50" value="10">
+                    </div>
+                    <div class="control-group">
+                        <label>Charge 2 ($q_2$): <span id="val-q2" class="value-display">-10 μC</span></label>
+                        <input type="range" id="input-q2" min="-50" max="50" value="-10">
+                    </div>
+                    <div class="control-group">
+                        <label>Distance ($\rsep$): <span id="val-r" class="value-display">...</span></label>
+                        <div id="force-readout" class="readout-box">F = ...</div>
+                    </div>
+                    <div class="sim-notation">
+                        $$ \text{source-to-test separation:}\quad \vecrsep,\qquad \rsep=|\vecrsep|,\qquad \hatrsep=\frac{\vecrsep}{\rsep} $$
+                    </div>
+                </div>
+
+                <div class="note-box">
+                    <h4>🧪 Experiments to Try</h4>
+                    <ol>
+                        <li><strong>Inverse Square Law:</strong> Place the charges at a specific distance (e.g., 4 grid squares). Note the force. Move them to half that distance (2 squares). Does the force quadruple?</li>
+                        <li><strong>Linearity of Charge:</strong> Keep the distance constant. Double the value of $q_1$. Does the force vector exactly double in length?</li>
+                        <li><strong>Zero Force:</strong> Set one of the charges to 0 μC. The force vanishes, confirming that interaction requires two parties.</li>
+                    </ol>
+                </div>
+            </section>
+
+            <section>
+                <h2>Why the Weird Constant? ($1/4\pi\epsilon_0$)</h2>
+                <p>
+                    You might wonder why we write the constant as $\frac{1}{4\pi\epsilon_0}$ instead of just a simple $k$. 
+                </p>
+                <p>
+                    The factor $4\pi$ is purely geometric. It comes from the surface area of a sphere ($4\pi r^2$). Because the electric influence spreads out spherically from a point source, this $4\pi$ appears naturally in the denominator.
+                </p>
+                <p>
+                    The constant $\epsilon_0$ is called the <strong>permittivity of free space</strong>.
+                    $$ \epsilon_0 \approx 8.85 \times 10^{-12} \, \frac{\text{C}^2}{\text{N}\cdot\text{m}^2} $$
+                    It is essentially a scaling factor that makes the units work out. By defining the constant this way, we make later equations (like Gauss's Law) much simpler and more elegant, removing the $4\pi$ factor from them.
+                </p>
+            </section>
+
+            <section>
+                <h2>Analogy with Gravity</h2>
+                <p>
+                    Coulomb's Law looks suspiciously similar to Newton's Law of Universal Gravitation. Both are inverse-square laws, suggesting a deep geometric connection (flux spreading out in 3D space).
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Electrostatics</th>
+                            <th>Gravity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Formula</strong></td>
+                            <td>$F = k \frac{q_1 q_2}{\rsep^2}$</td>
+                            <td>$F = G \frac{m_1 m_2}{r^2}$</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Source</strong></td>
+                            <td>Electric Charge ($q$)</td>
+                            <td>Mass ($m$)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sign</strong></td>
+                            <td>Positive or Negative</td>
+                            <td>Always Positive</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Interaction</strong></td>
+                            <td>Attracts or Repels</td>
+                            <td>Always Attracts</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Strength</strong></td>
+                            <td>Extremely Strong ($k \approx 9 \times 10^9$)</td>
+                            <td>Very Weak ($G \approx 6.67 \times 10^{-11}$)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>
+                    The key difference is strength. The electric force between an electron and a proton is about $10^{39}$ times stronger than the gravitational force between them! This is why we can usually ignore gravity when studying atomic physics.
+                </p>
+            </section>
+
+        </div>
+
+        <footer></footer>
+    </div>
+
+    <script>
+        // --- SIMULATOR CODE ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // State
+        let q1 = { x: 200, y: 300, val: 10, color: '#ff5252' };
+        let q2 = { x: 600, y: 300, val: -10, color: '#448aff' };
+        let isDragging = null;
+
+        // Constants
+        const K_VISUAL = 10000; // Visual scaling factor for arrow length
+
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function draw() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let i=0; i<canvas.height; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+            // Distance Line
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(q1.x, q1.y); ctx.lineTo(q2.x, q2.y); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Calculate Physics
+            const dx = q2.x - q1.x;
+            const dy = q2.y - q1.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const distMeters = dist / 100; // 100px = 1m
+
+            // Separation label on the visible simulator line.
+            ctx.fillStyle = 'rgba(255,255,255,0.78)';
+            ctx.font = '14px Georgia, serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`𝓻 = ${distMeters.toFixed(2)} m`, (q1.x + q2.x) / 2, (q1.y + q2.y) / 2 - 12);
+            
+            // Avoid singularity
+            const r = Math.max(dist, 20); 
+            
+            // Force Magnitude (Visual)
+            const forceMag = K_VISUAL * Math.abs(q1.val * q2.val) / (r * r);
+            
+            // Direction Unit Vector (from 1 to 2)
+            const ux = dx / dist;
+            const uy = dy / dist;
+
+            // Force Type
+            const isAttractive = (q1.val * q2.val) < 0;
+            const dir = isAttractive ? 1 : -1;
+
+            // Draw Arrows
+            // Force on Q1
+            drawArrow(q1.x, q1.y, q1.x + ux * forceMag * dir, q1.y + uy * forceMag * dir, '#03dac6');
+            // Force on Q2
+            drawArrow(q2.x, q2.y, q2.x - ux * forceMag * dir, q2.y - uy * forceMag * dir, '#03dac6');
+
+            // Draw Charges
+            drawCharge(q1);
+            drawCharge(q2);
+
+            // Update UI
+            document.getElementById('val-r').innerText = distMeters.toFixed(2) + " m";
+            const realForce = (8.99e9 * Math.abs(q1.val*1e-6 * q2.val*1e-6) / (distMeters*distMeters));
+            document.getElementById('force-readout').innerText = `|F| = ${realForce.toFixed(3)} N`;
+        }
+
+        function drawCharge(q) {
+            ctx.beginPath();
+            ctx.arc(q.x, q.y, 15, 0, Math.PI * 2);
+            ctx.fillStyle = q.val > 0 ? '#ff5252' : (q.val < 0 ? '#448aff' : '#888');
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(q.val > 0 ? '+' : (q.val < 0 ? '-' : '0'), q.x, q.y);
+        }
+
+        function drawArrow(x1, y1, x2, y2, color) {
+            const headLen = 15;
+            const angle = Math.atan2(y2-y1, x2-x1);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+            
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI/6), y2 - headLen * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI/6), y2 - headLen * Math.sin(angle + Math.PI/6));
+            ctx.fill();
+        }
+
+        // Interaction
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            if (Math.hypot(x - q1.x, y - q1.y) < 30) isDragging = q1;
+            else if (Math.hypot(x - q2.x, y - q2.y) < 30) isDragging = q2;
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            const rect = canvas.getBoundingClientRect();
+            isDragging.x = e.clientX - rect.left;
+            isDragging.y = e.clientY - rect.top;
+            draw();
+        });
+
+        window.addEventListener('mouseup', () => isDragging = null);
+
+        // Inputs
+        document.getElementById('input-q1').addEventListener('input', e => {
+            q1.val = parseInt(e.target.value);
+            document.getElementById('val-q1').innerText = q1.val + " μC";
+            draw();
+        });
+        document.getElementById('input-q2').addEventListener('input', e => {
+            q2.val = parseInt(e.target.value);
+            document.getElementById('val-q2').innerText = q2.val + " μC";
+            draw();
+        });
+
+        // Init
+        resize();
+    </script>
+</body>
+</html>

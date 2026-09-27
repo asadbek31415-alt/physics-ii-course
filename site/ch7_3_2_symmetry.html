@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Magnetic Monopoles & Symmetry</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    pd: ["\\frac{\\partial #1}{\\partial #2}", 2],
+                    vec: ["\\mathbf{#1}", 1],
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .comparison-col {
+            min-width: 0;
+            overflow-x: auto;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        @media (max-width: 700px) {
+            .comparison-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+        .col-header {
+            text-align: center;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .missing-term {
+            color: #555;
+            font-style: italic;
+        }
+        .added-term {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+        .duality-box {
+            background: linear-gradient(135deg, #1a1f29 0%, #111 100%);
+            border-left: 4px solid var(--accent-green);
+            padding: 20px;
+            margin-top: 30px;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > Symmetry
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Magnetic Monopoles & Symmetry</h1>
+
+        <!-- 1. THE ASYMMETRY -->
+        <section>
+            <h2>1. The Missing Terms</h2>
+            <p>
+                In a vacuum where $\rho$ and $\vec{J}$ are zero, Maxwell's equations are perfectly symmetric. However, in the presence of sources, they look lopsided.
+            </p>
+            <p>
+                Electric fields have point sources (electric charges, $\rho_e$). Magnetic fields do not; magnetic field lines always close on themselves ($\div \vec{B} = 0$). This lack of "Magnetic Charge" (Monopoles) breaks the aesthetic symmetry of the universe.
+            </p>
+        </section>
+
+        <!-- 2. SYMMETRIZED EQUATIONS -->
+        <section>
+            <h2>2. If Monopoles Existed...</h2>
+            <p>
+                If nature allowed for magnetic charge density ($\rho_m$) and magnetic current density ($\vec{J}_m$), Maxwell's equations would become perfectly symmetrical pairs.
+            </p>
+
+            <div class="comparison-grid">
+                <!-- Standard -->
+                <div class="comparison-col">
+                    <div class="col-header">Standard World</div>
+                    <div class="math-block" style="font-size: 0.9em;">
+                        $$
+                        \begin{align}
+                        \div \vec{E} &= \frac{1}{\epsilon_0}\rho_e \\
+                        \div \vec{B} &= 0 \\
+                        \curl \vec{E} &= -\frac{\partial \vec{B}}{\partial t} \\
+                        \curl \vec{B} &= \mu_0 \vec{J}_e + \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t}
+                        \end{align}
+                        $$
+                    </div>
+                </div>
+
+                <!-- Symmetrized -->
+                <div class="comparison-col">
+                    <div class="col-header">Symmetrical World</div>
+                    <div class="math-block" style="font-size: 0.9em;">
+                        $$
+                        \begin{align}
+                        \div \vec{E} &= \frac{1}{\epsilon_0}\rho_e \\
+                        \div \vec{B} &= \mu_0 \class{added-term}{\rho_m} \\
+                        \curl \vec{E} &= -\class{added-term}{\mu_0 \vec{J}_m} -\frac{\partial \vec{B}}{\partial t} \\
+                        \curl \vec{B} &= \mu_0 \vec{J}_e + \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t}
+                        \end{align}
+                        $$
+                    </div>
+                </div>
+            </div>
+
+            <p>
+                In this theoretical framework:
+            </p>
+            <ul>
+                <li>$\rho_m$ represents "North" (+) or "South" (-) magnetic charges.</li>
+                <li>$\vec{J}_m$ represents the flow of these magnetic charges.</li>
+                <li>The term $-\mu_0 \vec{J}_m$ in Faraday's law would mean a flow of magnetic monopoles generates an electric field directly.</li>
+            </ul>
+        </section>
+
+        <!-- 3. DUALITY TRANSFORMATION -->
+        <section>
+            <h2>3. The Duality Transformation</h2>
+            <div class="duality-box">
+                <p>
+                    Maxwell's equations exhibit a property called <strong>Duality</strong>. If you rotate the fields and sources by an angle $\alpha$:
+                </p>
+                <div class="math-block">
+                    $$
+                    \begin{aligned}
+                    \vec{E}' &= \vec{E} \cos \alpha + c \vec{B} \sin \alpha \\
+                    c \vec{B}' &= c \vec{B} \cos \alpha - \vec{E} \sin \alpha
+                    \end{aligned}
+                    $$
+                </div>
+                <p>
+                    ...and transform charges ($\rho_e, \rho_m$) similarly, the form of Maxwell's equations <strong>remains unchanged</strong>.
+                </p>
+                <p>
+                    <strong>Implication:</strong> We could technically define all particles as having a mix of electric and magnetic charge. By convention, we chose $\alpha$ such that all magnetic charge is zero ($\rho_m = 0$), dumping all the "charge" into the electric term $\rho_e$.
+                </p>
+            </div>
+        </section>
+
+        <!-- 4. DIRAC'S QUANTIZATION -->
+        <section>
+            <h2>4. Why do we care?</h2>
+            <p>
+                Even though we have never observed a magnetic monopole, they play a crucial role in theoretical physics.
+            </p>
+            <p>
+                <strong>Dirac's Quantization Condition:</strong> Paul Dirac showed in 1931 that if even a <em>single</em> magnetic monopole exists anywhere in the universe, quantum mechanics requires that <strong>electric charge must be quantized</strong> (which it is—charge comes in discrete packets of $e$).
+            </p>
+            <p>
+                This would explain why every electron has exactly the same charge, one of the greatest mysteries in physics.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics II Interactive Course</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* --- GLOBAL RESET & DARK THEME --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            /* Deep dark blue */
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            /* Scrolling enabled naturally */
+            min-height: 100vh;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* --- HEADER --- */
+        .header-bar {
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 1rem 0;
+            margin-bottom: 1.5rem;
+            /* Reduced margin */
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .brand-block {
+            display: flex;
+            flex-direction: column;
+            gap: 0.18rem;
+            line-height: 1.2;
+        }
+
+        .home-link {
+            font-weight: 700;
+            font-size: 1.45rem;
+            color: #38bdf8;
+        }
+
+        .center-title {
+            font-weight: 700;
+            font-size: 1.45rem;
+            color: #f8fafc;
+        }
+
+        .author-link {
+            width: fit-content;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #94a3b8;
+            transition: color 0.2s ease;
+        }
+
+        .author-link:hover {
+            color: #38bdf8;
+        }
+
+        /* --- LAYOUT GRID --- */
+        .container {
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem 2rem;
+        }
+
+        .topics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            /* 3 Columns */
+            gap: 1.25rem;
+            /* Tighter gap between cards */
+        }
+
+        /* --- CARD STYLING --- */
+        .topic-card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* Ensures header corners are clipped */
+        }
+
+        /* --- CARD HEADER (The clickable rectangle) --- */
+        .card-header {
+            background-color: #253346;
+            border-bottom: 1px solid #334155;
+            /* No padding here; padding is in the link to make the whole area clickable */
+            padding: 0;
+        }
+
+        .card-link {
+            box-sizing: border-box;
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            /* Standard comfortable padding */
+            transition: background-color 0.2s ease;
+        }
+
+        .card-link h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #f8fafc;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        /* FULL RECTANGLE HOVER EFFECT */
+        .card-link:hover {
+            background-color: #334155;
+            /* Lights up the whole header block */
+        }
+
+        .card-link:hover h2 {
+            color: #38bdf8;
+            /* Blue text highlight */
+        }
+
+        /* --- CARD BODY (Compact List) --- */
+        .card-body {
+            padding: 0.75rem 1rem;
+            /* Reduced padding */
+        }
+
+        .card-body ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .card-body li {
+            margin-bottom: 0.35rem;
+            /* Tighter list spacing to shorten cards */
+        }
+
+        .card-body li a {
+            overflow-wrap: anywhere;
+            color: #94a3b8;
+            font-size: 0.95rem;
+            display: block;
+            transition: color 0.2s;
+            padding: 2px 0;
+        }
+
+        .card-body li a:hover {
+            color: #38bdf8;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #475569;
+            font-size: 0.8rem;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1024px) {
+            .topics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .topics-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+    </style>
+    <script src="project-info.js"></script>
+    <script src="feedback-config.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <h1 class="course-home-title">Physics II Interactive Course</h1>
+        </header>
+    </div>
+
+    <main class="container">
+
+        <div class="topics-grid">
+
+            <!-- 1. Electrostatics -->
+            <div class="topic-card">
+                <div class="card-header">
+                    <a href="electrostatics_index.html" class="card-link">
+                        <h2>1. Electrostatics</h2>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><a href="ch1_1_electric_field.html">1. The Electric Field</a></li>
+                        <li><a href="ch1_2_gauss_law.html">2. Gauss's Law</a></li>
+                        <li><a href="ch1_3_electric_potential.html">3. Electric Potential</a></li>
+                        <li><a href="ch1_4_work_energy.html">4. Work and Energy</a></li>
+                        <li><a href="ch1_5_multipole_expansion.html">5. Multipole Expansion</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 2. Electric Fields in Matter -->
+            <div class="topic-card">
+                <div class="card-header">
+                    <a href="electric_field_in_matter_index.html" class="card-link">
+                        <h2>2. Electric Fields in Matter</h2>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><a href="ch2_1_conductors.html">1. Conductors</a></li>
+                        <li><a href="ch2_2_polarization.html">2. Polarization</a></li>
+                        <li><a href="ch2_3_field_external.html">3. The Field of a Polarized Object</a></li>
+                        <li><a href="ch2_4_electric_displacement.html">4. The Electric Displacement</a></li>
+                        <li><a href="ch2_5_linear_dielectrics.html">5. Linear Dielectrics</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 3. Magnetostatics -->
+            <div class="topic-card">
+                <div class="card-header">
+                    <a href="magnetostatics_index.html" class="card-link">
+                        <h2>3. Magnetostatics</h2>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><a href="ch3_1_lorentz_force.html">1. The Lorentz Force Law</a></li>
+                        <li><a href="ch3_2_biot_savart.html">2. The Biot-Savart Law</a></li>
+                        <li><a href="ch3_3_div_curl_B.html">3. Divergence and Curl of B</a></li>
+                        <li><a href="ch3_4_vector_potential.html">4. Magnetic Vector Potential</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 4. Magnetic Fields in Matter -->
+            <div class="topic-card">
+                <div class="card-header">
+                    <a href="magnetic_fields_in_matter_index.html" class="card-link">
+                        <h2>4. Magnetic Fields in Matter</h2>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><a href="ch4_1_magnetization.html">1. Magnetization</a></li>
+                        <li><a href="ch4_2_field_object.html">2. Field of a Magnetized Object</a></li>
+                        <li><a href="ch4_3_auxiliary_field.html">3. The Auxiliary Field H</a></li>
+                        <li><a href="ch4_4_linear_media.html">4. Linear and Nonlinear Media</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 5. Electrodynamics -->
+            <div class="topic-card">
+                <div class="card-header">
+                    <a href="electrodynamics_index.html" class="card-link">
+                        <h2>5. Electrodynamics</h2>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><a href="ch5_1_electromotive_force.html">1. Electromotive Force</a></li>
+                        <li><a href="ch5_2_electromagnetic_induction.html">2. Electromagnetic Induction</a></li>
+                        <li><a href="ch5_3_maxwells_equations.html">3. Maxwell's Equations</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 6. Electromagnetic Waves -->
+            <div class="topic-card">
+                <div class="card-header">
+                    <a href="ch6_electromagnetic_waves.html" class="card-link">
+                        <h2>6. Electromagnetic Waves</h2>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><a href="ch6_1_wave_mechanics.html">1. Wave Fundamentals</a></li>
+                        <li><a href="ch6_2_vacuum_waves.html">2. EM Waves in Vacuum</a></li>
+                        <li><a href="ch6_3_energy_momentum.html">3. Energy & Momentum</a></li>
+                        <li><a href="ch6_4_matter_waves.html">4. Waves in Matter</a></li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

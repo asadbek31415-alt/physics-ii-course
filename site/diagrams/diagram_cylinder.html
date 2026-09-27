@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss's Law: Solid Cylinder</title>
+    
+    
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <script async src="../vendor/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../vendor/three/build/three.module.js",
+            "three/addons/": "../vendor/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --panel-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --primary-color: #3498db;
+            --border-color: #3a4a5c;
+            --success-color: #28a745;
+            --danger-color: #e74c3c;
+        }
+
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; }
+        #sim-wrapper { display: flex; width: 100%; height: 100%; }
+        #canvas-container { flex-grow: 1; position: relative; background-color: #0a0a0a; }
+        .sidebar { width: 320px; background-color: var(--panel-bg); border-left: 1px solid var(--border-color); padding: 20px; display: flex; flex-direction: column; box-shadow: -4px 0 15px rgba(0,0,0,0.3); z-index: 10; overflow-y: auto; }
+        h2 { margin: 0 0 1rem 0; font-size: 1.4rem; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        h3 { margin: 1.5rem 0 0.5rem 0; font-size: 1.1rem; color: var(--text-primary); }
+        .control-group { margin-bottom: 1.5rem; position: relative; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        
+        .slider-ticks { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-top: -5px; }
+        
+        .status-box { background-color: rgba(0,0,0,0.2); border-radius: 8px; padding: 15px; margin-top: 1rem; border: 1px solid var(--border-color); }
+        .status-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+        .status-value { font-weight: bold; color: var(--primary-color); }
+        
+        .legend { display: flex; gap: 10px; margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="sim-wrapper">
+        <div id="canvas-container"></div>
+        
+        <div class="sidebar">
+            <h2>Solid Infinite Cylinder</h2>
+            
+            <div class="control-group">
+                <label>Gaussian Surface Radius ($s$)</label>
+                <input type="range" id="radiusSlider" min="0.1" max="5.0" step="0.1" value="3.5" list="ticks">
+                <datalist id="ticks"><option value="2.0" label="R"></option></datalist>
+                <div class="slider-ticks">
+                    <span>0</span>
+                    <span style="margin-left: -60px;">R</span>
+                    <span>5R</span>
+                </div>
+            </div>
+
+            <div class="status-box">
+                <div class="status-item">
+                    <span>Condition:</span>
+                    <span id="conditionLabel" class="status-value">Outside ($s > R$)</span>
+                </div>
+                <div class="status-item">
+                    <span>Enclosed Charge:</span>
+                    <span id="chargeLabel" class="status-value">$\lambda L$</span>
+                </div>
+                <div class="status-item">
+                    <span>Electric Field ($E$):</span>
+                    <span id="fieldLabel" class="status-value">...</span>
+                </div>
+            </div>
+
+            <h3>Key Concept</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+                Uniform volume charge density $\rho$.
+                <br><br>
+                <strong>Inside ($s < R$):</strong> Field grows linearly with distance from axis ($E \propto s$).
+                <br><br>
+                <strong>Outside ($s > R$):</strong> Field decreases as $1/s$ (not $1/r^2$!). It acts like a line charge.
+            </p>
+
+            <div class="legend">
+                <div style="display:flex; align-items:center;"><span class="dot" style="background:#e74c3c; margin-right:5px;"></span> Cylinder</div>
+                <div style="display:flex; align-items:center;"><span class="dot" style="background:#ffffff; opacity:0.3; margin-right:5px;"></span> Gaussian Surf.</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(10, 8, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        const CYL_RADIUS = 2.0;
+        const CYL_HEIGHT = 12.0; // Long to simulate infinite
+        const POSITIVE_COLOR = 0xe74c3c;
+
+        // 1. Solid Cylinder
+        const cylGeo = new THREE.CylinderGeometry(CYL_RADIUS, CYL_RADIUS, CYL_HEIGHT, 32, 1);
+        const cylMat = new THREE.MeshBasicMaterial({ color: POSITIVE_COLOR, wireframe: true, transparent: true, opacity: 0.1 });
+        const cylinder = new THREE.Mesh(cylGeo, cylMat);
+        scene.add(cylinder);
+
+        // Volume Charges
+        const chargeCount = 300;
+        const chargeGeo = new THREE.SphereGeometry(0.06, 8, 8);
+        const chargeMat = new THREE.MeshBasicMaterial({ color: POSITIVE_COLOR });
+        const chargesInstanced = new THREE.InstancedMesh(chargeGeo, chargeMat, chargeCount);
+        
+        const dummy = new THREE.Object3D();
+        for(let i=0; i<chargeCount; i++) {
+            const r = CYL_RADIUS * Math.sqrt(Math.random()); // Sqrt for uniform circular density
+            const theta = Math.random() * 2 * Math.PI;
+            const y = (Math.random() - 0.5) * CYL_HEIGHT;
+            
+            const x = r * Math.cos(theta);
+            const z = r * Math.sin(theta);
+            
+            dummy.position.set(x, y, z);
+            dummy.updateMatrix();
+            chargesInstanced.setMatrixAt(i, dummy.matrix);
+        }
+        scene.add(chargesInstanced);
+
+        // 2. Gaussian Surface (Coaxial Cylinder)
+        const gaussHeight = 4.0; // Finite length L
+        const gaussGeo = new THREE.CylinderGeometry(1, 1, gaussHeight, 32, 1, true); // Open ends usually, but let's show caps transparently
+        const gaussMat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, side: THREE.DoubleSide, shininess: 30 });
+        const gaussianCyl = new THREE.Mesh(gaussGeo, gaussMat);
+        scene.add(gaussianCyl);
+        
+        // Caps for Gaussian Surface
+        const capGeo = new THREE.CircleGeometry(1, 32);
+        const capMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.DoubleSide });
+        const topCap = new THREE.Mesh(capGeo, capMat); topCap.rotation.x = -Math.PI/2; topCap.position.y = gaussHeight/2;
+        const botCap = new THREE.Mesh(capGeo, capMat); botCap.rotation.x = -Math.PI/2; botCap.position.y = -gaussHeight/2;
+        gaussianCyl.add(topCap);
+        gaussianCyl.add(botCap);
+
+
+        // 3. Arrows (Radial)
+        const arrowCount = 60;
+        const arrowColor = 0x03dac6;
+        const arrowHeadGeo = new THREE.ConeGeometry(0.08, 0.2, 8);
+        const arrowShaftGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8);
+        arrowHeadGeo.translate(0, 0.6, 0);
+        
+        const heads = new THREE.InstancedMesh(arrowHeadGeo, new THREE.MeshBasicMaterial({color: arrowColor}), arrowCount);
+        const shafts = new THREE.InstancedMesh(arrowShaftGeo, new THREE.MeshBasicMaterial({color: arrowColor}), arrowCount);
+        scene.add(heads);
+        scene.add(shafts);
+
+        const arrowAngles = [];
+        for(let i=0; i<arrowCount; i++) {
+            arrowAngles.push({
+                theta: Math.random() * 2 * Math.PI,
+                y: (Math.random() - 0.5) * gaussHeight
+            });
+        }
+
+        const slider = document.getElementById('radiusSlider');
+        const conditionLabel = document.getElementById('conditionLabel');
+        const chargeLabel = document.getElementById('chargeLabel');
+        const fieldLabel = document.getElementById('fieldLabel');
+
+        function updateSimulation() {
+            const s = parseFloat(slider.value);
+            
+            // Scale only radius (X and Z), keep height (Y) constant
+            gaussianCyl.scale.set(s, 1, s);
+
+            let arrowScale = 0;
+
+            if (s < 0.1) {
+                conditionLabel.textContent = "Axis (s ≈ 0)";
+                conditionLabel.style.color = '#e74c3c';
+                chargeLabel.textContent = "0";
+                fieldLabel.textContent = "0";
+                arrowScale = 0;
+            } else if (s < CYL_RADIUS) {
+                // INSIDE: Linear increase (E ~ s)
+                conditionLabel.textContent = `Inside (s < R)`;
+                conditionLabel.style.color = '#e74c3c';
+                chargeLabel.innerHTML = `$\\lambda L (s^2/R^2)$`;
+                fieldLabel.innerHTML = `$\\frac{\\rho s}{2\\epsilon_0}$`;
+                
+                arrowScale = s / CYL_RADIUS; 
+            } else {
+                // OUTSIDE: 1/s decrease
+                conditionLabel.textContent = `Outside (s > R)`;
+                conditionLabel.style.color = '#28a745';
+                chargeLabel.textContent = "$\\lambda L$";
+                fieldLabel.innerHTML = `$\\frac{\\lambda}{2\\pi\\epsilon_0 s}$`;
+                
+                arrowScale = CYL_RADIUS / s;
+            }
+            if (typeof MathJax.typesetPromise === 'function') MathJax.typesetPromise();
+
+            heads.visible = arrowScale > 0.05;
+            shafts.visible = arrowScale > 0.05;
+
+            for(let i=0; i<arrowCount; i++) {
+                const data = arrowAngles[i];
+                // Radial position
+                const x = s * Math.cos(data.theta);
+                const z = s * Math.sin(data.theta);
+                const y = data.y;
+                
+                const dir = new THREE.Vector3(x, 0, z).normalize(); // Radial direction
+                
+                dummy.position.set(x, y, z);
+                dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                dummy.scale.set(1, arrowScale, 1);
+                dummy.updateMatrix();
+                
+                shafts.setMatrixAt(i, dummy.matrix);
+                heads.setMatrixAt(i, dummy.matrix);
+            }
+            shafts.instanceMatrix.needsUpdate = true;
+            heads.instanceMatrix.needsUpdate = true;
+        }
+
+        slider.addEventListener('input', updateSimulation);
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        updateSimulation();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+<script defer data-offline-bundle src="diagram_cylinder.0.offline.js"></script>
+
+
+</body>
+</html>

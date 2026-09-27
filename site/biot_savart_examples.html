@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Applications of the Biot-Savart Law</title>
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #28a745;
+            --accent-purple: #bb86fc;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        /* Header & Nav */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        /* Layout */
+        .container {
+            width: 90%;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #fff;
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+        }
+
+        /* Cards & Boxes */
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .solution-step {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .variable-list {
+            font-size: 0.9rem;
+            color: #a3a3a3;
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+            border-left: 2px solid #333;
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        .iframe-container {
+            width: 100%;
+            margin: 2rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="magnetostatics_index.html">Magnetostatics</a> &gt;
+                <a href="ch3_2_biot_savart.html">The Biot-Savart Law</a> &gt;
+                Standard Examples
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Applications of the Biot-Savart Law</h1>
+        <p>
+            The Biot-Savart law is a universal tool for calculating magnetic fields from steady currents.
+            Below are the detailed derivations for the two most fundamental geometries in magnetostatics.
+        </p>
+
+        <!-- PROBLEM 1 -->
+        <section id="infinite-wire">
+            <h2>Example 1: The Infinite Straight Wire</h2>
+            <p>
+                <strong>Problem:</strong> Find the magnetic field at a distance $s$ from a long straight wire carrying a
+                steady current $I$.
+            </p>
+
+            <div class="solution-step">
+                <h3>1. Geometric Setup</h3>
+                <p>
+                    Let the wire lie along the $z$-axis, carrying current $I$ in the $+\hat{z}$ direction.
+                    We calculate the field at a point $P$ located distance $s$ away on the $x$-axis.
+                </p>
+                <div class="variable-list">
+                    Source element: $d\vec{l}' = dz \hat{z}$<br>
+                    Separation vector: $\vecrsep = s \hat{x} - z \hat{z}$<br>
+                    Distance: $\rsep = \sqrt{s^2 + z^2}$
+                </div>
+            </div>
+
+            <div class="solution-step">
+                <h3>2. The Cross Product</h3>
+                <p>
+                    The Biot-Savart law requires $d\vec{l}' \times \hatrsep$. The magnitude of this cross product is
+                    given by $|d\vec{l}'| \sin(\alpha)$, where $\alpha$ is the angle between the current and the
+                    position vector.
+                </p>
+                <p>
+                    From geometry, if we define $\theta$ as the angle from the perpendicular distance $s$, then $\alpha
+                    = 90^\circ + \theta$, and $\sin(90^\circ + \theta) = \cos \theta$. The direction is circumferential
+                    ($\hat{\phi}$).
+                </p>
+                <div class="math-block">
+                    $$ dB = \frac{\mu_0 I}{4\pi} \frac{dz \cos \theta}{\rsep^2} $$
+                </div>
+            </div>
+
+            <div class="solution-step">
+                <h3>3. Trigonometric Substitution</h3>
+                <p>
+                    We express variables $z$ and $r$ in terms of the angle $\theta$:
+                </p>
+                <div class="formula-box">
+                    $$ z = s \tan \theta \implies dz = s \sec^2 \theta \, d\theta $$
+                    $$ \rsep = \frac{s}{\cos \theta} $$
+                </div>
+                <p>Substituting these into the integral:</p>
+                <div class="math-block">
+                    $$ B = \frac{\mu_0 I}{4\pi} \int \frac{(s \sec^2 \theta \, d\theta) \cos \theta}{(s / \cos
+                    \theta)^2} $$
+                </div>
+                <p>Simplifying the terms:</p>
+                <div class="math-block">
+                    $$ B = \frac{\mu_0 I}{4\pi s} \int \cos \theta \, d\theta $$
+                </div>
+            </div>
+
+            <div class="solution-step">
+                <h3>4. Integration Limits</h3>
+                <p>
+                    For an infinite wire ($z \to \pm \infty$), the angle $\theta$ spans from $-\pi/2$ to $+\pi/2$.
+                </p>
+                <div class="math-block">
+                    $$ B = \frac{\mu_0 I}{4\pi s} \left[ \sin \theta \right]_{-\pi/2}^{\pi/2} $$
+                    $$ B = \frac{\mu_0 I}{4\pi s} (1 - (-1)) = \frac{\mu_0 I}{2\pi s} $$
+                </div>
+            </div>
+
+            <div class="formula-box">
+                <h3>Final Result</h3>
+                <div class="math-block">
+                    $$ \vec{B} = \frac{\mu_0 I}{2\pi s} \hat{\phi} $$
+                </div>
+                <p>The field decreases inversely with distance $s$ and curls around the wire (Right-Hand Rule).</p>
+            </div>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/example_infinite_straight_wire_c0.html" title="Infinite Wire Simulation"></iframe>
+            </div>
+        </section>
+
+        <!-- PROBLEM 2 -->
+        <section id="circular-loop">
+            <h2>Example 2: Circular Loop on Axis</h2>
+            <p>
+                <strong>Problem:</strong> Find the magnetic field a distance $z$ above the center of a circular loop of
+                radius $R$, which carries a steady current $I$.
+            </p>
+
+            <div class="solution-step">
+                <h3>1. Geometric Setup</h3>
+                <p>
+                    The loop lies in the $xy$-plane. We calculate the field at point $P(0,0,z)$.
+                    The distance from any point on the rim to $P$ is constant: $\rsep = \sqrt{R^2 + z^2}$.
+                </p>
+                <p>
+                    The current element $d\vec{l}'$ is always perpendicular to the vector $\vecrsep$, so $|d\vec{l}'
+                    \times \hatrsep| = dl$.
+                </p>
+            </div>
+
+            <div class="solution-step">
+                <h3>2. Symmetry Argument</h3>
+                <p>
+                    The magnetic field vector $d\vec{B}$ produced by a segment $d\vec{l}'$ has a vertical component
+                    ($dB_z$) and a horizontal component ($dB_\perp$).
+                </p>
+                <p>
+                    For every element on one side of the loop, there is a diametrically opposite element whose
+                    horizontal field component exactly cancels the first. Therefore, <strong>only the vertical
+                        components survive integration.</strong>
+                </p>
+                <div class="math-block">
+                    $$ B = \int dB_z = \int dB \cos \theta $$
+                </div>
+                <p>Where $\theta$ is the angle between $\vecrsep$ and the plane of the loop.</p>
+            </div>
+
+            <div class="solution-step">
+                <h3>3. Integration</h3>
+                <p>
+                    From geometry, $\cos \theta = \frac{R}{\rsep} = \frac{R}{\sqrt{R^2 + z^2}}$.
+                </p>
+                <p>
+                    Substituting into the Biot-Savart expression:
+                </p>
+                <div class="formula-box">
+                    $$ dB_z = \frac{\mu_0 I}{4\pi} \frac{dl}{\rsep^2} \left( \frac{R}{\rsep} \right) = \frac{\mu_0 I
+                    R}{4\pi
+                    \rsep^3} dl $$
+                </div>
+                <p>
+                    Since $I, R,$ and $\rsep$ are constants, we simply integrate $dl$ around the circumference ($2\pi
+                    R$):
+                </p>
+                <div class="math-block">
+                    $$ B_z = \frac{\mu_0 I R}{4\pi (R^2 + z^2)^{3/2}} \int_0^{2\pi R} dl $$
+                    $$ B_z = \frac{\mu_0 I R}{4\pi (R^2 + z^2)^{3/2}} (2\pi R) $$
+                </div>
+            </div>
+
+            <div class="formula-box">
+                <h3>Final Result</h3>
+                <div class="math-block">
+                    $$ \vec{B} = \frac{\mu_0 I R^2}{2(R^2 + z^2)^{3/2}} \hat{z} $$
+                </div>
+                <p>At the center ($z=0$), this simplifies to $B = \frac{\mu_0 I}{2R}$.</p>
+            </div>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_2_biot_savart_c2.html" title="Circular Loop Simulation"></iframe>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ],
+                macros: {
+                    '\\rsep': '{\\text{𝓇}}',
+                    '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                    '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                },
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+
+</html>

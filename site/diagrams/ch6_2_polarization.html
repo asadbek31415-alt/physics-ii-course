@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EM Polarization Simulator</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #050a14;
+            --panel-bg: #0f172a;
+            --border: #1e293b;
+            --accent: #38bdf8;
+            --e-x: #60a5fa;
+            --e-y: #f87171;
+            --e-res: #fbbf24;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: var(--bg-deep); 
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            padding: 18px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        h1 { font-size: 1.35rem; color: var(--accent); margin: 0 0 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        
+        .theory-section { font-size: 0.82rem; line-height: 1.38; color: var(--text-dim); margin-bottom: 12px; }
+        ul { padding-left: 16px; margin: 7px 0; }
+        li { margin-bottom: 4px; }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+        button { 
+            background: #1e293b; border: 1px solid var(--border); color: white; 
+            padding: 7px; border-radius: 6px; cursor: pointer; font-size: 0.78rem;
+            transition: all 0.2s;
+        }
+        button:hover { background: #2d3e5a; }
+        button.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+
+        .vis-toggles { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .vis-btn { display: flex; align-items: center; justify-content: space-between; text-align: left; width: 100%; }
+        .swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; margin-right: 8px; }
+
+        .controls-card {
+            background: rgba(0,0,0,0.3);
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .control-row { margin-bottom: 10px; }
+        .control-row:last-child { margin-bottom: 0; }
+        label { display: flex; justify-content: space-between; font-size: 0.7rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; font-weight: bold; letter-spacing: 0.04em; }
+        label span { color: var(--accent); }
+        input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 6px; appearance: none; background: #1e293b; border-radius: 3px; }
+
+        #canvas-container { position: relative; width: 100%; height: 100%; }
+
+        @media (max-width: 700px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100%;
+                min-height: 0;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+                min-height: 0;
+            }
+
+            .sidebar {
+                grid-column: 1;
+                grid-row: 2;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 7px 10px;
+                padding: 9px 10px;
+                border-right: 0;
+                border-top: 1px solid var(--border);
+                overflow: hidden;
+            }
+
+            h1 {
+                grid-column: 1 / -1;
+                margin: 0;
+                padding-bottom: 5px;
+                font-size: 1rem;
+            }
+
+            .theory-section {
+                display: none;
+            }
+
+            .vis-toggles,
+            .btn-grid {
+                margin: 0;
+                gap: 5px;
+            }
+
+            button {
+                min-height: 34px;
+                padding: 6px;
+                font-size: 0.72rem;
+            }
+
+            .controls-card {
+                grid-column: 1 / -1;
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 6px 10px;
+                padding: 8px;
+            }
+
+            .control-row {
+                margin: 0;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 4px;
+                font-size: 0.64rem;
+                letter-spacing: 0.03em;
+            }
+
+            input[type="range"] {
+                min-height: 30px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <h1>3. Polarization</h1>
+            
+            <div class="theory-section">
+                Polarization refers to the path the tip of the $\vec{E}$ vector traces in the plane perpendicular to the direction of travel.
+                <ul>
+                    <li><b>Linear:</b> Components are in-phase ($0^\circ$ or $180^\circ$).</li>
+                    <li><b>Circular:</b> Equal magnitude and $90^\circ$ phase shift.</li>
+                    <li><b>Elliptical:</b> Unequal magnitudes or arbitrary phase.</li>
+                </ul>
+            </div>
+
+            <div class="vis-toggles">
+                <button id="toggleEx" class="vis-btn active" onclick="toggleVisibility('ex')">
+                    <span><span class="swatch" style="background: var(--e-x)"></span> Show $E_x$ Component</span>
+                </button>
+                <button id="toggleEy" class="vis-btn active" onclick="toggleVisibility('ey')">
+                    <span><span class="swatch" style="background: var(--e-y)"></span> Show $E_y$ Component</span>
+                </button>
+                <button id="toggleRes" class="vis-btn active" onclick="toggleVisibility('res')">
+                    <span><span class="swatch" style="background: var(--e-res)"></span> Show Resultant Wave</span>
+                </button>
+            </div>
+
+            <div class="btn-grid">
+                <button onclick="setPreset('linear')">Linear</button>
+                <button onclick="setPreset('circular')">Circular (R)</button>
+                <button onclick="setPreset('linear45')">Linear 45°</button>
+                <button onclick="setPreset('elliptical')">Elliptical</button>
+            </div>
+
+            <div class="controls-card">
+                <div class="control-row">
+                    <label>Amplitude $E_x$ <span id="val-ax">4.0</span></label>
+                    <input type="range" id="ampX" min="0" max="5" step="0.1" value="4">
+                </div>
+                <div class="control-row">
+                    <label>Amplitude $E_y$ <span id="val-ay">4.0</span></label>
+                    <input type="range" id="ampY" min="0" max="5" step="0.1" value="4">
+                </div>
+                <div class="control-row">
+                    <label>Phase Shift $\delta$ <span id="val-phi">90°</span></label>
+                    <input type="range" id="phase" min="0" max="360" step="1" value="90">
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-container"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let xWave, yWave, resWave, traceLine, leadArrow;
+        let vis = { ex: true, ey: true, res: true };
+        
+        const container = document.getElementById('canvas-container');
+        const ampXIn = document.getElementById('ampX');
+        const ampYIn = document.getElementById('ampY');
+        const phaseIn = document.getElementById('phase');
+
+        window.toggleVisibility = (comp) => {
+            vis[comp] = !vis[comp];
+            document.getElementById('toggle' + comp.charAt(0).toUpperCase() + comp.slice(1)).classList.toggle('active');
+            updateVisibility();
+        }
+
+        window.setPreset = (type) => {
+            if(type === 'linear') { ampXIn.value = 5; ampYIn.value = 0; phaseIn.value = 0; }
+            if(type === 'linear45') { ampXIn.value = 4; ampYIn.value = 4; phaseIn.value = 0; }
+            if(type === 'circular') { ampXIn.value = 4; ampYIn.value = 4; phaseIn.value = 90; }
+            if(type === 'elliptical') { ampXIn.value = 5; ampYIn.value = 2.5; phaseIn.value = 45; }
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050a14);
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(-25, 12, 22);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Grid and Propagation
+            const grid = new THREE.GridHelper(40, 40, 0x1e293b, 0x0f172a);
+            grid.rotation.x = Math.PI/2;
+            grid.position.z = -10;
+            scene.add(grid);
+
+            const kArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,-1), new THREE.Vector3(0,0,15), 30, 0xffffff, 1, 0.5);
+            scene.add(kArrow);
+
+            // Lines
+            xWave = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
+            yWave = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.6 }));
+            resWave = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xfbbf24, linewidth: 2 }));
+            traceLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.4, transparent: true }));
+            leadArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,15), 1, 0xfbbf24, 0.6, 0.4);
+
+            scene.add(xWave, yWave, resWave, traceLine, leadArrow);
+            animate();
+        }
+
+        function updateVisibility() {
+            xWave.visible = vis.ex;
+            yWave.visible = vis.ey;
+            resWave.visible = vis.res;
+            leadArrow.visible = vis.res;
+        }
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const Ax = parseFloat(ampXIn.value);
+            const Ay = parseFloat(ampYIn.value);
+            const phi = (parseFloat(phaseIn.value) * Math.PI) / 180;
+            
+            document.getElementById('val-ax').innerText = Ax.toFixed(1);
+            document.getElementById('val-ay').innerText = Ay.toFixed(1);
+            document.getElementById('val-phi').innerText = phaseIn.value + "°";
+
+            time += 0.02;
+            const k = 0.5;
+            const points = 200;
+            const zSpan = 25;
+            const xPos = [], yPos = [], resPos = [], tracePos = [];
+
+            for(let i=0; i<=points; i++) {
+                const z = (i/points) * zSpan - 10;
+                const phaseVal = k * z + time * 5;
+                const ex = Ax * Math.cos(phaseVal);
+                const ey = Ay * Math.cos(phaseVal + phi);
+                xPos.push(ex, 0, z);
+                yPos.push(0, ey, z);
+                resPos.push(ex, ey, z);
+            }
+
+            for(let i=0; i<=100; i++) {
+                const tLocal = (i/100) * Math.PI * 2;
+                tracePos.push(Ax * Math.cos(tLocal), Ay * Math.cos(tLocal + phi), 15);
+            }
+
+            xWave.geometry.setAttribute('position', new THREE.Float32BufferAttribute(xPos, 3));
+            yWave.geometry.setAttribute('position', new THREE.Float32BufferAttribute(yPos, 3));
+            resWave.geometry.setAttribute('position', new THREE.Float32BufferAttribute(resPos, 3));
+            traceLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(tracePos, 3));
+
+            const leadPhase = k * 15 + time * 5;
+            const lx = Ax * Math.cos(leadPhase), ly = Ay * Math.cos(leadPhase + phi);
+            leadArrow.setDirection(new THREE.Vector3(lx, ly, 0).normalize());
+            leadArrow.setLength(Math.sqrt(lx*lx + ly*ly) + 0.001);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.getElementById('sidebar'), {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+            init();
+        });
+    </script>
+<script defer data-offline-bundle src="ch6_2_polarization.0.offline.js"></script>
+
+
+</body>
+</html>

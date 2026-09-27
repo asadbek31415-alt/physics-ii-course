@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Ferromagnetism: Domains & Hysteresis</title>
+
+    <!-- External Resources -->
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js" defer></script>
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['$$', '$$']],
+                macros: {
+                    B: "\\mathbf{B}",
+                    H: "\\mathbf{H}",
+                    M: "\\mathbf{M}",
+                    Tc: "T_c"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <!-- Page Specific Styles -->
+    <style>
+        .concept-box {
+            background-color: var(--card-bg, #1c2734);
+            border: 1px solid var(--border-color, #2c3e50);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-term {
+            color: var(--accent-color, #3498db);
+            font-weight: 700;
+        }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .step-item {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 1.5rem;
+            border-left: 2px solid var(--border-color, #2c3e50);
+        }
+
+        .step-item::before {
+            content: "";
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--accent-color, #3498db);
+        }
+
+        .step-title {
+            display: block;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 2rem 0;
+            border: 1px solid var(--border-color, #2c3e50);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 600px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            color: var(--accent-color, #3498db);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+            color: #fff;
+        }
+
+        .warning-note {
+            color: var(--danger-color, #e74c3c);
+            font-weight: 600;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> >
+                <a href="ch4_4_linear_media.html">Linear & Nonlinear Media</a> >
+                Ferromagnetism Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Ferromagnetism: Domains & Hysteresis</h1>
+
+        <p>
+            Why is a standard iron nail attracted to a magnet, but doesn't act like a magnet itself? Why does heating a
+            magnet destroy it? The answers lie in the microscopic structure of the material.
+        </p>
+
+        <!-- SECTION 1: DOMAINS -->
+        <section>
+            <h2>1. Magnetic Domains</h2>
+            <p>
+                In ferromagnetic materials, a quantum mechanical effect called the <strong>Exchange Interaction</strong>
+                forces neighboring atomic dipoles to align parallel to each other. This creates regions of perfect
+                alignment called <span class="highlight-term">Domains</span>.
+            </p>
+
+            <div class="concept-box">
+                <p><strong>The Energy Trade-off:</strong></p>
+                <ul style="padding-left: 20px; color: var(--text-secondary);">
+                    <li><strong>Exchange Energy</strong> wants dipoles to align (parallel).</li>
+                    <li><strong>Magnetostatic Energy</strong> wants dipoles to anti-align to cancel the external field.
+                    </li>
+                </ul>
+                <p>
+                    The compromise is to form domains. Within a domain, spins are parallel (Exchange wins). But
+                    neighboring domains point in different directions to cancel the net field (Magnetostatic wins).
+                </p>
+            </div>
+
+            <p>
+                A standard piece of iron has randomly oriented domains, so the net magnetization \(\mathbf{M}\) is zero.
+                When we apply an external field \(\mathbf{H}\), two things happen:
+            </p>
+            <ol>
+                <li><strong>Domain Wall Motion:</strong> Domains aligned with the field grow, "eating" their neighbors.
+                </li>
+                <li><strong>Domain Rotation:</strong> At high fields, the dipoles within the domains physically rotate
+                    to align with \(\mathbf{H}\).</li>
+            </ol>
+        </section>
+
+        <!-- SIMULATION -->
+        <div class="iframe-container">
+            <iframe src="diagrams/ferromagnetism_domains.html" title="Domain Hysteresis Simulation"></iframe>
+        </div>
+
+        <!-- SECTION 2: HYSTERESIS -->
+        <section>
+            <h2>2. The Hysteresis Loop</h2>
+            <p>
+                The alignment process is not perfectly reversible because domain walls get "stuck" on impurities in the
+                crystal structure. This friction leads to <strong>Hysteresis</strong> (Greek for "lagging behind").
+            </p>
+
+            <ul class="step-list">
+                <li class="step-item">
+                    <span class="step-title">Saturation Point</span>
+                    All domains are fully aligned. Increasing \(\mathbf{H}\) further creates no additional
+                    magnetization.
+                </li>
+                <li class="step-item">
+                    <span class="step-title">Retentivity (Remanence)</span>
+                    When \(\mathbf{H}\) is removed (back to 0), the domains relax slightly but do not return to random.
+                    The material retains a magnetization \(\mathbf{M}_r\). <br>
+                    <span class="highlight-term">This is how permanent magnets are made.</span>
+                </li>
+                <li class="step-item">
+                    <span class="step-title">Coercivity</span>
+                    To demagnetize the material, we must apply a <em>negative</em> field \(\mathbf{H}_c\). This forces
+                    the domains to flip back.
+                </li>
+            </ul>
+
+            <div class="concept-box" style="border-left: 4px solid var(--accent-color);">
+                <strong>Hard vs. Soft Magnets:</strong>
+                <br><br>
+                <strong>Hard Magnets</strong> (e.g., Neodymium) have a "fat" loop with high Remanence and Coercivity.
+                They are hard to demagnetize.<br>
+                <strong>Soft Magnets</strong> (e.g., Transformer Iron) have a "thin" loop. They magnetize easily but
+                lose it immediately when the current stops.
+            </div>
+        </section>
+
+        <!-- SECTION 3: CURIE POINT -->
+        <section>
+            <h2>3. The Curie Point (\(T_c\))</h2>
+            <p>
+                Ferromagnetism is a battle between order (Exchange Interaction) and chaos (Thermal Agitation). As
+                temperature increases, thermal vibrations shake the dipoles.
+            </p>
+            <p>
+                At a specific critical temperature called the <strong>Curie Temperature</strong> (\(T_c\)), thermal
+                energy overcomes the exchange interaction. The domains break down, and the alignment is lost.
+            </p>
+
+            <div class="math-block">
+                $$ T > T_c \implies \text{Paramagnetic} $$
+            </div>
+
+            <p>
+                Above \(T_c\), the material becomes an ordinary Paramagnet. For Iron, \(T_c \approx 770^\circ
+                \text{C}\).
+            </p>
+
+            <p class="warning-note">
+                Try the "Temperature" slider in the simulation above to see this phase transition!
+            </p>
+        </section>
+
+        <a href="ch4_4_linear_media.html" class="back-link">← Back to Linear & Nonlinear Media</a>
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

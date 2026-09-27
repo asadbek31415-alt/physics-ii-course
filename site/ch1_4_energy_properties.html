@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Properties of Electrostatic Energy</title>
+    
+    
+    
+
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ],
+                macros: {
+                    "\\vec": "\\mathbf{#1}",
+                    "\\grad": "\\nabla"
+                }
+            });
+        });
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 1rem;
+            color: white;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3rem;
+            margin-top: 3rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        .math-block {
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .warning-block {
+            background-color: rgba(241, 196, 15, 0.05);
+            border: 1px solid var(--warning-color);
+            border-left: 4px solid var(--warning-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .danger-block {
+            background-color: rgba(231, 76, 60, 0.05);
+            border: 1px solid var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-top: 3rem;
+            padding: 0.8rem 1.5rem;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 50px;
+            border: 1px solid var(--accent-color);
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > <a
+                    href="ch1_4_work_energy.html">Work & Energy</a> > Properties of Energy
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Properties of Electrostatic Energy</h1>
+
+        <section>
+            <h2>1. Where is the Energy Stored?</h2>
+            <p>
+                We have two mathematically equivalent formulas for the same energy \(W\):
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{2} \int \rho V d\tau \quad \text{vs} \quad W = \int u_e d\tau = \frac{\epsilon_0}{2}
+                \int E^2 d\tau $$
+            </div>
+            <p>
+                The first formula suggests that the energy is stored <strong>in the charge</strong> (where $\rho$ is
+                non-zero). The second suggests it resides <strong>in the field</strong>, with an
+                <strong>energy density</strong> ($u_e$):
+            </p>
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ u_e = \frac{\epsilon_0}{2} E^2 $$
+            </div>
+            <p>
+                In the context of electrostatics, these are simply two ways of looking at the same thing. However, in
+                electrodynamics (when fields can move and carry momentum), we are forced to conclude that the
+                <strong>field viewpoint</strong> is the physically correct one. Energy is a real thing distributed
+                through space.
+            </p>
+        </section>
+
+        <section>
+            <h2>2. Superposition Failure</h2>
+            <p>
+                The principle of superposition states that \(\vec{E}_{tot} = \vec{E}_1 + \vec{E}_2\). However, this does
+                <strong>not</strong> apply to energy. Because the energy depends on the <em>square</em> of the field,
+                the total energy is not simply the sum of individual energies.
+            </p>
+            <div class="math-block">
+                $$ E^2 = (\vec{E}_1 + \vec{E}_2)^2 = E_1^2 + E_2^2 + 2\vec{E}_1 \cdot \vec{E}_2 $$
+            </div>
+            <p>
+                Integrating this gives:
+            </p>
+            <div class="math-block">
+                $$ W_{tot} = W_1 + W_2 + \epsilon_0 \int \vec{E}_1 \cdot \vec{E}_2 d\tau $$
+            </div>
+            <p>
+                The last term is the <strong>interaction energy</strong>. It accounts for the work done to bring the two
+                systems together.
+            </p>
+        </section>
+
+        <section>
+            <h2>3. The Self-Energy Problem</h2>
+            <div class="danger-block">
+                <strong>Paradox:</strong> The integral \(\int E^2 d\tau\) is always positive. Yet, we know that bringing
+                a positive and negative charge together releases energy (negative work). How can the field formula give
+                a negative value?
+            </div>
+            <p>
+                It doesn't. The field formula \(W = \frac{\epsilon_0}{2} \int E^2 d\tau\) calculates the <strong>total
+                    energy</strong>, including the energy required to create the point charges themselves (their
+                <strong>self-energy</strong>).
+            </p>
+            <div class="warning-block">
+                For a true "point" charge, the self-energy is <strong>infinite</strong>, because the field goes to
+                infinity as \(1/r^2\) at the origin, and its square (\(1/r^4\)) integrated over a volume creates a
+                divergent integral.
+            </div>
+            <p>
+                In discrete particle physics, we usually ignore this infinity and only calculate the <em>interaction
+                    energy</em> (the sum formula). In continuous distributions, the self-energy is finite and is
+                automatically included in the integral.
+            </p>
+        </section>
+
+        <a href="ch1_4_work_energy.html" class="back-btn">← Back to Work & Energy</a>
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

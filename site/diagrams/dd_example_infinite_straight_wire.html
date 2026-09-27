@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Viz: Biot-Savart Integration</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: grid;
+            grid-template-columns: clamp(250px, 28vw, 330px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            z-index: 1;
+        }
+
+        #ui-panel {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid #0ff;
+            border-left: 0;
+            border-top: 0;
+            border-bottom: 0;
+            padding: 20px;
+            border-radius: 0;
+            z-index: 2;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+            color: #0ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        span.value {
+            color: #0f0;
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            background: transparent;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #0ff;
+            margin-top: -5px;
+            cursor: pointer;
+            box-shadow: 0 0 5px #0ff;
+        }
+
+        .legend {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        .note {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #ui-panel {
+                grid-column: 1;
+                grid-row: 1;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid #0ff;
+                padding: 12px;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 2;
+            }
+        }
+    </style>
+    <!-- Three.js -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h1>Integration Visualizer</h1>
+        <div class="note">Summing dH contributions from wire segments (Biot-Savart Law).</div>
+        <br>
+
+        <div class="control-group">
+            <label>Segments (N): <span id="val-segments" class="value">20</span></label>
+            <input type="range" id="inp-segments" min="2" max="100" value="20">
+        </div>
+
+        <div class="control-group">
+            <label>Wire Length: <span id="val-length" class="value">10</span></label>
+            <input type="range" id="inp-length" min="2" max="20" step="0.5" value="10">
+        </div>
+
+        <div class="control-group">
+            <label>Distance to P (Radius): <span id="val-radius" class="value">5</span></label>
+            <input type="range" id="inp-radius" min="1" max="15" step="0.5" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Height of P (Y): <span id="val-height" class="value">0</span></label>
+            <input type="range" id="inp-height" min="-10" max="10" step="0.5" value="0">
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background-color: #0ff; color: #0ff;"></div> Current (I dl)</div>
+            <div class="legend-item"><div class="dot" style="background-color: #f0f; color: #f0f;"></div> dH (Contribution)</div>
+            <div class="legend-item"><div class="dot" style="background-color: #0f0; color: #0f0;"></div> H Total (Result)</div>
+            <div class="legend-item"><div class="dot" style="background-color: #555; color: #555;"></div> r (Distance vec)</div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // --- 1. Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        camera.position.set(15, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        function resizeRenderer() {
+            const rect = container.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // --- 2. Geometry & Materials ---
+        
+        // Wire Material (Glowing Cyan)
+        const wireMaterial = new THREE.MeshPhongMaterial({
+            color: 0x00ffff,
+            emissive: 0x004444,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        // Observation Point P
+        const pointPGeo = new THREE.SphereGeometry(0.3, 16, 16);
+        const pointPMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const pointPMesh = new THREE.Mesh(pointPGeo, pointPMaterial);
+        scene.add(pointPMesh);
+
+        // Grid helper for context
+        const gridHelper = new THREE.GridHelper(30, 30, 0x333333, 0x111111);
+        scene.add(gridHelper);
+
+        // Objects container to manage cleanup
+        const vectorsGroup = new THREE.Group();
+        scene.add(vectorsGroup);
+
+        const wireGroup = new THREE.Group();
+        scene.add(wireGroup);
+
+        // --- 3. State & Logic ---
+        
+        const state = {
+            segments: 20,
+            length: 10,
+            radius: 5,
+            height: 0
+        };
+
+        // Constants for visualization scaling
+        const VEC_SCALE = 20; // Scale up the tiny magnetic field values for visibility
+
+        function updateSimulation() {
+            // Clear previous objects
+            while(vectorsGroup.children.length > 0){ 
+                vectorsGroup.remove(vectorsGroup.children[0]); 
+            }
+            while(wireGroup.children.length > 0){ 
+                wireGroup.remove(wireGroup.children[0]); 
+            }
+
+            // Position Point P
+            const P = new THREE.Vector3(state.radius, state.height, 0);
+            pointPMesh.position.copy(P);
+
+            // Wire parameters
+            const segmentLength = state.length / state.segments;
+            const startY = -state.length / 2;
+            
+            // Total Field Accumulator
+            let H_total = new THREE.Vector3(0, 0, 0);
+
+            // Iterate segments
+            for (let i = 0; i < state.segments; i++) {
+                // 1. Calculate Segment Position
+                const y = startY + i * segmentLength + segmentLength / 2;
+                const segPos = new THREE.Vector3(0, y, 0);
+
+                // 2. Draw Wire Segment
+                const segGeo = new THREE.CylinderGeometry(0.1, 0.1, segmentLength * 0.9, 8);
+                const segMesh = new THREE.Mesh(segGeo, wireMaterial);
+                segMesh.position.copy(segPos);
+                wireGroup.add(segMesh);
+
+                // 3. Current Vector (dl) - Direction is +Y
+                // Just visualized by the cylinder, but we can imagine a vector (0, dy, 0)
+                const dl = new THREE.Vector3(0, segmentLength, 0);
+
+                // 4. Radius Vector (r) from Segment to P
+                const rVec = new THREE.Vector3().subVectors(P, segPos);
+                const dist = rVec.length();
+                
+                // Draw r vector (thin grey line)
+                if (state.segments < 60 || i % 2 === 0) { // optimization for high segment count
+                    const rArrow = new THREE.ArrowHelper(
+                        rVec.clone().normalize(),
+                        segPos,
+                        dist,
+                        0x444444,
+                        0.2, 0.1
+                    );
+                    // Make arrow transparency work by hacking material (ArrowHelper doesn't expose easy opacity)
+                    rArrow.line.material = new THREE.LineBasicMaterial({ color: 0x444444, transparent: true, opacity: 0.3 });
+                    rArrow.cone.material = new THREE.MeshBasicMaterial({ color: 0x444444, transparent: true, opacity: 0.3 });
+                    vectorsGroup.add(rArrow);
+                }
+
+                // 5. Calculate dB (or dH)
+                // Biot Savart: dH = (I * dl x r_hat) / (4*pi * r^2)
+                // Simplified for Viz: dH ~ (dl x r) / r^3
+                
+                const dH = new THREE.Vector3().crossVectors(dl, rVec); // dl x r
+                dH.multiplyScalar(1 / Math.pow(dist, 3)); // scale by 1/r^3
+
+                // Accumulate
+                H_total.add(dH);
+
+                // 6. Visualize dH at point P
+                // Scale for visibility
+                const dH_viz = dH.clone().multiplyScalar(VEC_SCALE * 5); 
+                const dH_len = dH_viz.length();
+                
+                if (dH_len > 0.01) {
+                    const arrowColor = 0xff00ff; // Magenta
+                    const dHArrow = new THREE.ArrowHelper(
+                        dH_viz.clone().normalize(),
+                        P,
+                        dH_len,
+                        arrowColor,
+                        0.2 * (dH_len > 1 ? 1 : dH_len), // Scale head
+                        0.1 * (dH_len > 1 ? 1 : dH_len)
+                    );
+                    vectorsGroup.add(dHArrow);
+                }
+            }
+
+            // 7. Draw Total Field Vector
+            const H_viz = H_total.clone().multiplyScalar(VEC_SCALE * 5);
+            const H_len = H_viz.length();
+            
+            if (H_len > 0.01) {
+                const totalArrow = new THREE.ArrowHelper(
+                    H_viz.clone().normalize(),
+                    P,
+                    H_len,
+                    0x00ff00, // Lime
+                    0.5, 0.3
+                );
+                // Make it thicker (Three.js lines are always 1px, so we rely on glow or just color)
+                // Alternatively, use a cylinder for the shaft for thickness, but arrowhelper is standard.
+                vectorsGroup.add(totalArrow);
+
+                // Add a glow sprite at the tip for emphasis
+                const spriteMaterial = new THREE.SpriteMaterial({ 
+                    color: 0x00ff00, 
+                    transparent: true, 
+                    opacity: 0.5,
+                    blending: THREE.AdditiveBlending
+                });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(1, 1, 1);
+                sprite.position.copy(P).add(H_viz);
+                vectorsGroup.add(sprite);
+            }
+        }
+
+
+        // --- 4. Event Listeners ---
+
+        const domSegments = document.getElementById('inp-segments');
+        const domLength = document.getElementById('inp-length');
+        const domRadius = document.getElementById('inp-radius');
+        const domHeight = document.getElementById('inp-height');
+
+        function updateState() {
+            state.segments = parseInt(domSegments.value);
+            state.length = parseFloat(domLength.value);
+            state.radius = parseFloat(domRadius.value);
+            state.height = parseFloat(domHeight.value);
+
+            document.getElementById('val-segments').innerText = state.segments;
+            document.getElementById('val-length').innerText = state.length;
+            document.getElementById('val-radius').innerText = state.radius;
+            document.getElementById('val-height').innerText = state.height;
+
+            updateSimulation();
+        }
+
+        domSegments.addEventListener('input', updateState);
+        domLength.addEventListener('input', updateState);
+        domRadius.addEventListener('input', updateState);
+        domHeight.addEventListener('input', updateState);
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            resizeRenderer();
+        });
+
+        // --- 5. Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Initialize
+        resizeRenderer();
+        updateState();
+        animate();
+
+    </script>
+</body>
+</html>

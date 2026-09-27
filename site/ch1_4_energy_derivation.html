@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Field Energy Derivation</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}",
+                    dtau: "d\\tau",
+                    rcurs: "\\mathcal{r}"
+                    /* Removed 'epsilon' macro to fix recursion error */
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 2rem;
+            font-size: 1.3rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Steps List */
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-item {
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 2px solid var(--border-color);
+        }
+
+        /* Back Button Wrapper */
+        .back-wrapper {
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+
+        .back-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electrostatics_index.html">Electrostatics</a> >
+                <a href="ch1_4_work_energy.html">Work & Energy</a> >
+                Derivation
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Field Energy Derivation</h1>
+
+        <p>
+            For a continuous charge distribution, we transition from the discrete sum to a volume integral. This
+            derivation shows how energy can be viewed as resides within the electric field itself.
+        </p>
+
+        <!-- SECTION 1: CONTINUOUS DISTRIBUTION -->
+        <section>
+            <h2>1. From Sum to Integral</h2>
+            <p>
+                For a volume charge density \(\rho\), the discrete formula becomes:
+            </p>
+            <div class="math-block">
+                $$ W = \frac{1}{2} \int \rho V d\tau $$
+            </div>
+            <p>
+                There is a lovely way to rewrite this result, in which \(\rho\) and \(V\) are eliminated in favor of the
+                electric field \(\vec{E}\).
+            </p>
+        </section>
+
+        <!-- SECTION 2: VECTOR CALCULUS STEPS -->
+        <section>
+            <h2>2. The Vector Calculus Path</h2>
+            <p>
+                First, we use Gauss's law to express \(\rho\) in terms of \(\vec{E}\): \(\rho = \epsilon_0 \nabla \cdot
+                \vec{E}\).
+            </p>
+            <div class="math-block">
+                $$ W = \frac{\epsilon_0}{2} \int (\nabla \cdot \vec{E}) V d\tau $$
+            </div>
+
+            <p>
+                Now use integration by parts to transfer the derivative from \(\vec{E}\) to \(V\). Using the identity
+                \(\nabla \cdot (V\vec{E}) = V(\nabla \cdot \vec{E}) + \vec{E} \cdot (\nabla V)\):
+            </p>
+            <div class="math-block">
+                $$ W = \frac{\epsilon_0}{2} \left[ -\int \vec{E} \cdot (\nabla V) d\tau + \oint V\vec{E} \cdot d\vec{a}
+                \right] $$
+            </div>
+
+            <p>
+                But \(\nabla V = -\vec{E}\), so the first term simplifies:
+            </p>
+            <div class="math-block">
+                $$ W = \frac{\epsilon_0}{2} \left( \int_{\mathcal{V}} E^2 d\tau + \oint_{\mathcal{S}} V\vec{E} \cdot
+                d\vec{a} \right) $$
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE ALL SPACE LIMIT -->
+        <section>
+            <h2>3. Integrating Over All Space</h2>
+            <p>
+                What volume \(\mathcal{V}\) should we integrate over? Initially, it must enclose all the charge.
+                However, any <em>larger</em> volume would do just as well, since \(\rho = 0\) in the extra territory.
+            </p>
+
+            <p>
+                As we enlarge the volume, the integral of \(E^2\) can only increase (since the integrand is always
+                positive). Evidently, the surface integral must decrease correspondingly to leave the sum intact.
+            </p>
+
+            <ul class="step-list">
+                <li class="step-item">
+                    At large distances from the charge, \(V\) goes like \(1/r\) and \(E\) like \(1/r^2\).
+                </li>
+                <li class="step-item">
+                    The surface area grows like \(r^2\).
+                </li>
+                <li class="step-item">
+                    Roughly speaking, the surface integral goes down like \(1/r\).
+                </li>
+            </ul>
+
+            <p>
+                If we integrate over <strong>all space</strong> (\(R^3\)), the surface integral goes to zero, and we are
+                left
+                with:
+            </p>
+            <div class="math-block"
+                style="border: 2px solid var(--accent-color); padding: 2rem; border-left: 4px solid var(--accent-color);">
+                $$ W = \frac{\epsilon_0}{2} \int_{\text{all space}} E^2 d\tau $$
+            </div>
+        </section>
+
+        <!-- SECTION 4: ENERGY DENSITY -->
+        <section>
+            <h2>4. Energy Density \(w_e\)</h2>
+            <p>
+                The form of the all-space integral suggests that the energy is literally distributed throughout space,
+                with a specific amount of energy per unit volume. We define this as the <strong>electrostatic energy
+                    density</strong> (\(w_e\)):
+            </p>
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ w_e = \frac{\epsilon_0}{2} E^2 $$
+            </div>
+            <p>
+                In this view, the total work \(W\) is simply the integral of the energy density over all space:
+            </p>
+            <div class="math-block">
+                $$ W = \int w_e d\tau $$
+            </div>
+            <p>
+                This concept is central to the field theory of electromagnetism: energy is not just a bookkeeping
+                property of charges, but a physical quantity residing in the <strong>electric field</strong> itself.
+            </p>
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch1_4_work_energy.html" class="back-btn">← Return to Work & Energy</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

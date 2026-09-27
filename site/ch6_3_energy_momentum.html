@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 6.3: Energy & Momentum</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <style>
+        .def-item {
+            grid-template-columns: 140px 1fr !important;
+            align-items: center;
+        }
+
+        .def-symbol {
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Energy &
+                Momentum
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Energy and Momentum in EM Waves</h1>
+
+        <p class="intro-text">
+            Light waves are not just mathematical abstractions—they are physical carriers of energy and momentum.
+            The fields themselves store energy, and the propagation of these fields constitutes a flow of power.
+        </p>
+
+        <!-- SECTION 1: ENERGY DENSITY AND POYNTING VECTOR -->
+        <section data-concept-title="1. Energy Flow: The Poynting Vector" id="concept-1-1-energy-flow-the-poynting-vector">
+            <h2>1. Energy Flow: The Poynting Vector</h2>
+            <p>
+                The total energy density $u$ is the sum of the electric energy density ($u_e$) and magnetic energy
+                density ($u_m$).
+                Recall from
+                <a href="ch1_4_energy_properties.html" style="color: var(--accent-color);">Electrostatics</a> and
+                <a style="color: var(--accent-color);" class="deep-dive-link" href="ch5_2_energy_details.html?back=ch6_3_energy_momentum.html%23concept-1-1-energy-flow-the-poynting-vector"><span aria-hidden="true">+</span> Deep Dive: Energy in Magnetic Fields</a>:
+            </p>
+            <div class="math-block">
+                $$ u = u_e + u_m = \frac{1}{2}\epsilon_0 E^2 + \frac{1}{2\mu_0} B^2 $$
+            </div>
+            <p>
+                For a plane wave in vacuum, the electric and magnetic energy densities are equal. The power per unit
+                area
+                transported by the wave is described by the <strong>Poynting Vector</strong> $\vec{S}$:
+            </p>
+            <div class="math-block" style="border: 1px solid var(--accent-color);">
+                $$ \vec{S} = \frac{1}{\mu_0} (\vec{E} \times \vec{B}) $$
+            </div>
+            <p>
+                $\vec{S}$ points in the direction of wave propagation. Its magnitude fluctuates rapidly; what we usually
+                measure is the average power over time, called the <strong>Intensity ($I$)</strong>.
+            </p>
+            <div class="math-block">
+                $$ I = \langle S \rangle = \frac{1}{2}c\epsilon_0 E_0^2 $$
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_2_poynting_details.html?back=ch6_3_energy_momentum.html%23concept-1-1-energy-flow-the-poynting-vector"><span aria-hidden="true">+</span> Deep Dive: The Poynting Vector</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: MOMENTUM AND RADIATION PRESSURE -->
+        <section data-concept-title="2. Momentum and Radiation Pressure" id="concept-2-2-momentum-and-radiation-pressure">
+            <h2>2. Momentum and Radiation Pressure</h2>
+            <p>
+                Since EM waves carry energy, they also carry <strong>momentum</strong>. When light hits an object, it
+                transfers this momentum, exerting a tiny but measurable force.
+            </p>
+            <p>
+                The <strong>Radiation Pressure ($P$)</strong> depends on whether the surface absorbs or reflects the
+                light:
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">$P = I/c$</span>
+                    <span class="def-text"><strong>Perfect Absorption</strong>. The surface absorbs all incident
+                        momentum ($100\%$ transfer).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$P = 2I/c$</span>
+                    <span class="def-text"><strong>Perfect Reflection</strong>. The wave bounces back, doubling the
+                        total momentum transfer due to the change in direction.</span>
+                </div>
+            </div>
+
+            <h3 class="diagram-title">Interactive: Radiation Pressure</h3>
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ch6_3_radiation_pressure.html" title="Radiation Pressure"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_2_pressure_details.html?back=ch6_3_energy_momentum.html%23concept-2-2-momentum-and-radiation-pressure"><span aria-hidden="true">+</span> Deep Dive: Radiation Pressure</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

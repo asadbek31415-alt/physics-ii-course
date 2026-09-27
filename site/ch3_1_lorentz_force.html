@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Lorentz Force Law</title>
+
+    <!-- CSS and Fonts -->
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css"
+        integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+
+    <!-- KaTeX JS -->
+    <script defer src="vendor/katex/katex.min.js"
+        integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
+        crossorigin="anonymous"></script>
+
+    <!-- KaTeX Auto-Render Extension -->
+    <script defer src="vendor/katex/contrib/auto-render.min.js"
+        integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, {
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false}
+          ],
+          throwOnError : false
+        });"></script>
+
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="magnetostatics_index.html">Magnetostatics</a> >
+                The Lorentz Force Law
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>The Lorentz Force Law</h1>
+
+        <!-- 1. THE PHENOMENON -->
+        <section data-concept-title="1. The Phenomenon: Forces on Moving Charges" id="the-mystery">
+            <h2>1. The Phenomenon: Forces on Moving Charges</h2>
+            <p>
+                In electrostatics, we learned that a stationary charge $q$ produces an electric field $\mathbf{E}$, and
+                another charge $Q$ feels a force $\mathbf{F} = Q\mathbf{E}$. This is simple and intuitive.
+            </p>
+            <p>
+                But what happens when charges move? Consider two parallel wires. The wires are electrically neutral
+                (they have equal amounts of positive and negative charge), so there should be no electrostatic force
+                between them. Yet, when we run a current through them, they physically move.
+            </p>
+            <p>
+                If the currents flow in the same direction, the wires attract. If they flow in opposite directions, they
+                repel. Since the net charge is zero, this cannot be an electric force. It is a <strong>Magnetic
+                    Force</strong>.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_1_two_wires.html"></iframe>
+            </div>
+
+        </section>
+
+        <div class="dive-wrapper">
+            <a href="ch3_1_field_direction_deep_dive.html" class="dive-btn">
+                <span>🧭</span> Deep Dive: The Field's Direction
+            </a>
+        </div>
+
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+
+        <!-- 2. DEFINING THE FIELD -->
+        <section data-concept-title="2. The &quot;Chicken and Egg&quot; Problem" id="defining-b">
+            <h2>2. The "Chicken and Egg" Problem</h2>
+            <p>
+                We know a force exists, but how do we describe the field that causes it? In gravity and electrostatics,
+                the force vector points in the direction of the field lines. Magnetism is not so kind.
+            </p>
+            <p>
+                We cannot simply define the magnetic field $\mathbf{B}$ by placing a stationary charge and measuring the
+                force, because <strong>stationary charges feel no magnetic force</strong>. The charge <em>must</em> be
+                moving.
+            </p>
+
+            <h3>Operational Definition: Probing the Field</h3>
+            <p>
+                Imagine we are in a room with a hidden magnetic field. We have a "test charge" $q$ and a gun to fire it
+                at velocity $\mathbf{v}$. How do we find $\mathbf{B}$?
+            </p>
+            <ul>
+                <li>If we fire the charge along the direction of the field, we observe <strong>zero force</strong>. This
+                    tells us the direction of $\mathbf{B}$.</li>
+                <li>If we fire the charge perpendicular to that line, we observe <strong>maximum force</strong>. This
+                    allows us to calculate the magnitude.</li>
+                <li>Crucially, the force is always perpendicular to both the velocity and the field.</li>
+            </ul>
+            <p>
+                Use the simulation below to act as the experimenter. Try to deduce the hidden field direction by firing
+                particles.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_1_B_F_V_relation.html"></iframe>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+
+        <!-- 3. THE LAW -->
+        <section data-concept-title="3. The Lorentz Force Law" id="lorentz-law">
+            <h2>3. The Lorentz Force Law</h2>
+            <p>
+                The peculiar relationship between velocity, field, and force—where the force is orthogonal to the
+                motion—is mathematically described by the <strong>cross product</strong>.
+            </p>
+            <p>
+                If a charge $Q$ moves with velocity $\mathbf{v}$ in the presence of both an electric field $\mathbf{E}$
+                and a magnetic field $\mathbf{B}$, the total force is:
+            </p>
+
+            <div class="math-block">
+                $$ \mathbf{F} = q[\mathbf{E} + (\mathbf{v} \times \mathbf{B})] $$
+            </div>
+
+            <p>
+                The magnetic component, $\mathbf{F}_{mag} = q(\mathbf{v} \times \mathbf{B})$, has profound implications:
+            </p>
+            <ul>
+                <li><strong>Orthogonality:</strong> The force is always perpendicular to the velocity vector.</li>
+                <li><strong>No Work:</strong> Since work is the dot product of force and displacement ($W = \int
+                    \mathbf{F} \cdot d\mathbf{l}$), and $\mathbf{F}$ is perpendicular to motion ($d\mathbf{l}$),
+                    <strong>magnetic forces do no work</strong>. They can change the <em>direction</em> of a particle,
+                    but never its <em>speed</em>.
+                </li>
+            </ul>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_1_lorentz_force_c0.html"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="work_done_by_magnetic_forces.html?back=ch3_1_lorentz_force.html%23lorentz-law"><span aria-hidden="true">+</span> Deep Dive: Work Done by Magnetic Forces</a>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+
+        <!-- 4. MOTION -->
+        <section data-concept-title="4. Cyclotron Motion" id="cyclotron-motion">
+            <h2>4. Cyclotron Motion</h2>
+            <p>
+                Because the magnetic force steers the particle without speeding it up, a particle moving perpendicular
+                to a uniform magnetic field will travel in a perfect circle.
+            </p>
+            <p>
+                By equating the magnetic force ($qvB$) to the centripetal force required for circular motion ($mv^2/R$),
+                we find the <strong>Cyclotron Radius</strong> ($R$):
+            </p>
+
+            <div class="math-block">
+                $$ qvB = \frac{mv^2}{R} \implies R = \frac{mv}{qB} $$
+            </div>
+
+            <p>
+                If the particle has some velocity parallel to the field lines, that component remains unchanged (since
+                $\mathbf{v}_{\parallel} \times \mathbf{B} = 0$). The combination of constant forward motion and circular
+                rotation creates a <strong>helix</strong>.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_1_lorentz_force_c1.html"></iframe>
+            </div>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+
+        <!-- 5. CURRENTS -->
+        <section data-concept-title="5. From Charges to Currents" id="electric-currents">
+            <h2>5. From Charges to Currents</h2>
+            <p>
+                In the laboratory, we rarely deal with single electrons fired into a vacuum. We deal with trillions of
+                electrons flowing through wires. We call this <strong>Current</strong>.
+            </p>
+            <p>
+                Since magnetic force acts on moving charge, it acts on current-carrying wires. We model this flow in
+                three dimensions:
+            </p>
+
+            <div class="grid-container"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                <article style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px;">
+                    <h3>Line Current ($I$)</h3>
+                    <p>Charge flowing down a thin wire.</p>
+                    <div class="math-block" style="margin: 10px 0;">$$ \mathbf{I} = \lambda \mathbf{v} $$</div>
+                    <p><small>$\lambda$: Linear charge density (C/m)</small></p>
+                </article>
+
+                <article style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px;">
+                    <h3>Surface Current ($\mathbf{K}$)</h3>
+                    <p>Charge flowing across a sheet/ribbon.</p>
+                    <div class="math-block" style="margin: 10px 0;">$$ \mathbf{K} = \sigma \mathbf{v} $$</div>
+                    <p><small>$\sigma$: Surface charge density (C/m²)</small></p>
+                </article>
+
+                <article style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px;">
+                    <h3>Volume Current ($\mathbf{J}$)</h3>
+                    <p>Charge flowing through a 3D volume (e.g., inside a thick wire).</p>
+                    <div class="math-block" style="margin: 10px 0;">$$ \mathbf{J} = \rho \mathbf{v} $$</div>
+                    <p><small>The total current is the flux through the cross-section $A$: $I = JA$.</small></p>
+                </article>
+            </div>
+
+            <div class="iframe-container" style="margin-top: 20px;">
+                <iframe src="diagrams/ch3_1_lorentz_force_c2.html"></iframe>
+            </div>
+
+
+
+        </section>
+
+    </main>
+    <footer></footer>
+</body>
+
+</html>

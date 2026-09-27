@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volume Current Slab Derivation</title>
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$']] },
+          svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; }
+        
+        #legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(18, 26, 35, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            color: #ccc;
+            pointer-events: none;
+            user-select: none;
+            width: 250px;
+        }
+        .item { margin-bottom: 8px; font-size: 0.9rem; border-left: 2px solid #555; padding-left: 8px; }
+        h3 { color: #f1c40f; margin: 0 0 10px 0; font-size: 1rem; }
+
+        .label {
+            color: white;
+            font-family: sans-serif;
+            font-weight: bold;
+            text-shadow: 0 0 4px #000;
+            font-size: 14px;
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div id="legend">
+        <h3>Gradient Magnetization</h3>
+        <div class="item" style="border-color: #3498db;">
+            <strong>Block 1:</strong> Weak $\mathbf{M}$<br>Small loop current.
+        </div>
+        <div class="item" style="border-color: #9b59b6;">
+            <strong>Block 2:</strong> Strong $\mathbf{M}$<br>Large loop current.
+        </div>
+        <div class="item" style="border-color: #e74c3c;">
+            <strong>Interface:</strong> Incomplete cancellation creates net $\mathbf{J}_b$.
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        let scene, camera, renderer, labelRenderer, controls;
+        let time = 0;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(5, 5, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            document.body.appendChild(labelRenderer.domElement);
+
+            controls = new OrbitControls(camera, labelRenderer.domElement);
+            controls.enableDamping = true;
+
+            const ambient = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // --- BUILD SCENE ---
+            
+            // Block 1 (Left, Weak)
+            createBlock(-1.1, 0, 0, 0.5, 0x3498db, "M(y)");
+            // Block 2 (Right, Strong)
+            createBlock(1.1, 0, 0, 1.2, 0x9b59b6, "M(y+dy)");
+
+            // Interface Net Current Arrow
+            const origin = new THREE.Vector3(0, 0, 1.2); 
+            const dir = new THREE.Vector3(-1, 0, 0); // Net current points left (Strong Right - Weak Left)
+            // Wait, standard loop CCW. 
+            // Block 1 (Left): Right edge goes UP (+z) or DOWN (-z)?
+            // M is usually Z. Current flows in XY plane.
+            // Let's assume M is Up (+y). Current flows in XZ plane around y-axis.
+            // Left Face of block: Current Out. Right Face: Current In.
+            // Let's reorient.
+            
+            // Configuration:
+            // Blocks stacked along Y axis.
+            // M points in Z.
+            // Currents flow in XY plane.
+            
+            // Let's stick to the visual:
+            // Two cubes side-by-side. 
+            // Left Cube (Weak): Clockwise current on top face? No, M is vector.
+            // Let M be UP (+Y). Current loops flow in XZ plane.
+            
+            // Current on Right Face of Left Block: Down (-Y)? No, curl direction.
+            // If M is +Y, current flows CCW around Y axis looking from top.
+            // Right face of Left Block: Current comes OUT (+Z).
+            // Left face of Right Block: Current goes IN (-Z).
+            
+            // Net Current = (Strong IN) - (Weak OUT) = Net IN.
+            
+            // Let's visualize simply:
+            // Arrows on the shared boundary.
+            
+            const interfaceGroup = new THREE.Group();
+            scene.add(interfaceGroup);
+            
+            // Weak Arrow (Blue) pointing OUT (+Z)
+            drawArrow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1.5), 0x3498db, false);
+            
+            // Strong Arrow (Purple) pointing IN (-Z)
+            // Offset slightly for visual
+            drawArrow(new THREE.Vector3(0.1, 0, 0), new THREE.Vector3(0.1, 0, -2.5), 0x9b59b6, false);
+            
+            // Resultant Label
+            createLabel(new THREE.Vector3(0, 1.5, 0), "Net $\\mathbf{J}_b$");
+            
+            // Helper grid
+            const grid = new THREE.GridHelper(10, 10, 0x222222, 0x111111);
+            grid.position.y = -1.1;
+            scene.add(grid);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function createBlock(x, y, z, intensity, color, labelText) {
+            const size = 2;
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshPhongMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.DoubleSide
+            });
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.set(x, y, z);
+            scene.add(cube);
+
+            // Edges
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: color }));
+            cube.add(line);
+
+            // Magnetization Vector M
+            const mStart = new THREE.Vector3(0, -0.5, 0);
+            const mEnd = new THREE.Vector3(0, -0.5 + intensity * 1.5, 0); // M is Up (+Y)
+            const dir = new THREE.Vector3().subVectors(mEnd, mStart).normalize();
+            const len = mEnd.distanceTo(mStart);
+            const arrow = new THREE.ArrowHelper(dir, mStart, len, color, 0.4, 0.3);
+            cube.add(arrow);
+            
+            // Label for M
+            const labelPos = new THREE.Vector3(x, y + intensity, z);
+            createLabel(labelPos, labelText);
+
+            // Current Loop Visualization (Animated Dashes)
+            // Flowing in XZ plane around Y axis (CCW from top)
+            // Right Hand Rule: Thumb Y (Up), Fingers Curl X->Z->-X->-Z.
+            const curve = new THREE.EllipseCurve(0, 0, size/2 + 0.05, size/2 + 0.05, 0, 2*Math.PI, false, 0);
+            const points = curve.getPoints(50);
+            const loopGeo = new THREE.BufferGeometry().setFromPoints(points);
+            loopGeo.rotateX(Math.PI/2); // Lie flat
+            
+            const loopMat = new THREE.LineDashedMaterial({
+                color: 0xffffff,
+                linewidth: 2,
+                scale: 1,
+                dashSize: 0.2,
+                gapSize: 0.1,
+            });
+            const loop = new THREE.Line(loopGeo, loopMat);
+            loop.computeLineDistances();
+            loop.userData = { speed: intensity }; // Animate faster if M is stronger
+            cube.add(loop);
+        }
+
+        function drawArrow(origin, target, color) {
+            const dir = new THREE.Vector3().subVectors(target, origin).normalize();
+            const len = origin.distanceTo(target);
+            const arrow = new THREE.ArrowHelper(dir, origin, len, color, 0.5, 0.4);
+            scene.add(arrow);
+        }
+
+        function createLabel(pos, text) {
+            const div = document.createElement('div');
+            div.className = 'label';
+            div.innerHTML = text;
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            scene.add(label);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Animate Loops
+            scene.traverse((object) => {
+                if (object.isLine && object.material.isLineDashedMaterial) {
+                    object.material.dashOffset -= 0.02 * object.userData.speed;
+                }
+            });
+
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script defer data-offline-bundle src="volume_current_slab.0.offline.js"></script>
+
+
+</body>
+</html>

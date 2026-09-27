@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multipole Visualizer</title>
+    <style>
+        :root {
+            /* Matches parent page theme */
+            --bg-color: #121a23; 
+            --panel-bg: #1c2734;
+            --input-bg: #2c3e50;
+            --text-main: #e0e0e0;
+            --text-muted: #b0c4de;
+            --accent: #3498db;
+            --accent-hover: #2980b9;
+            --border: #2c3e50;
+            --pos-color: #e74c3c;
+            --neg-color: #3498db;
+            --probe-color: #f1c40f;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Sidebar Controls */
+        #sidebar {
+            width: 260px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+
+        /* Custom Scrollbar */
+        #sidebar::-webkit-scrollbar { width: 6px; }
+        #sidebar::-webkit-scrollbar-track { background: var(--bg-color); }
+        #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        /* Info Box for Physics Context */
+        #info-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 3px solid var(--accent);
+            padding: 10px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: var(--text-muted);
+            border-radius: 0 4px 4px 0;
+            animation: fadeIn 0.3s ease;
+        }
+        #info-box strong { color: var(--accent); display: block; margin-bottom: 4px; }
+
+        @keyframes fadeIn { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: translateY(0); }}
+
+        /* Buttons & Inputs */
+        .btn-row { display: flex; gap: 8px; }
+
+        button {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        button:hover { background-color: var(--accent); color: white; border-color: var(--accent); }
+        
+        button.active {
+            background-color: var(--accent);
+            color: white;
+            font-weight: bold;
+            border-color: var(--accent);
+        }
+
+        button.preset-btn { text-align: left; padding: 8px 10px; font-size: 0.85rem; display: flex; justify-content: space-between; }
+        button.preset-btn span.math { opacity: 0.6; font-family: 'Times New Roman', serif; font-style: italic;}
+
+        select {
+            width: 100%;
+            padding: 8px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 4px;
+            outline: none;
+            font-size: 0.85rem;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px; width: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            margin-top: -5px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            background: var(--input-bg);
+            border-radius: 2px;
+        }
+
+        /* Canvas Area */
+        #canvas-wrapper {
+            flex: 1;
+            position: relative;
+            background-color: #000;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+        
+        /* Probe Overlay */
+        #probe-readout {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            color: var(--probe-color);
+            font-family: monospace;
+            font-size: 0.85rem;
+            pointer-events: none;
+            display: none;
+        }
+        .readout-row { display: flex; justify-content: space-between; gap: 15px; }
+        .bar-container { width: 50px; height: 6px; background: #333; align-self: center; border-radius: 2px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--probe-color); width: 0%; transition: width 0.1s; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <!-- Info Box -->
+        <div id="info-box">
+            <strong>Multipole Expansion</strong>
+            Select a shape below. Move your mouse to the edge of the screen to see how "long range" the field is.
+        </div>
+
+        <!-- Presets -->
+        <div class="control-group">
+            <div class="label">Presets (Distance Check)</div>
+            <button class="preset-btn" data-preset="monopole" onclick="loadPreset('monopole')">
+                1. Monopole
+                <span class="math">1/r</span>
+            </button>
+            <button class="preset-btn" data-preset="dipole" onclick="loadPreset('dipole')">
+                2. Dipole
+                <span class="math">1/r²</span>
+            </button>
+            <button class="preset-btn" data-preset="quad_linear" onclick="loadPreset('quad_linear')">
+                3. Quadrupole (Linear)
+                <span class="math">1/r³</span>
+            </button>
+            <button class="preset-btn" data-preset="quad_square" onclick="loadPreset('quad_square')">
+                4. Quadrupole (Square)
+                <span class="math">1/r³</span>
+            </button>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #333; width: 100%; margin: 5px 0;">
+
+        <!-- Charge Type -->
+        <div class="control-group">
+            <div class="label">Manual Edit</div>
+            <div class="btn-row">
+                <button id="btn-pos" class="active" onclick="setChargeType(1)">+ Pos</button>
+                <button id="btn-neg" onclick="setChargeType(-1)">- Neg</button>
+            </div>
+            <button onclick="clearCharges()" style="background: #c0392b; border-color: #e74c3c; margin-top: 5px;">Clear All</button>
+        </div>
+
+        <!-- View Mode -->
+        <div class="control-group">
+            <div class="label">Visualization Mode</div>
+            <select id="viewMode" onchange="draw()">
+                <option value="combined">Combined (Best)</option>
+                <option value="potential">Potential Only</option>
+                <option value="lines">Field Lines</option>
+                <option value="vectors">Vector Grid</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <div class="label">Line Density</div>
+            <input type="range" id="density" min="10" max="80" value="30" oninput="draw()">
+        </div>
+
+        <div class="control-group" style="margin-top:auto;">
+            <label style="display:flex; align-items:center; font-size: 0.8rem; cursor: pointer;">
+                <input type="checkbox" id="showProbe" checked onchange="draw()"> 
+                <span style="margin-left: 8px;">Show Field Probe</span>
+            </label>
+        </div>
+    </aside>
+
+    <main id="canvas-wrapper">
+        <canvas id="simCanvas"></canvas>
+        <div id="probe-readout">
+            <div class="readout-row">
+                <span>|E|:</span>
+                <div class="bar-container"><div class="bar-fill" id="bar-e"></div></div>
+                <span id="val-e">0.00</span>
+            </div>
+            <div class="readout-row">
+                <span>V&nbsp;&nbsp;:</span>
+                <div class="bar-container"><div class="bar-fill" id="bar-v"></div></div>
+                <span id="val-v">0.00</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const wrapper = document.getElementById('canvas-wrapper');
+        const readout = document.getElementById('probe-readout');
+        const barE = document.getElementById('bar-e');
+        const valE = document.getElementById('val-e');
+        const barV = document.getElementById('bar-v');
+        const valV = document.getElementById('val-v');
+        const infoBox = document.getElementById('info-box');
+
+        // State
+        let charges = []; 
+        let nextChargeSign = 1;
+        let width = 0, height = 0;
+        let draggingIndex = -1;
+        let mouseX = -100, mouseY = -100;
+        let currentPreset = 'monopole';
+        let hasBooted = false;
+        
+        // Constants
+        const K = 1200; 
+        const CHARGE_RADIUS = 10;
+        const MAX_STEPS = 500;
+        const STEP_SIZE = 4;
+
+        function syncCanvasSize() {
+            const rect = wrapper.getBoundingClientRect();
+            const nextWidth = Math.max(320, Math.round(rect.width || wrapper.clientWidth || canvas.clientWidth || 800));
+            const nextHeight = Math.max(320, Math.round(rect.height || wrapper.clientHeight || canvas.clientHeight || 520));
+            const changed = nextWidth !== width || nextHeight !== height;
+
+            width = nextWidth;
+            height = nextHeight;
+
+            if (canvas.width !== width) canvas.width = width;
+            if (canvas.height !== height) canvas.height = height;
+
+            return changed;
+        }
+
+        const resizeObserver = new ResizeObserver(() => {
+            const changed = syncCanvasSize();
+            if (changed && currentPreset !== 'custom') {
+                buildPreset(currentPreset);
+            }
+            draw();
+        });
+        resizeObserver.observe(wrapper);
+
+        // --- Physics Core ---
+
+        function getFieldAt(x, y) {
+            let Ex = 0, Ey = 0;
+            for (let c of charges) {
+                const dx = x - c.x;
+                const dy = y - c.y;
+                const r2 = dx*dx + dy*dy;
+                const r = Math.sqrt(r2);
+                if (r < CHARGE_RADIUS) continue; 
+                const E = K * c.q / (r2 * r); 
+                Ex += E * dx;
+                Ey += E * dy;
+            }
+            return { x: Ex, y: Ey };
+        }
+
+        function getPotentialAt(x, y) {
+            let V = 0;
+            for (let c of charges) {
+                const dx = x - c.x;
+                const dy = y - c.y;
+                const r = Math.sqrt(dx*dx + dy*dy);
+                if (r < 5) continue;
+                V += (K * c.q) / r;
+            }
+            return V;
+        }
+
+        // --- Controls ---
+
+        function setChargeType(val) {
+            nextChargeSign = val;
+            document.getElementById('btn-pos').className = val === 1 ? 'active' : '';
+            document.getElementById('btn-neg').className = val === -1 ? 'active' : '';
+        }
+
+        function clearCharges() {
+            charges = [];
+            currentPreset = 'custom';
+            updateInfo("custom");
+            draw();
+        }
+
+        function updateInfo(type) {
+            let html = "";
+            if (type === 'monopole') {
+                html = `<strong>Monopole (1/r)</strong>The field is strong everywhere. Notice that even at the edge of the screen, the probe shows significant intensity.`;
+            } else if (type === 'dipole') {
+                html = `<strong>Dipole (1/r²)</strong>The net charge is zero. The field exists only because (+) and (-) are separated. <br>Notice how much faster the field fades near the edges compared to the Monopole.`;
+            } else if (type.includes('quad')) {
+                html = `<strong>Quadrupole (1/r³)</strong>Two opposing dipoles cancel each other out. <br>Move the probe to the edge: The field is nearly zero. This is a "short range" interaction.`;
+            } else {
+                html = `<strong>Custom Arrangement</strong>Add charges to build your own shape. Observe how symmetry affects the field range.`;
+            }
+            infoBox.innerHTML = html;
+        }
+
+        function buildPreset(type) {
+            charges = [];
+            syncCanvasSize();
+            const cx = width / 2;
+            const cy = height / 2;
+            const d = 70; // separation
+
+            if (type === 'monopole') {
+                charges.push({x: cx, y: cy, q: 1});
+            }
+            else if (type === 'dipole') {
+                charges.push({x: cx - d/2, y: cy, q: 1});
+                charges.push({x: cx + d/2, y: cy, q: -1});
+            } 
+            else if (type === 'quad_linear') {
+                // Linear quadrupole (+ - - +)
+                charges.push({x: cx - 1.5*d, y: cy, q: 1});
+                charges.push({x: cx - 0.5*d, y: cy, q: -1});
+                charges.push({x: cx + 0.5*d, y: cy, q: -1});
+                charges.push({x: cx + 1.5*d, y: cy, q: 1});
+            } 
+            else if (type === 'quad_square') {
+                charges.push({x: cx - d/2, y: cy - d/2, q: 1});
+                charges.push({x: cx + d/2, y: cy - d/2, q: -1});
+                charges.push({x: cx + d/2, y: cy + d/2, q: 1});
+                charges.push({x: cx - d/2, y: cy + d/2, q: -1});
+            }
+        }
+
+        function loadPreset(type) {
+            currentPreset = type;
+            buildPreset(type);
+            updateInfo(type);
+            highlightPreset(type);
+            draw();
+        }
+
+        function highlightPreset(type) {
+            document.querySelectorAll('.preset-btn').forEach(button => {
+                button.classList.toggle('active', button.dataset.preset === type);
+            });
+        }
+
+        // --- Interaction ---
+
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            mouseX = x; mouseY = y;
+
+            draggingIndex = charges.findIndex(c => Math.hypot(c.x - x, c.y - y) < CHARGE_RADIUS * 2);
+            
+            if (draggingIndex === -1 && e.button === 0) {
+                charges.push({ x, y, q: nextChargeSign });
+                draggingIndex = charges.length - 1;
+                currentPreset = 'custom';
+                updateInfo("custom");
+                highlightPreset(null);
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+
+            if (draggingIndex !== -1) {
+                charges[draggingIndex].x = mouseX;
+                charges[draggingIndex].y = mouseY;
+            }
+            requestAnimationFrame(draw);
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouseX = -1000;
+            draw();
+        });
+
+        window.addEventListener('mouseup', () => draggingIndex = -1);
+
+        canvas.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const idx = charges.findIndex(c => Math.hypot(c.x - x, c.y - y) < CHARGE_RADIUS * 2);
+            if (idx !== -1) {
+                charges.splice(idx, 1);
+                currentPreset = 'custom';
+                updateInfo("custom");
+                highlightPreset(null);
+                draw();
+            }
+        });
+
+        // --- Drawing ---
+
+        function draw() {
+            syncCanvasSize();
+            if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
+
+            // Background
+            ctx.fillStyle = '#121a23'; 
+            ctx.fillRect(0, 0, width, height);
+
+            if (charges.length === 0) {
+                ctx.fillStyle = '#555';
+                ctx.font = '16px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText("Select a preset or click to add charges", width/2, height/2);
+                readout.style.display = 'none';
+                return;
+            }
+
+            const mode = document.getElementById('viewMode').value;
+            const showProbe = document.getElementById('showProbe').checked;
+
+            if (mode === 'potential' || mode === 'combined') drawPotential();
+            if (mode === 'lines' || mode === 'combined') drawStreamlines();
+            if (mode === 'vectors') drawVectors();
+
+            drawCharges();
+            if(showProbe && mouseX > 0) drawProbe(mouseX, mouseY);
+        }
+
+        function drawProbe(x, y) {
+            const f = getFieldAt(x, y);
+            const v = getPotentialAt(x, y);
+            const mag = Math.hypot(f.x, f.y);
+
+            // 1. Draw Probe Ring
+            ctx.strokeStyle = 'var(--probe-color)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 2. Draw Vector Arrow
+            if (mag > 0.1) {
+                const len = 25;
+                const nx = f.x / mag;
+                const ny = f.y / mag;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + nx * len, y + ny * len);
+                ctx.stroke();
+                // Arrowhead
+                ctx.fillStyle = 'var(--probe-color)';
+                ctx.beginPath();
+                ctx.arc(x + nx * len, y + ny * len, 3, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // 3. Update HTML Readout
+            readout.style.display = 'block';
+            
+            // Normalize for visual bars (approx log scale for better dynamic range)
+            // Monopole near center is ~20, edge ~0.5. Quadrupole edge ~0.01.
+            const dispE = (Math.log(mag + 0.01) + 2) * 20; 
+            const dispV = (Math.log(Math.abs(v) + 0.01) + 2) * 20;
+            
+            barE.style.width = Math.min(100, Math.max(0, dispE)) + '%';
+            barV.style.width = Math.min(100, Math.max(0, dispV)) + '%';
+            
+            // Color V bar based on sign
+            barV.style.backgroundColor = v > 0 ? 'var(--pos-color)' : 'var(--neg-color)';
+
+            valE.innerText = mag.toFixed(2);
+            valV.innerText = v.toFixed(2);
+        }
+
+        function drawCharges() {
+            for (let c of charges) {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, CHARGE_RADIUS, 0, Math.PI * 2);
+                const color = c.q > 0 ? '#e74c3c' : '#3498db';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(c.q > 0 ? '+' : '-', c.x, c.y);
+            }
+        }
+
+        function drawStreamlines() {
+            const density = parseInt(document.getElementById('density').value);
+            ctx.lineWidth = 1.2;
+            
+            const seeds = [];
+            charges.filter(c => c.q > 0).forEach(c => {
+                for (let i = 0; i < density; i++) {
+                    const a = (i / density) * Math.PI * 2;
+                    seeds.push({ x: c.x + Math.cos(a) * (CHARGE_RADIUS+2), y: c.y + Math.sin(a) * (CHARGE_RADIUS+2), dir: 1, color: 'rgba(255, 255, 255, 0.4)' });
+                }
+            });
+            charges.filter(c => c.q < 0).forEach(c => {
+                for (let i = 0; i < density; i++) {
+                    const a = (i / density) * Math.PI * 2;
+                    seeds.push({ x: c.x + Math.cos(a) * (CHARGE_RADIUS+2), y: c.y + Math.sin(a) * (CHARGE_RADIUS+2), dir: -1, color: 'rgba(255, 255, 255, 0.4)' });
+                }
+            });
+            // Monopole edges
+            if (charges.every(c => c.q > 0) || charges.every(c => c.q < 0)) {
+                for(let x = 0; x < width; x += width/15) seeds.push({x:x, y:0, dir:1, color:'rgba(255,255,255,0.2)'});
+            }
+
+            for (let s of seeds) {
+                let cx = s.x, cy = s.y;
+                ctx.beginPath();
+                ctx.strokeStyle = s.color;
+                ctx.moveTo(cx, cy);
+
+                for (let i = 0; i < MAX_STEPS; i++) {
+                    const f = getFieldAt(cx, cy);
+                    const mag = Math.hypot(f.x, f.y);
+                    if (mag === 0) break;
+                    cx += (f.x / mag) * STEP_SIZE * s.dir;
+                    cy += (f.y / mag) * STEP_SIZE * s.dir;
+                    ctx.lineTo(cx, cy);
+                    if (cx < 0 || cx > width || cy < 0 || cy > height) break;
+                    let hit = false;
+                    for (let c of charges) { if ((cx-c.x)**2 + (cy-c.y)**2 < CHARGE_RADIUS**2) { hit = true; break; } }
+                    if (hit) break;
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawPotential() {
+            const scale = 5;
+            const w = Math.ceil(width / scale);
+            const h = Math.ceil(height / scale);
+            const imgData = ctx.createImageData(w, h);
+            const d = imgData.data;
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const v = getPotentialAt(x * scale, y * scale);
+                    const intensity = Math.min(255, Math.abs(v * 25)); 
+                    const idx = (y * w + x) * 4;
+                    if (v > 0) { d[idx]=intensity; d[idx+1]=0; d[idx+2]=0; } 
+                    else { d[idx]=0; d[idx+1]=0; d[idx+2]=intensity; }
+                    d[idx+3] = Math.min(200, intensity); 
+                }
+            }
+            const tmp = document.createElement('canvas');
+            tmp.width = w; tmp.height = h;
+            tmp.getContext('2d').putImageData(imgData, 0, 0);
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.drawImage(tmp, 0, 0, width, height);
+            ctx.restore();
+        }
+
+        function drawVectors() {
+            const grid = 30;
+            ctx.lineWidth = 1;
+            for (let y = grid/2; y < height; y += grid) {
+                for (let x = grid/2; x < width; x += grid) {
+                    const f = getFieldAt(x, y);
+                    const mag = Math.hypot(f.x, f.y);
+                    if (mag < 0.02) continue;
+                    const len = Math.min(20, Math.log(mag * 50) * 4);
+                    const nx = f.x / mag, ny = f.y / mag;
+                    ctx.strokeStyle = `hsl(${180 + mag*10}, 80%, 60%)`;
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + nx*len, y + ny*len); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(x + nx*len, y + ny*len, 1.5, 0, 6.28); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+                }
+            }
+        }
+
+        function boot() {
+            if (hasBooted) return;
+            hasBooted = true;
+            syncCanvasSize();
+            loadPreset('monopole');
+        }
+
+        requestAnimationFrame(() => requestAnimationFrame(boot));
+        window.addEventListener('load', boot);
+        window.addEventListener('pageshow', () => {
+            if (!hasBooted) boot();
+            else {
+                syncCanvasSize();
+                if (charges.some(c => !Number.isFinite(c.x) || !Number.isFinite(c.y))) {
+                    loadPreset(currentPreset === 'custom' ? 'monopole' : currentPreset);
+                } else {
+                    draw();
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>

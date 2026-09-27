@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Deriving Bound Charges</title>
+
+    <!-- MathJax for LaTeX -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                macros: {
+                    vec: "\\boldsymbol",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff 0%, var(--accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        section {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        .math-block {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .highlight-box {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid var(--accent-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+
+        .back-wrapper {
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+
+        .back-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        strong { color: white; }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> >
+                <a href="ch2_3_field_external.html">Field of a Polarized Object</a> >
+                Derivation Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Deriving Bound Charges</h1>
+        <p>
+            We've seen that a polarized object produces a field equivalent to surface and volume charges. 
+            But why? This page walks through the mathematical derivation of \(\sigma_b\) and \(\rho_b\).
+        </p>
+
+        <section>
+            <h2>1. The Potential of a Single Dipole</h2>
+            <p>
+                Recall that the electric potential \(V\) at a point \(\vec{r}\) produced by a single dipole \(\vec{p}\) 
+                located at the origin is:
+            </p>
+            <div class="math-block">
+                \[V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \frac{\vec{p} \cdot \hat{\boldsymbol{r}}}{r^2}\]
+            </div>
+            <p>
+                If the dipole is at position \(\vec{r}'\), the separation vector is \(\vec{\script r} = \vec{r} - \vec{r}'\), 
+                and the potential is:
+            </p>
+            <div class="math-block">
+                \[V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \frac{\vec{p} \cdot \hat{\boldsymbol{\script r}}}{\script r^2}\]
+            </div>
+            <p>
+                <em>Note: In this derivation, we use \(\vec{\script r}\) for the separation vector and \(\script r\) for its magnitude.</em>
+            </p>
+        </section>
+
+        <section>
+            <h2>2. Summing Over the Volume</h2>
+            <p>
+                In a polarized object, each volume element \(d\tau'\) carries a dipole moment \(d\vec{p} = \vec{P} d\tau'\). 
+                To find the total potential, we integrate over the entire volume \(V\):
+            </p>
+            <div class="math-block">
+                \[V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \int_V \frac{\vec{P}(\vec{r}') \cdot \hat{\boldsymbol{\script r}}}{\script r^2} d\tau'\]
+            </div>
+            <p>
+                This integral looks difficult, but we can use a clever vector identity. 
+                Observe that the gradient of \(1/\script r\) with respect to the <strong>source coordinates</strong> (\(\vec{r}'\)) is:
+            </p>
+            <div class="math-block">
+                \[\nabla' \left( \frac{1}{\script r} \right) = \frac{\hat{\boldsymbol{\script r}}}{\script r^2}\]
+            </div>
+            <p>
+                Substituting this into our integral:
+            </p>
+            <div class="math-block">
+                \[V = \frac{1}{4\pi\epsilon_0} \int_V \vec{P} \cdot \nabla' \left( \frac{1}{\script r} \right) d\tau'\]
+            </div>
+        </section>
+
+        <section>
+            <h2>3. Integration by Parts</h2>
+            <p>
+                Using the vector product rule \(\nabla \cdot (f\vec{A}) = f(\nabla \cdot \vec{A}) + \vec{A} \cdot \nabla f\), 
+                we can rewrite the integrand:
+            </p>
+            <div class="math-block">
+                \[\vec{P} \cdot \nabla' \left( \frac{1}{\script r} \right) = \nabla' \cdot \left( \frac{\vec{P}}{\script r} \right) - \frac{1}{\script r} (\nabla' \cdot \vec{P})\]
+            </div>
+            <p>
+                Our integral now splits into two parts:
+            </p>
+            <div class="math-block">
+                \[V = \frac{1}{4\pi\epsilon_0} \left[ \int_V \nabla' \cdot \left( \frac{\vec{P}}{\script r} \right) d\tau' - \int_V \frac{1}{\script r} (\nabla' \cdot \vec{P}) d\tau' \right]\]
+            </div>
+            <p>
+                Applying the <strong>Divergence Theorem</strong> to the first term converts the volume integral into a surface integral:
+            </p>
+            <div class="math-block">
+                \[\int_V \nabla' \cdot \left( \frac{\vec{P}}{\script r} \right) d\tau' = \oint_S \frac{\vec{P} \cdot \hat{\boldsymbol{n}}}{\script r} da'\]
+            </div>
+        </section>
+
+        <section>
+            <h2>4. The Result: Bound Charges</h2>
+            <p>
+                Substituting the surface term back in, we get the final form of the potential:
+            </p>
+            <div class="math-block">
+                \[V = \frac{1}{4\pi\epsilon_0} \left( \oint_S \frac{\vec{P} \cdot \hat{\boldsymbol{n}}}{\script r} da' + \int_V \frac{-\nabla' \cdot \vec{P}}{\script r} d\tau' \right)\]
+            </div>
+            <p>
+                This expression is mathematically identical to the potential produced by a surface charge density \(\sigma_b\) and a volume charge density \(\rho_b\):
+            </p>
+            <div class="highlight-box">
+                \[\sigma_b = \vec{P} \cdot \hat{\boldsymbol{n}} \qquad \rho_b = -\nabla \cdot \vec{P}\]
+            </div>
+        </section>
+
+        <section>
+            <h2>5. Why "Bound"?</h2>
+            <p>
+                It is crucial to understand that \(\sigma_b\) and \(\rho_b\) represent <strong>Bound Charges</strong>. Unlike the "free" charges in a conductor, these electrons cannot move freely through the material.
+            </p>
+            <div class="highlight-box">
+                <p>
+                    Each individual molecule remains neutral. However, the <em>shift</em> of the electron cloud creates a net accumulation of charge at certain spots:
+                </p>
+                <ul>
+                    <li><strong>Surface:</strong> At the edge, the shifted charges have no neighbors to cancel them out.</li>
+                    <li><strong>Non-uniform Polarization:</strong> If \(\vec{P}\) varies, more charge enters a small volume element from one side than leaves from the other, creating a net buildup (\(\rho_b\)).</li>
+                </ul>
+            </div>
+            <p>
+                Mathematically, we can now ignore the dipoles and just calculate the field from these "effective" charges using standard Coulomb's law techniques.
+            </p>
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch2_3_field_external.html" class="back-btn">← Back to Field of a Polarized Object</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

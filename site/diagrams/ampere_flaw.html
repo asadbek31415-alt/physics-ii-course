@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>The Capacitor Paradox: Ampère's Law Fix</title>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0b1016;
+            --panel-bg: #16212e;
+            --accent-blue: #3498db;
+            --accent-orange: #f39c12;
+            --text-color: #e0e0e0;
+            --sidebar-width: 320px;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--panel-bg);
+            padding: 24px;
+            box-sizing: border-box;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            height: 100%;
+            position: relative;
+        }
+
+        h2 {
+            margin: 0 0 12px 0;
+            font-size: 1.25rem;
+            color: var(--accent-blue);
+        }
+
+        p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #aaa;
+            margin: 0 0 20px 0;
+        }
+
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #2c3e50;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .mode-btn {
+            background: #2c3e50;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .mode-btn:hover {
+            background: #34495e;
+        }
+
+        .mode-btn:active {
+            transform: scale(0.98);
+        }
+
+        .status-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .val-current {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .val-law {
+            color: var(--accent-orange);
+            font-style: italic;
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            margin-top: 10px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent-orange);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <h2>The Capacitor Paradox</h2>
+        <p>Watch how the "Displacement" term continues the current flow through empty space.</p>
+
+        <div class="control-group">
+            <label>Loop Position ($x$)</label>
+            <input type="range" id="loop-slider" min="-6" max="6" step="0.1" value="-4">
+        </div>
+
+        <div class="control-group">
+            <div id="btn-restart" class="mode-btn">Restart Charging</div>
+            <div style="margin-top: 8px; font-size: 0.75rem; color: #888;">Charging Progress:</div>
+            <div class="progress-bar-bg">
+                <div id="prob-bar" class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <div class="status-box">
+            <div class="status-item"><span>Current Flow ($I$):</span> <span id="pos-text"
+                    class="val-current">Conduction</span></div>
+            <div class="status-item"><span>B-Field Loop:</span> <span id="term-val" class="val-law">$\oint
+                    \mathbf{B}\cdot d\mathbf{l} = \mu_0 I$</span></div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot" style="background: var(--accent-blue);"></div> <span>Conduction Current (Moving
+                    Charge)</span>
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: var(--accent-orange);"></div> <span>Displacement Current
+                    ($d\mathbf{E}/dt$)</span>
+            </div>
+        </div>
+
+        <div
+            style="margin-top:auto; font-size: 0.8rem; color: #888; border-top: 1px solid rgba(255,255,255,0.1); padding-top:15px;">
+            As the capacitor fills up, the charging slows down (exponentially). $d\mathbf{E}/dt$ approaches zero, and
+            the B-field vanishes.
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b1016);
+
+        // Rotate entire view to align with X-axis intuitively
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 5, 14); // Front/Top view looking at X-axis wire
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dLight.position.set(5, 10, 5);
+        scene.add(dLight);
+
+        // --- MATERIALS ---
+        const matWire = new THREE.MeshStandardMaterial({ color: 0x444444 });
+        const matPlate = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.6, roughness: 0.4 });
+        const matCurrent = new THREE.MeshBasicMaterial({ color: 0x3498db });
+        const matDisplacement = new THREE.MeshBasicMaterial({ color: 0xf39c12, transparent: true, opacity: 0.4 });
+
+        // --- GEOMETRY (ORIENTED ALONG X-AXIS) ---
+        // Wires
+        const wire1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 16), matWire);
+        wire1.rotation.z = Math.PI / 2; wire1.position.x = -4.0; scene.add(wire1);
+
+        const wire2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 16), matWire);
+        wire2.rotation.z = Math.PI / 2; wire2.position.x = 4.0; scene.add(wire2);
+
+        // Plates
+        const plate1 = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.2, 48), matPlate);
+        plate1.rotation.z = Math.PI / 2; plate1.position.x = -1.5; scene.add(plate1);
+
+        const plate2 = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.2, 48), matPlate);
+        plate2.rotation.z = Math.PI / 2; plate2.position.x = 1.5; scene.add(plate2);
+
+        // Displacement Current Volume (Glowing cylinder in gap)
+        const displacementVol = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 2.8, 32), matDisplacement);
+        displacementVol.rotation.z = Math.PI / 2; displacementVol.position.x = 0; scene.add(displacementVol);
+
+        // --- CURRENT PARTICLES ---
+        const particles = [];
+        const pCount = 20;
+        const pGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        for (let i = 0; i < pCount; i++) {
+            const p = new THREE.Mesh(pGeo, matCurrent);
+            scene.add(p);
+            particles.push({ mesh: p, offset: (i / pCount) * 12 });
+        }
+
+        // --- AMPERIAN LOOP & B-FIELD ---
+        const loopRadius = 3.5;
+        const loop = new THREE.Mesh(new THREE.TorusGeometry(loopRadius, 0.05, 16, 128), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+        // Rotate loop to be perpendicular to X axis
+        loop.rotation.y = Math.PI / 2;
+        scene.add(loop);
+
+        const bArrows = [];
+        for (let i = 0; i < 12; i++) {
+            const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 1, 0x3498db, 0.3, 0.15);
+            scene.add(arrow);
+            bArrows.push(arrow);
+        }
+
+        // --- E-FIELD ARROWS ---
+        const eArrows = [];
+        for (let y = -1.2; y <= 1.2; y += 0.6) {
+            for (let z = -1.2; z <= 1.2; z += 0.6) {
+                if (y * y + z * z > 1.8 * 1.8) continue;
+                // E field points +X
+                const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1.4, y, z), 2.8, 0xf39c12, 0.3, 0.15);
+                scene.add(arrow);
+                eArrows.push(arrow);
+            }
+        }
+
+        // --- LOGIC ---
+        const slider = document.getElementById('loop-slider');
+        const posText = document.getElementById('pos-text');
+        const termVal = document.getElementById('term-val');
+        const btnRestart = document.getElementById('btn-restart');
+        const probBar = document.getElementById('prob-bar');
+
+        let lastState = null;
+        let chargeProgress = 0;
+        let isCharging = true;
+        const timeConstant = 3.0; // Seconds (slow charging)
+        let startTime = Date.now();
+        let particleSpeedMult = 1.0;
+
+        btnRestart.onclick = () => {
+            chargeProgress = 0;
+            isCharging = true;
+            particleSpeedMult = 1.0;
+            startTime = Date.now();
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = Date.now();
+            const elapsed = (now - startTime) / 1000;
+
+            if (isCharging) {
+                // Exponential charging: Q(t) = Qmax * (1 - e^(-t/tau))
+                chargeProgress = 1 - Math.exp(-elapsed / timeConstant);
+
+                // Current I = dQ/dt ~ e^(-t/tau). So speed/brightness scales with this.
+                // When progress is near 1, current is near 0.
+                particleSpeedMult = Math.exp(-elapsed / timeConstant);
+
+                if (chargeProgress > 0.99) {
+                    chargeProgress = 1;
+                    particleSpeedMult = 0;
+                    isCharging = false;
+                }
+            } else {
+                particleSpeedMult = 0;
+            }
+
+            probBar.style.width = (chargeProgress * 100) + '%';
+
+            // Loop movement (X Axis)
+            const xPos = parseFloat(slider.value);
+            loop.position.x = xPos;
+
+            // UI Updates
+            const inGap = (xPos > -1.5 && xPos < 1.5);
+            const newState = inGap ? "Displacement" : "Conduction";
+            if (lastState !== newState) {
+                lastState = newState;
+                posText.innerText = newState;
+                // Update formula based on region
+                termVal.innerHTML = inGap ? "$\\oint \\mathbf{B}\\cdot d\\mathbf{l} = \\mu_0 \\epsilon_0 \\frac{d\\Phi_E}{dt}$" : "$\\oint \\mathbf{B}\\cdot d\\mathbf{l} = \\mu_0 I$";
+                posText.style.color = inGap ? "var(--accent-orange)" : "var(--accent-blue)";
+                if (window.MathJax?.typesetPromise) MathJax.typesetPromise([termVal]);
+            }
+
+            // Particle movement (Conduction) along X axis
+            const dt = 0.016;
+            particles.forEach(p => {
+                // Move particles based on current flow rate
+                p.offset += (3.0 * particleSpeedMult) * dt;
+
+                let posX = ((p.offset) % 14) - 7; // Wrap -7 to 7
+
+                // If in gap magnitude check (gap is -1.5 to 1.5)
+                // But visually we want them to disappear entering plate 1 (-1.5) and appear at plate 2 (1.5)
+                // Or just hide them if they are inside the "gap zone"
+
+                if (posX > -1.5 && posX < 1.5) {
+                    p.mesh.visible = false;
+                } else {
+                    p.mesh.visible = (particleSpeedMult > 0.01); // Hide if current is effectively 0
+                    p.mesh.position.set(posX, 0, 0);
+                }
+            });
+
+            // B-Field arrows
+            // B field strength acts proportional to Current (I) or Displacement Current (dE/dt)
+            // Both decay exponentially as capacitor fills.
+            const fieldStrength = particleSpeedMult;
+
+            bArrows.forEach((arrow, i) => {
+                const angle = (i / 12) * Math.PI * 2;
+                arrow.position.set(xPos, Math.cos(angle) * loopRadius, Math.sin(angle) * loopRadius);
+                // Tangent to circle in YZ plane
+                arrow.setDirection(new THREE.Vector3(0, -Math.sin(angle), Math.cos(angle)));
+                arrow.visible = (fieldStrength > 0.01);
+            });
+
+            // E-field and Displacement Flow visibility
+            // E-field is proportional to Charge (Accumulated progress)
+            // Displacement Current (Glow) is proportional to dE/dt (Current Speed)
+
+            displacementVol.material.opacity = 0.5 * fieldStrength; // Glow fades as charging stops
+
+            eArrows.forEach(a => {
+                // E-field grows to max
+                const len = 2.8 * chargeProgress;
+                if (len < 0.01) {
+                    a.visible = false;
+                } else {
+                    a.visible = true;
+                    a.setLength(len, 0.3, 0.15);
+                }
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        animate();
+    </script>
+</body>
+
+</html>

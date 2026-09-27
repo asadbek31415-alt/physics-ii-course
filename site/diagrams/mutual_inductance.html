@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flux Rule Visualization (Griffiths Fig 7.13)</title>
+    
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --accent-glow: rgba(52, 152, 219, 0.2);
+            --ribbon-color: rgba(231, 76, 60, 0.3);
+            --text: #333;
+            --bg: #f8f9fa;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            height: 100vh;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        /* LEFT SIDEBAR UI */
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-right: 1px solid #ddd;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            margin: 0;
+            color: var(--primary);
+            font-weight: 700;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        /* Custom Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Explanation Box */
+        .info-box {
+            background: #f1f3f5;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            border-left: 3px solid var(--accent);
+        }
+
+        .math {
+            font-family: 'Fira Code', monospace;
+            background: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            color: #d63031;
+        }
+
+        /* Playback Controls */
+        .btn-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--primary);
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #f0f0f0;
+        }
+
+        button.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* CANVAS AREA */
+        .canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #ffffff 0%, #f0f2f5 100%);
+            cursor: grab;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+        <h1>Flux Rule Visualization</h1>
+        <p style="font-size: 0.85rem; color: #666; margin-top: -10px;">Griffiths Fig 7.13</p>
+
+        <div class="info-box" id="explanation">
+            <strong>The Ribbon Concept:</strong><br>
+            The Flux Rule $\mathcal{E} = -d\Phi_B/dt$ comes from calculating the change in magnetic flux as the loop moves.
+            <br><br>
+            The change in flux is exactly the magnetic field passing through the <strong>red "Ribbon"</strong> swept out
+            by the wire.
+        </div>
+
+        <div class="control-group">
+            <div class="toggle-row">
+                <span>Show Ribbon ($d\mathbf{a}$)</span>
+                <label class="switch"><input type="checkbox" id="toggleRibbon" checked><span
+                        class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span>Show B-Field ($\mathbf{B}$)</span>
+                <label class="switch"><input type="checkbox" id="toggleField" checked><span
+                        class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span>Show Wire Velocity ($\mathbf{v}$)</span>
+                <label class="switch"><input type="checkbox" id="toggleVelocity" checked><span
+                        class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span>Show Vector $d\mathbf{l}$</span>
+                <label class="switch"><input type="checkbox" id="toggleDL"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button id="btnPause">Pause</button>
+            <button id="btnPlay" class="active">Play</button>
+        </div>
+    </div>
+
+    <!-- MAIN CANVAS -->
+    <div class="canvas-container" id="canvasWrap">
+        <canvas id="simCanvas"></canvas>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot" style="background: #2c3e50"></div>Loop at $t$
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #3498db; opacity: 0.5;"></div>Loop at $t+dt$
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #e74c3c; opacity: 0.5;"></div>Ribbon Area
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrap = document.getElementById('canvasWrap');
+
+        // STATE
+        let width, height;
+        let time = 0;
+        let isPlaying = true;
+
+        // PHYSICS PARAMETERS
+        const loopRadius = 80;
+        const numPoints = 40;
+        let loopPoints = []; // Base shape
+
+        // UI FLAGS
+        const flags = {
+            ribbon: true,
+            field: true,
+            velocity: true,
+            dl: false
+        };
+
+        // SETUP LOOP SHAPE (A blobby circle)
+        for (let i = 0; i < numPoints; i++) {
+            const theta = (i / numPoints) * Math.PI * 2;
+            // Add some irregularity to make it look like an "arbitrary loop"
+            const r = loopRadius * (1 + 0.1 * Math.sin(3 * theta));
+            loopPoints.push({
+                x: r * Math.cos(theta),
+                y: 0, // Flat on XZ plane initially
+                z: r * Math.sin(theta)
+            });
+        }
+
+        // RESIZE HANDLER
+        function resize() {
+            width = wrap.clientWidth;
+            height = wrap.clientHeight;
+            canvas.width = width * 2; // Retina scaling
+            canvas.height = height * 2;
+            ctx.scale(2, 2);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // PROJECTION (Simple Perspective)
+        function project(x, y, z) {
+            const scale = 400 / (400 + z); // Perspective depth
+            const x2d = width / 2 + x * scale;
+            const y2d = height / 2 - y * scale; // Invert Y for canvas
+            return { x: x2d, y: y2d, scale: scale };
+        }
+
+        // DRAW ARROW HELPER
+        function drawArrow(x1, y1, x2, y2, color, label = null) {
+            const headlen = 10;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+
+            if (label) {
+                ctx.fillStyle = '#333';
+                ctx.font = "bold 12px Fira Code";
+                ctx.fillText(label, x2 + 10, y2);
+            }
+        }
+
+        // MAIN DRAW LOOP
+        function draw() {
+            // Clear background
+            ctx.clearRect(0, 0, width, height);
+
+            // Update Time
+            if (isPlaying) time += 0.015;
+
+            // Oscillation for the loop movement (simulating t to t+dt)
+            // We simulate "dt" by showing the loop at current pos vs previous pos
+            const velocityMag = 60; // Speed of movement
+            const shiftX = Math.sin(time) * 100; // Loop moves back and forth
+            const shiftY = Math.cos(time * 0.5) * 40; // And slightly up/down
+            const shiftZ = Math.sin(time * 0.7) * 50; // And in depth
+
+            // Calculate "Previous" position (t) and "Current" position (t+dt)
+            // In the diagram, we show them as distinct snapshots
+            const dt = 0.25; // Visual separation
+
+            // Position 1 (t) - The "Old" Loop
+            const p1 = { x: shiftX, y: shiftY, z: shiftZ };
+            // Position 2 (t+dt) - The "New" Loop
+            // We derive P2 from P1 based on velocity vector
+            const vel = { x: 40, y: 10, z: 20 }; // Constant velocity vector for demo
+            const p2 = {
+                x: p1.x + vel.x * dt * Math.cos(time),
+                y: p1.y + vel.y * dt,
+                z: p1.z + vel.z * dt
+            };
+
+            // 1. DRAW MAGNETIC FIELD (Vertical Lines)
+            if (flags.field) {
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "rgba(100, 100, 100, 0.1)";
+                for (let x = -150; x <= 150; x += 50) {
+                    for (let z = -100; z <= 100; z += 50) {
+                        // Project field lines moving relative to camera
+                        const start = project(x, -150, z);
+                        const end = project(x, 150, z);
+
+                        // Simple B field arrows
+                        drawArrow(start.x, start.y, start.x, end.y, "rgba(44, 62, 80, 0.1)");
+                    }
+                }
+                // Label B
+                const lbl = project(-150, 140, -100);
+                ctx.fillStyle = "#666";
+                ctx.font = "bold 14px Inter";
+                ctx.fillText("B", lbl.x, lbl.y);
+            }
+
+            // 2. CALCULATE PROJECTED POINTS FOR BOTH LOOPS
+            let proj1 = [];
+            let proj2 = [];
+
+            for (let i = 0; i < numPoints; i++) {
+                let pt = loopPoints[i];
+
+                // Transform pt by position 1
+                let x1 = pt.x + p1.x;
+                let y1 = pt.y + p1.y;
+                let z1 = pt.z + p1.z;
+                proj1.push(project(x1, y1, z1));
+
+                // Transform pt by position 2
+                let x2 = pt.x + p2.x;
+                let y2 = pt.y + p2.y;
+                let z2 = pt.z + p2.z;
+                proj2.push(project(x2, y2, z2));
+            }
+
+            // 3. DRAW RIBBON (Area swept out)
+            if (flags.ribbon) {
+                for (let i = 0; i < numPoints; i++) {
+                    let next = (i + 1) % numPoints;
+
+                    ctx.beginPath();
+                    ctx.moveTo(proj1[i].x, proj1[i].y);       // Point i at t
+                    ctx.lineTo(proj2[i].x, proj2[i].y);       // Point i at t+dt
+                    ctx.lineTo(proj2[next].x, proj2[next].y); // Point i+1 at t+dt
+                    ctx.lineTo(proj1[next].x, proj1[next].y); // Point i+1 at t
+                    ctx.closePath();
+
+                    ctx.fillStyle = "rgba(231, 76, 60, 0.3)"; // Reddish transparent
+                    ctx.strokeStyle = "rgba(231, 76, 60, 0.1)";
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            // 4. DRAW LOOP AT TIME t (Black, dashed)
+            ctx.beginPath();
+            ctx.strokeStyle = "#2c3e50";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            for (let i = 0; i < numPoints; i++) {
+                if (i == 0) ctx.moveTo(proj1[i].x, proj1[i].y);
+                else ctx.lineTo(proj1[i].x, proj1[i].y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+
+            // 5. DRAW LOOP AT TIME t+dt (Blue, solid)
+            ctx.beginPath();
+            ctx.strokeStyle = "#2980b9";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < numPoints; i++) {
+                if (i == 0) ctx.moveTo(proj2[i].x, proj2[i].y);
+                else ctx.lineTo(proj2[i].x, proj2[i].y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // 6. DRAW VECTORS
+            const idx = 0; // Point to attach vectors to (P in diagram)
+            const P_screen = proj1[idx];
+            const P_next_screen = proj2[idx];
+
+            // Velocity Vector (v) connects point at t to point at t+dt
+            if (flags.velocity) {
+                drawArrow(P_screen.x, P_screen.y, P_next_screen.x, P_next_screen.y, "#27ae60", "v dt");
+            }
+
+            // dl Vector (Tangential to loop)
+            if (flags.dl) {
+                const nextIdx = (idx + 4) % numPoints; // Skip a few to make arrow visible
+                const P_tangent = proj1[nextIdx];
+                drawArrow(P_screen.x, P_screen.y, P_tangent.x, P_tangent.y, "#8e44ad", "dl");
+            }
+
+            // Label Points
+            ctx.fillStyle = "#2c3e50";
+            ctx.font = "italic 14px Serif";
+            ctx.fillText("Loop (t)", proj1[10].x, proj1[10].y - 10);
+
+            ctx.fillStyle = "#2980b9";
+            ctx.fillText("Loop (t+dt)", proj2[10].x, proj2[10].y + 20);
+
+            // 7. DRAW INDUCED CURRENT (Moving Particles)
+            if (isPlaying) {
+                const numE = 12;
+                const flowTime = Date.now() * 0.003;
+                ctx.fillStyle = "#2ecc71"; // Green for current
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = "#2ecc71";
+                for (let i = 0; i < numE; i++) {
+                    const tIdx = Math.floor(((i / numE + flowTime) % 1) * numPoints);
+                    const p = proj2[tIdx];
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+
+                // Label Current
+                ctx.fillStyle = "#27ae60";
+                ctx.fillText("Induced I", proj2[numPoints - 5].x, proj2[numPoints - 5].y - 20);
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // CONTROLS LOGIC
+        document.getElementById('toggleRibbon').addEventListener('change', (e) => flags.ribbon = e.target.checked);
+        document.getElementById('toggleField').addEventListener('change', (e) => flags.field = e.target.checked);
+        document.getElementById('toggleVelocity').addEventListener('change', (e) => flags.velocity = e.target.checked);
+        document.getElementById('toggleDL').addEventListener('change', (e) => flags.dl = e.target.checked);
+
+        const btnPlay = document.getElementById('btnPlay');
+        const btnPause = document.getElementById('btnPause');
+
+        btnPlay.addEventListener('click', () => {
+            isPlaying = true;
+            btnPlay.classList.add('active');
+            btnPause.classList.remove('active');
+        });
+
+        btnPause.addEventListener('click', () => {
+            isPlaying = false;
+            btnPause.classList.add('active');
+            btnPlay.classList.remove('active');
+        });
+
+        // Start
+        draw();
+
+    </script>
+</body>
+
+</html>

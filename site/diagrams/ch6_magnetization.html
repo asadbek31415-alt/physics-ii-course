@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetization & Atomic Dipoles</title>
+    <!-- Three.js -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script src="../vendor/katex/katex.min.js"></script>
+    <script src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0d1117; font-family: 'Segoe UI', sans-serif; color: #c9d1d9; }
+        
+        #ui-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        /* Top Controls */
+        .controls {
+            background: rgba(22, 27, 34, 0.9); backdrop-filter: blur(8px);
+            padding: 15px; border-bottom: 1px solid #30363d;
+            pointer-events: auto; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: center;
+        }
+
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        label { font-size: 0.9rem; font-weight: 600; color: #e6edf3; }
+        
+        input[type=range] { width: 150px; accent-color: #58a6ff; cursor: pointer; }
+        
+        /* Toggle Switch */
+        .toggle-btn {
+            background: #21262d; border: 1px solid #30363d; color: #8b949e;
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .toggle-btn.active { background: #1f6feb; color: #fff; border-color: #fff; }
+
+        /* Info Overlay */
+        .info-panel {
+            position: absolute; bottom: 20px; left: 20px; width: 320px;
+            background: rgba(22, 27, 34, 0.9); padding: 20px;
+            border-radius: 8px; border-left: 4px solid #58a6ff;
+            pointer-events: auto;
+        }
+
+        h3 { margin: 0 0 5px 0; color: #fff; font-size: 1.1rem; }
+        p { margin: 0; font-size: 0.9rem; line-height: 1.4; color: #8b949e; }
+        .highlight { color: #58a6ff; font-weight: bold; }
+        .math-block { text-align: center; margin: 10px 0; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 4px; }
+
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="ui-container">
+    <div class="controls">
+        <div class="control-group">
+            <label>External Field ($B_{ext}$):</label>
+            <input type="range" id="slider-field" min="0" max="1" step="0.01" value="0">
+        </div>
+        
+        <div class="control-group">
+            <label>View Mode:</label>
+            <button class="toggle-btn active" id="btn-arrows" onclick="setView('arrows')">Dipole Arrows</button>
+            <button class="toggle-btn" id="btn-loops" onclick="setView('loops')">Current Loops</button>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h3 id="status-title">Random Orientation</h3>
+        <p id="status-text">
+            Without an external field, thermal energy causes the atomic dipoles to point in random directions. 
+            <br><br>
+            <strong>Net Magnetization ($\mathbf{M}$) $\approx 0$.</strong>
+        </p>
+    </div>
+</div>
+
+<script>
+    // --- SCENE SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    // Add subtle fog
+    scene.fog = new THREE.Fog(0x0d1117, 10, 30);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 8, 12);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const pl = new THREE.PointLight(0xffffff, 1);
+    pl.position.set(5, 10, 5);
+    scene.add(pl);
+
+    // --- ATOMIC GRID SETUP ---
+    const GRID_SIZE = 6;
+    const SPACING = 1.5;
+    const atoms = [];
+    const groupAtoms = new THREE.Group();
+    scene.add(groupAtoms);
+
+    // Shared Geometries/Materials
+    const arrowGeo = new THREE.ConeGeometry(0.15, 0.4, 8);
+    const shaftGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 8);
+    const arrowMat = new THREE.MeshStandardMaterial({ color: 0xff4444, roughness: 0.2 });
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+
+    const loopGeo = new THREE.TorusGeometry(0.4, 0.02, 8, 32);
+    const loopMat = new THREE.MeshBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.6 });
+    const electronGeo = new THREE.SphereGeometry(0.08, 8, 8);
+    const electronMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+
+    class Atom {
+        constructor(x, y, z) {
+            this.root = new THREE.Group();
+            this.root.position.set(x, y, z);
+            
+            // Random initial orientation quaternion
+            this.baseRotation = new THREE.Quaternion().setFromEuler(
+                new THREE.Euler(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2)
+            );
+            this.targetRotation = this.baseRotation.clone();
+            this.currentRotation = this.baseRotation.clone();
+            
+            // 1. Vector Representation (Arrow)
+            this.arrowGroup = new THREE.Group();
+            const tip = new THREE.Mesh(arrowGeo, arrowMat);
+            tip.position.y = 0.3;
+            const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+            this.arrowGroup.add(tip, shaft);
+            // Rotate arrow to point Z initially so we can rotate group
+            this.arrowGroup.rotation.x = Math.PI/2; 
+            this.root.add(this.arrowGroup);
+
+            // 2. Loop Representation (Orbit)
+            this.loopGroup = new THREE.Group();
+            const loop = new THREE.Mesh(loopGeo, loopMat);
+            // Electron
+            this.electron = new THREE.Mesh(electronGeo, electronMat);
+            this.electronAngle = Math.random() * Math.PI * 2;
+            this.loopGroup.add(loop, this.electron);
+            this.loopGroup.visible = false; // Hidden by default
+            this.root.add(this.loopGroup);
+
+            groupAtoms.add(this.root);
+        }
+
+        update(dt, fieldStrength, viewMode) {
+            // Logic:
+            // If Field = 0, target is baseRotation (random).
+            // If Field = 1, target is identity (aligned Up/Y).
+            // We slerp between base and aligned based on fieldStrength.
+            
+            const alignedQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)); // Point Up (Y)
+            
+            // Lerp factor
+            // Actually, physics is statistical. 
+            // Let's bias the target towards Up based on field.
+            this.targetRotation.slerpQuaternions(this.baseRotation, alignedQuat, fieldStrength);
+            
+            // Apply smoothing
+            this.root.quaternion.slerp(this.targetRotation, 0.1);
+
+            // Animate Electron
+            if (viewMode === 'loops') {
+                this.electronAngle += 5 * dt;
+                // Orbit in XZ plane of the local group
+                this.electron.position.set(
+                    Math.cos(this.electronAngle) * 0.4,
+                    Math.sin(this.electronAngle) * 0.4,
+                    0
+                );
+            }
+        }
+
+        setView(mode) {
+            if (mode === 'arrows') {
+                this.arrowGroup.visible = true;
+                this.loopGroup.visible = false;
+            } else {
+                this.arrowGroup.visible = false;
+                this.loopGroup.visible = true;
+            }
+        }
+    }
+
+    // Create Grid
+    const offset = (GRID_SIZE * SPACING) / 2 - SPACING/2;
+    for(let x=0; x<GRID_SIZE; x++) {
+        for(let z=0; z<GRID_SIZE; z++) {
+            // Hexagonal offset layout for nicer look
+            const xPos = (x * SPACING) - offset + (z%2)*0.5;
+            const zPos = (z * SPACING) - offset;
+            atoms.push(new Atom(xPos, 0, zPos));
+        }
+    }
+
+    // --- BIG FIELD ARROW (Visual Indicator) ---
+    const fieldArrowGroup = new THREE.Group();
+    const fShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4, 16), new THREE.MeshBasicMaterial({color: 0x58a6ff, transparent:true, opacity:0.3}));
+    const fTip = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 16), new THREE.MeshBasicMaterial({color: 0x58a6ff, transparent:true, opacity:0.3}));
+    fTip.position.y = 2;
+    fieldArrowGroup.add(fShaft, fTip);
+    fieldArrowGroup.position.set(6, 0, -6); // Corner
+    fieldArrowGroup.visible = false;
+    scene.add(fieldArrowGroup);
+
+    // --- LOGIC ---
+    let state = {
+        fieldStrength: 0,
+        viewMode: 'arrows'
+    };
+
+    const slider = document.getElementById('slider-field');
+    const title = document.getElementById('status-title');
+    const text = document.getElementById('status-text');
+
+    slider.addEventListener('input', (e) => {
+        state.fieldStrength = parseFloat(e.target.value);
+        updateText();
+    });
+
+    function setView(mode) {
+        state.viewMode = mode;
+        document.getElementById('btn-arrows').className = mode === 'arrows' ? 'toggle-btn active' : 'toggle-btn';
+        document.getElementById('btn-loops').className = mode === 'loops' ? 'toggle-btn active' : 'toggle-btn';
+        
+        atoms.forEach(a => a.setView(mode));
+    }
+
+    function updateText() {
+        const B = state.fieldStrength;
+        
+        // Visual Field Arrow
+        if (B > 0.1) {
+            fieldArrowGroup.visible = true;
+            const scale = 0.5 + B;
+            fieldArrowGroup.scale.set(scale, scale, scale);
+            fieldArrowGroup.children.forEach(m => m.material.opacity = 0.2 + B*0.4);
+        } else {
+            fieldArrowGroup.visible = false;
+        }
+
+        // Text Updates
+        if (B < 0.2) {
+            title.innerText = "Random Orientation (Paramagnetic)";
+            text.innerHTML = `Thermal energy dominates. Dipoles point randomly.<br><br><strong>Net Magnetization $\\mathbf{M} \\approx 0$</strong>`;
+        } else if (B < 0.8) {
+            title.innerText = "Partial Alignment";
+            text.innerHTML = `External field $\\mathbf{B}_{ext}$ creates torque $\\boldsymbol{\\tau} = \\mathbf{m} \\times \\mathbf{B}$.<br>Dipoles begin to rotate towards the field direction.`;
+        } else {
+            title.innerText = "Saturation";
+            text.innerHTML = `Strong field. Most dipoles are aligned.<br>The material is now strongly magnetized.<br><br><strong>$\\mathbf{M}$ is maximum.</strong>`;
+        }
+
+        // Re-render math
+        renderMathInElement(document.getElementById('ui-container'), {
+            delimiters: [{left: '$', right: '$', display: false}]
+        });
+    }
+
+    // --- ANIMATION LOOP ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+
+        // Update Atoms
+        atoms.forEach(atom => {
+            atom.update(dt, state.fieldStrength, state.viewMode);
+        });
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Init
+    renderMathInElement(document.body, {
+        delimiters: [{ left: '$', right: '$', display: false }]
+    });
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Flaw in Ampère's Law</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > History
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: The Flaw in Ampère's Law</h1>
+
+        <p class="intro-text">
+            Before Maxwell, Ampère's Law was written as $\nabla \times \vec{B} = \mu_0 \vec{J}$. Maxwell noticed a fatal
+            mathematical contradiction in this equation for non-steady currents.
+        </p>
+
+        <section>
+            <h2>The Mathematical Contradiction</h2>
+            <p>
+                Take the divergence of the curl of any vector field. It must be zero (vector identity):
+            </p>
+            <div class="math-block">
+                $$ \nabla \cdot (\nabla \times \vec{B}) = 0 $$
+            </div>
+            <p>
+                However, taking the divergence of the right side of Ampère's Law gives:
+            </p>
+            <div class="math-block">
+                $$ \nabla \cdot (\mu_0 \vec{J}) = \mu_0 (\nabla \cdot \vec{J}) $$
+            </div>
+            <p>
+                From the continuity equation (conservation of charge), $\nabla \cdot \vec{J} = -\frac{\partial
+                \rho}{\partial t}$. This is only zero for <em>steady</em> currents ($\dot{\rho} = 0$). If charge is
+                piling up (like on a capacitor plate), the equation breaks!
+            </p>
+            <div class="math-block">
+                $$ 0 \neq -\mu_0 \dot{\rho} \quad \text{(Contradiction!)} $$
+            </div>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/ampere_flaw.html" title="Ampere Flaw Visualization"
+                    scrolling="no"></iframe>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

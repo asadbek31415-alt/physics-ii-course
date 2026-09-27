@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radiation Pressure - Ch 6.3</title>
+    
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #050a14;
+            --panel-bg: #0f172a;
+            --border: #1e293b;
+            --accent: #38bdf8;
+            --absorb: #f87171;
+            --reflect: #34d399;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: var(--bg-deep); 
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+            height: 100vh;
+            min-height: 0;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            background: var(--panel-bg); border-right: 1px solid var(--border);
+            padding: 16px 18px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 10;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(56, 189, 248, 0.6) rgba(15, 23, 42, 0.35);
+        }
+
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.35); }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.55); border-radius: 999px; }
+
+        h1 { font-size: 1.05rem; color: var(--accent); margin: 0 0 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        
+        .theory-section { font-size: 0.8rem; line-height: 1.45; color: var(--text-dim); margin-bottom: 14px; }
+        .theory-item { margin-bottom: 12px; padding-left: 10px; border-left: 2px solid var(--border); }
+        .theory-item b { color: var(--text-main); display: block; margin-bottom: 4px; }
+        .theory-item p { margin: 0; }
+
+        /* Controls Card */
+        .controls-card {
+            background: rgba(0,0,0,0.3); padding: 14px; border-radius: 8px;
+            border: 1px solid var(--border); margin-bottom: 14px;
+        }
+
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; font-weight: bold; font-size: 0.68rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em; gap: 8px; }
+        .label-value { color: var(--accent); font-size: 0.78rem; white-space: nowrap; }
+
+        .mode-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        button { 
+            background: #1e293b; border: 1px solid var(--border); color: white; 
+            padding: 8px 6px; border-radius: 6px; cursor: pointer; font-size: 0.78rem; transition: 0.2s;
+            min-width: 0;
+        }
+        button.active-abs { border-color: var(--absorb); background: rgba(248, 113, 113, 0.1); color: var(--absorb); }
+        button.active-ref { border-color: var(--reflect); background: rgba(52, 211, 153, 0.1); color: var(--reflect); }
+
+        input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 6px; appearance: none; background: #1e293b; border-radius: 3px; }
+
+        /* Visual Legend */
+        .visual-legend { font-size: 0.78rem; display: flex; flex-direction: column; gap: 9px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .legend-row { display: flex; align-items: center; gap: 9px; color: var(--text-dim); min-width: 0; }
+        .legend-row span { min-width: 0; }
+        .swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+        .particle-swatch { width: 8px; height: 8px; border-radius: 50%; background: white; box-shadow: 0 0 5px white; }
+
+        #canvas-container { position: relative; width: 100%; height: 100%; }
+        .canvas-labels {
+            position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+            color: #94a3b8; font-size: 0.86rem; text-align: center;
+            background: rgba(5, 10, 20, 0.68); padding: 7px 14px; border-radius: 8px;
+            pointer-events: none;
+            white-space: nowrap;
+            max-width: calc(100% - 32px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @media (max-width: 720px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(330px, 1fr) auto;
+            }
+
+            #canvas-container {
+                min-height: 330px;
+            }
+
+            .sidebar {
+                border-right: 0;
+                border-top: 1px solid var(--border);
+                padding: 12px 14px;
+                max-height: none;
+                overflow: visible;
+            }
+
+            .theory-section {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .controls-card {
+                margin-bottom: 10px;
+            }
+
+            .visual-legend {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .canvas-labels {
+                bottom: 14px;
+                font-size: 0.78rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <h1>2. Momentum & Pressure</h1>
+            
+            <div class="theory-section">
+                EM waves carry momentum. When light hits an object, it transfers this momentum, exerting a tiny but measurable force.
+                
+                <div class="theory-item">
+                    <b>Perfect Absorption: $P = I/c$</b>
+                    <p>Momentum is fully transferred as the surface stops the wave.</p>
+                </div>
+
+                <div class="theory-item">
+                    <b>Perfect Reflection: $P = 2I/c$</b>
+                    <p>The "bounce" (direction change $\Delta p$) doubles the total momentum transfer.</p>
+                </div>
+            </div>
+
+            <div class="controls-card">
+                <div class="label-row">Surface Interaction</div>
+                <div class="mode-selector">
+                    <button id="btnAbs" class="active-abs" onclick="setMode('absorb')">Absorption</button>
+                    <button id="btnRef" onclick="setMode('reflect')">Reflection</button>
+                </div>
+
+                <div class="label-row">
+                    <span>Wave Intensity ($I$)</span>
+                    <span id="val-i" class="label-value">1.5</span>
+                </div>
+                <input type="range" id="intensity" min="0.5" max="3" step="0.1" value="1.5">
+            </div>
+
+            <div class="visual-legend">
+                <div class="legend-row">
+                    <div class="swatch" style="background: var(--accent)"></div>
+                    <span><b>Wave:</b> Energy Flux (Continuous Field)</span>
+                </div>
+                <div class="legend-row">
+                    <div class="particle-swatch"></div>
+                    <span><b>Particles:</b> Photons (Momentum Packets)</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <div class="canvas-labels" id="bottom-label">
+                Energy Flux $\rightarrow$ Momentum Transfer $\rightarrow$ Force
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Setup -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let incidentLine, reflectedLine, forceArrow, plate;
+        let photons = [];
+        let mode = 'absorb';
+
+        const container = document.getElementById('canvas-container');
+        const intensityInput = document.getElementById('intensity');
+
+        window.setMode = (m) => {
+            mode = m;
+            document.getElementById('btnAbs').className = (m === 'absorb') ? 'active-abs' : '';
+            document.getElementById('btnRef').className = (m === 'reflect') ? 'active-ref' : '';
+            reflectedLine.visible = (m === 'reflect');
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050a14);
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(-18, 12, 22);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Environment
+            const grid = new THREE.GridHelper(40, 40, 0x1e293b, 0x0f172a);
+            grid.position.y = -6.5;
+            scene.add(grid);
+
+            // The Surface
+            const plateGeom = new THREE.BoxGeometry(0.5, 12, 12);
+            const plateMat = new THREE.MeshPhongMaterial({ color: 0x1e293b, shininess: 80 });
+            plate = new THREE.Mesh(plateGeom, plateMat);
+            plate.position.x = 8.5;
+            scene.add(plate);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const sun = new THREE.DirectionalLight(0xffffff, 1);
+            sun.position.set(-10, 10, 10);
+            scene.add(sun);
+
+            // Waves
+            incidentLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 }));
+            reflectedLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.5 }));
+            reflectedLine.visible = false;
+            scene.add(incidentLine, reflectedLine);
+
+            // Force Visualization (Yellow Arrow)
+            forceArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(9,0,0), 1, 0xfbbf24, 1.2, 0.7);
+            scene.add(forceArrow);
+
+            // Photon Particles
+            const photonGeom = new THREE.SphereGeometry(0.12, 8, 8);
+            const photonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            for(let i=0; i<20; i++) {
+                const p = new THREE.Mesh(photonGeom, photonMat);
+                resetPhoton(p);
+                scene.add(p);
+                photons.push(p);
+            }
+
+            animate();
+        }
+
+        function resetPhoton(p) {
+            p.position.set(-20 - Math.random()*15, (Math.random()-0.5)*7, (Math.random()-0.5)*7);
+            p.userData.bouncing = false;
+        }
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const I = parseFloat(intensityInput.value);
+            document.getElementById('val-i').innerText = I.toFixed(1);
+            
+            time += 0.05;
+            const k = 0.8;
+            const xLimit = 8.5;
+
+            // Update Wave Lines
+            const points = 200;
+            const incPos = [], refPos = [];
+            for(let i=0; i<=points; i++) {
+                const x = (i/points) * 30 - 20;
+                if(x <= xLimit) {
+                    const phase = k * x - time * 12;
+                    incPos.push(x, I * Math.sin(phase), 0);
+                    
+                    if(mode === 'reflect') {
+                        const rPhase = k * (17 - x) - time * 12; // Phase inverted and reversed
+                        refPos.push(x, (I*0.7) * Math.sin(rPhase), 0.5);
+                    }
+                }
+            }
+            incidentLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(incPos, 3));
+            reflectedLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(refPos, 3));
+
+            // Animate Photons (Particles)
+            photons.forEach(p => {
+                if(!p.userData.bouncing) {
+                    p.position.x += 0.35;
+                    if(p.position.x >= xLimit) {
+                        if(mode === 'absorb') resetPhoton(p);
+                        else p.userData.bouncing = true;
+                    }
+                } else {
+                    p.position.x -= 0.6; // Reflect fast
+                    if(p.position.x < -25) resetPhoton(p);
+                }
+            });
+
+            // Update Force Magnitude
+            const magFactor = (mode === 'absorb') ? I * 2 : I * 4;
+            forceArrow.setLength(magFactor, 1, 0.6);
+            
+            // Subtle plate vibration
+            plate.position.x = 8.5 + Math.sin(time*25) * (magFactor * 0.015);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false}
+                ],
+                throwOnError : false
+            });
+            init();
+        });
+
+        window.addEventListener('resize', () => {
+            if (!camera || !renderer) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+<script defer data-offline-bundle src="ch6_3_radiation_pressure.0.offline.js"></script>
+
+
+</body>
+</html>

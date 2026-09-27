@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss's Law for Magnetism Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #0ff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            pointer-events: all;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            color: #0ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            background: #333;
+            height: 4px;
+            border-radius: 2px;
+            appearance: none;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #0ff;
+            cursor: pointer;
+            box-shadow: 0 0 5px #0ff;
+        }
+
+        .stats {
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .val-positive { color: #0f0; } /* Lime */
+        .val-negative { color: #f0f; } /* Magenta */
+        .val-neutral { color: #fff; }
+
+        .legend {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            pointer-events: none;
+        }
+    </style>
+    <!-- Import Three.js -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h1>Magnetic Flux ($\Phi_B$)</h1>
+        <p style="font-size: 12px; color: #aaa; line-height: 1.4;">
+            Visualization of Gauss's Law for Magnetism: $\oint \vec{B} \cdot d\vec{A} = 0$.
+            <br>The net flux through any closed surface is zero.
+        </p>
+        
+        <div class="control-group">
+            <label>Gaussian Sphere Radius</label>
+            <input type="range" id="radiusSlider" min="3" max="8" step="0.1" value="5">
+        </div>
+
+        <div class="control-group">
+            <label>Magnet Rotation (Y-Axis)</label>
+            <input type="range" id="angleSlider" min="0" max="6.28" step="0.01" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>Arrow Scale</label>
+            <input type="range" id="scaleSlider" min="0.5" max="3" step="0.1" value="1.5">
+        </div>
+
+        <div class="stats">
+            <div class="stat-row">
+                <span>Flux Out ($\uparrow$):</span>
+                <span id="fluxOut" class="val-positive">0.00</span>
+            </div>
+            <div class="stat-row">
+                <span>Flux In ($\downarrow$):</span>
+                <span id="fluxIn" class="val-negative">0.00</span>
+            </div>
+            <div class="stat-row" style="border-top: 1px solid #444; padding-top: 5px; margin-top: 5px;">
+                <span>NET FLUX:</span>
+                <span id="fluxNet" class="val-neutral">0.00</span>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background:#0f0"></div>Leaving</div>
+            <div class="legend-item"><div class="dot" style="background:#f0f"></div>Entering</div>
+        </div>
+    </div>
+
+    <div id="instructions">Click and Drag to Rotate View | Scroll to Zoom</div>
+    <div id="canvas-container"></div>
+
+    <script>
+        // --- 1. Setup Scene, Camera, Renderer ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        // Add subtle fog for depth
+        scene.fog = new THREE.FogExp2(0x000000, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(10, 5, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // --- 2. Lighting ---
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+        const pointLight2 = new THREE.PointLight(0xffffff, 0.5, 100);
+        pointLight2.position.set(-10, -5, -10);
+        scene.add(pointLight2);
+
+        // --- 3. Objects ---
+
+        // A. The Magnet (Dipole)
+        const magnetGroup = new THREE.Group();
+        
+        // North Pole (Red)
+        const geoCyl = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
+        geoCyl.translate(0, 1, 0); // Shift so bottom is at origin
+        const matRed = new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0x550000 });
+        const northMesh = new THREE.Mesh(geoCyl, matRed);
+        
+        // South Pole (Blue)
+        const geoCylS = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
+        geoCylS.translate(0, -1, 0);
+        const matBlue = new THREE.MeshPhongMaterial({ color: 0x0000ff, emissive: 0x000055 });
+        const southMesh = new THREE.Mesh(geoCylS, matBlue);
+
+        magnetGroup.add(northMesh);
+        magnetGroup.add(southMesh);
+        scene.add(magnetGroup);
+
+        // B. The Gaussian Surface (Wireframe Sphere)
+        // Using Icosahedron for better vertex distribution for arrows
+        const sphereGeo = new THREE.IcosahedronGeometry(1, 2); 
+        const sphereMat = new THREE.MeshBasicMaterial({ 
+            color: 0x333333, 
+            wireframe: true, 
+            transparent: true, 
+            opacity: 0.3 
+        });
+        const gaussianSphere = new THREE.Mesh(sphereGeo, sphereMat);
+        scene.add(gaussianSphere);
+
+        // C. Flux Vectors (Arrows)
+        const arrows = [];
+        const numVertices = sphereGeo.attributes.position.count;
+        const arrowGroup = new THREE.Group();
+        scene.add(arrowGroup);
+
+        // Pre-generate arrows
+        for (let i = 0; i < numVertices; i++) {
+            // Origin, Dir, Length, Hex
+            const arrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0), 
+                new THREE.Vector3(0, 0, 0), 
+                1, 
+                0xffff00
+            );
+            arrows.push(arrow);
+            arrowGroup.add(arrow);
+        }
+
+        // --- 4. Physics Logic (Dipole Field) ---
+
+        // Dipole moment vector (pointing up along Y axis initially)
+        // Strength m
+        const mVec = new THREE.Vector3(0, 10, 0); // Moment
+        
+        function getBField(position, magnetRotation) {
+            // Apply magnet rotation to the moment vector
+            const m = mVec.clone().applyAxisAngle(new THREE.Vector3(0,0,1), magnetRotation.z);
+            m.applyAxisAngle(new THREE.Vector3(0,1,0), magnetRotation.y);
+            m.applyAxisAngle(new THREE.Vector3(1,0,0), magnetRotation.x);
+
+            const rVec = position.clone();
+            const r = rVec.length();
+            
+            // Avoid singularity at origin
+            if (r < 0.1) return new THREE.Vector3(0,0,0);
+
+            // B = (3(m . r_hat)r_hat - m) / r^3  (constants simplified)
+            const rHat = rVec.clone().normalize();
+            const mDotR = m.dot(rHat);
+            
+            const term1 = rHat.clone().multiplyScalar(3 * mDotR);
+            const term2 = m.clone();
+            
+            const B = term1.sub(term2).multiplyScalar(1 / Math.pow(r, 3));
+            return B;
+        }
+
+        // --- 5. Interaction & Animation ---
+        
+        // UI Elements
+        const uiRadius = document.getElementById('radiusSlider');
+        const uiAngle = document.getElementById('angleSlider');
+        const uiScale = document.getElementById('scaleSlider');
+        const dispOut = document.getElementById('fluxOut');
+        const dispIn = document.getElementById('fluxIn');
+        const dispNet = document.getElementById('fluxNet');
+
+        // Custom Orbit Controls (Simple implementation to keep single file dependency low)
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngle = { x: 0, y: 0 }; // Orbit angles
+
+        renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; });
+        renderer.domElement.addEventListener('mouseup', (e) => { isDragging = false; });
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.offsetX - previousMousePosition.x,
+                    y: e.offsetY - previousMousePosition.y
+                };
+
+                // Rotate Scene Group or Camera? Let's orbit camera
+                // Spherical coordinate conversion roughly
+                const theta = deltaMove.x * 0.01;
+                const phi = deltaMove.y * 0.01;
+
+                // Move camera
+                const x = camera.position.x;
+                const z = camera.position.z;
+                
+                // Simple orbit around Y
+                camera.position.x = x * Math.cos(theta) - z * Math.sin(theta);
+                camera.position.z = x * Math.sin(theta) + z * Math.cos(theta);
+                camera.lookAt(0,0,0);
+            }
+            previousMousePosition = { x: e.offsetX, y: e.offsetY };
+        });
+
+        // Zoom via scroll
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.5;
+            const dir = camera.position.clone().normalize();
+            if (e.deltaY > 0) camera.position.add(dir.multiplyScalar(zoomSpeed));
+            else camera.position.sub(dir.multiplyScalar(zoomSpeed));
+            camera.lookAt(0,0,0);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 1. Update Magnet
+            const rotY = parseFloat(uiAngle.value);
+            magnetGroup.rotation.y = rotY;
+            // Also tilt it a bit so it's not boring (fixed tilt)
+            magnetGroup.rotation.z = 0.3; 
+
+            // 2. Update Gaussian Sphere Size
+            const radius = parseFloat(uiRadius.value);
+            // Scale mesh
+            gaussianSphere.scale.set(radius, radius, radius);
+
+            // 3. Update Flux Arrows & Calculate Flux
+            const positions = sphereGeo.attributes.position;
+            const arrowScale = parseFloat(uiScale.value);
+
+            let totalFluxIn = 0;
+            let totalFluxOut = 0;
+
+            const magnetRotEuler = magnetGroup.rotation;
+
+            for (let i = 0; i < numVertices; i++) {
+                // Vertex position in Local Space
+                const localV = new THREE.Vector3(
+                    positions.getX(i),
+                    positions.getY(i),
+                    positions.getZ(i)
+                );
+                
+                // World position of vertex on sphere surface
+                const worldV = localV.clone().multiplyScalar(radius);
+                
+                // Normal vector of sphere at this point (same as normalized position for a sphere centered at 0)
+                const normal = localV.clone().normalize();
+
+                // Calculate B Field at this world position
+                const B = getBField(worldV, magnetRotEuler);
+
+                // Calculate Flux Density (B dot n)
+                // This determines if flux is entering (negative) or leaving (positive)
+                const fluxDensity = B.dot(normal);
+
+                // Update Visual Arrow
+                const arrow = arrows[i];
+                arrow.position.copy(worldV);
+                
+                // Direction: Visualize the B field direction
+                const bDir = B.clone().normalize();
+                arrow.setDirection(bDir);
+
+                // Length: proportional to field magnitude (clamped for visual clarity)
+                // Field drops off by 1/r^3, so we scale it up by r^2 or r^3 to make arrows visible at distance
+                const visualLen = B.length() * Math.pow(radius, 2) * arrowScale * 0.2; 
+                arrow.setLength(Math.max(0.1, visualLen), 0.3 * visualLen, 0.1 * visualLen); // length, headLength, headWidth
+
+                // Color based on Flux
+                // Entering (Flux < 0) -> Magenta (#f0f)
+                // Leaving  (Flux > 0) -> Lime (#0f0)
+                if (fluxDensity > 0) {
+                    arrow.setColor(0x00ff00);
+                    totalFluxOut += fluxDensity;
+                } else {
+                    arrow.setColor(0xff00ff);
+                    totalFluxIn += Math.abs(fluxDensity); // Add absolute magnitude
+                }
+            }
+
+            // 4. Update UI Stats
+            // Since we are sampling discrete points, the sum won't be mathematically integral 0, 
+            // but it should be close proportional. We normalize for display.
+            dispOut.textContent = totalFluxOut.toFixed(2);
+            dispIn.textContent = totalFluxIn.toFixed(2);
+            const net = totalFluxOut - totalFluxIn;
+            // Should be effectively zero
+            dispNet.textContent = (Math.abs(net) < 0.1 ? "0.00" : net.toFixed(2));
+            dispNet.style.color = Math.abs(net) < 0.5 ? '#fff' : '#f00';
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start loop
+        animate();
+
+    </script>
+</body>
+</html>

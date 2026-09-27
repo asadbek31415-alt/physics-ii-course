@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force on Dielectric</title>
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --panel-bg: #1c2734;
+            --text-main: #e0e0e0;
+            --accent: #3498db;
+            --pos-color: #e74c3c;
+            --neg-color: #3498db;
+            --field-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            background-color: #000;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid #2c3e50;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #b0c4de;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .info-box {
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 3px solid var(--accent);
+            padding: 10px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: #ccc;
+        }
+
+        #canvas-wrapper {
+            flex: 1;
+            position: relative;
+            cursor: grab;
+        }
+        #canvas-wrapper:active {
+            cursor: grabbing;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .overlay-text {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #555;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <div class="control-group">
+            <label>Voltage (V)</label>
+            <input type="range" id="voltage" min="0" max="100" value="80">
+        </div>
+
+        <div class="control-group">
+            <!-- Fixed text formatting -->
+            <label>Dielectric Constant (ε<sub>r</sub>)</label>
+            <input type="range" id="dielectric" min="1" max="10" value="5">
+        </div>
+
+        <div class="info-box">
+            <strong>Physics Note:</strong><br>
+            The force arises from the <em>fringing fields</em> at the edges. The non-uniform field pulls the induced dipoles into the region of stronger field.
+        </div>
+        
+        <div class="control-group" style="margin-top: auto;">
+            <button onclick="resetSim()" style="padding: 10px; background: #2c3e50; color: white; border: 1px solid #444; cursor: pointer;">Reset Position</button>
+        </div>
+    </aside>
+
+    <main id="canvas-wrapper">
+        <canvas id="simCanvas"></canvas>
+        <div class="overlay-text">Drag the slab to move it</div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+
+        // Physics State
+        let width, height;
+        let slabX = 0; 
+        let velocity = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let slabStartDragX = 0;
+
+        // Configuration
+        const plateWidth = 300;
+        const gap = 120;
+        const slabWidth = 300;
+        
+        // Inputs
+        const inputV = document.getElementById('voltage');
+        const inputE = document.getElementById('dielectric');
+
+        // Resize
+        const resize = () => {
+            width = wrapper.clientWidth;
+            height = wrapper.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            if(slabX === 0) slabX = width/2 - plateWidth/2 - 100; 
+        };
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Interaction
+        wrapper.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const cy = height/2;
+            if (mx > slabX && mx < slabX + slabWidth && my > cy - gap/2 && my < cy + gap/2) {
+                isDragging = true;
+                dragStartX = mx;
+                slabStartDragX = slabX;
+                velocity = 0;
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const dx = mx - dragStartX;
+                slabX = slabStartDragX + dx;
+            }
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        function resetSim() {
+            slabX = width/2 - plateWidth/2 - 150;
+            velocity = 0;
+        }
+
+        // Physics Loop
+        function update() {
+            const V = parseInt(inputV.value) / 100; 
+            const Er = parseInt(inputE.value);
+            
+            const cx = width / 2;
+            const plateLeft = cx - plateWidth/2;
+            const plateRight = cx + plateWidth/2;
+
+            const slabCenter = slabX + slabWidth/2;
+            const capCenter = cx;
+            
+            let force = 0;
+            
+            if (!isDragging) {
+                // Distance from equilibrium (center)
+                const dist = capCenter - slabCenter;
+                
+                // Base Force Magnitude
+                const F_mag = 2.0 * (V * V) * (Er - 1); 
+                
+                // Physics Logic:
+                // 1. If slab is completely outside (far away), force is ~0.
+                // 2. If slab is completely inside (centered), force is 0 (equilibrium).
+                // 3. Force acts to center the slab.
+                
+                // To satisfy "force drops gradually to zero":
+                // We scale the force based on how close we are to the center.
+                // This acts like a spring near the center to prevent infinite oscillation
+                // and simulates the net force vanishing as the edges align.
+                
+                let dampingFactor = 1;
+                
+                // If we are very close to center (within 50px), scale force down linearly
+                if (Math.abs(dist) < 50) {
+                    dampingFactor = Math.abs(dist) / 50;
+                }
+                
+                // If we are very far (no overlap), force is zero
+                const overlap = Math.min(slabX + slabWidth, plateRight) - Math.max(slabX, plateLeft);
+                if (overlap <= 0) dampingFactor = 0;
+
+                // Stop completely if extremely close to prevent micro-jitter
+                if (Math.abs(dist) < 1 && Math.abs(velocity) < 0.1) {
+                    slabX = capCenter - slabWidth/2;
+                    velocity = 0;
+                    force = 0;
+                } else {
+                    const dir = Math.sign(dist);
+                    force = dir * F_mag * dampingFactor;
+                    
+                    velocity += force;
+                    velocity *= 0.92; // Friction
+                    slabX += velocity;
+                }
+            }
+
+            draw(V, Er, force);
+            requestAnimationFrame(update);
+        }
+
+        function draw(V, Er, force) {
+            ctx.fillStyle = '#121a23';
+            ctx.fillRect(0, 0, width, height);
+
+            const cx = width / 2;
+            const cy = height / 2;
+            const plateLeft = cx - plateWidth/2;
+            const plateRight = cx + plateWidth/2;
+            const plateTopY = cy - gap/2;
+            const plateBottomY = cy + gap/2;
+
+            // 1. Draw Dielectric Slab
+            ctx.fillStyle = `rgba(52, 152, 219, ${0.3 + (Er/20)})`; 
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.fillRect(slabX, plateTopY + 2, slabWidth, gap - 4);
+            ctx.strokeRect(slabX, plateTopY + 2, slabWidth, gap - 4);
+
+            // Draw Induced Charges
+            if (V > 0.1) {
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const start = Math.max(slabX, plateLeft);
+                const end = Math.min(slabX + slabWidth, plateRight);
+                
+                if (end > start) {
+                    for (let x = start + 10; x < end; x += 30) {
+                        ctx.fillStyle = '#3498db'; 
+                        ctx.fillText("-", x, plateTopY + 10);
+                        ctx.fillStyle = '#e74c3c'; 
+                        ctx.fillText("+", x, plateBottomY - 10);
+                    }
+                }
+            }
+
+            // 2. Draw Capacitor Plates
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(plateLeft, plateTopY - 10, plateWidth, 10);
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(plateLeft, plateBottomY, plateWidth, 10);
+
+            // 3. Draw Field Lines
+            const lineCount = 12;
+            ctx.lineWidth = 2;
+            const fringeExt = 60; 
+            const startX = plateLeft - fringeExt;
+            const endX = plateRight + fringeExt;
+            const step = (endX - startX) / lineCount;
+
+            for (let x = startX; x <= endX; x += step) {
+                const inDielectric = (x > slabX && x < slabX + slabWidth);
+                let alpha = V; 
+                if (inDielectric) alpha = V / (Er * 0.5); 
+                
+                ctx.strokeStyle = `rgba(241, 196, 15, ${Math.min(1, alpha)})`; 
+
+                ctx.beginPath();
+                if (x < plateLeft || x > plateRight) {
+                    const distFromEdge = (x < plateLeft) ? (plateLeft - x) : (x - plateRight);
+                    const curveAmt = distFromEdge * 1.5;
+                    ctx.moveTo(Math.max(plateLeft, Math.min(plateRight, x)), plateTopY);
+                    ctx.bezierCurveTo(
+                        x - (x<cx?curveAmt:-curveAmt), cy - 20, 
+                        x - (x<cx?curveAmt:-curveAmt), cy + 20, 
+                        Math.max(plateLeft, Math.min(plateRight, x)), plateBottomY
+                    );
+                } else {
+                    ctx.moveTo(x, plateTopY);
+                    ctx.lineTo(x, plateBottomY);
+                }
+                ctx.stroke();
+
+                // Arrows
+                if (V > 0.1) {
+                    let midX = x;
+                    if (x < plateLeft) midX -= (plateLeft-x)*0.8;
+                    if (x > plateRight) midX += (x-plateRight)*0.8;
+                    ctx.fillStyle = ctx.strokeStyle;
+                    ctx.beginPath();
+                    ctx.moveTo(midX, cy + 5);
+                    ctx.lineTo(midX - 3, cy - 2);
+                    ctx.lineTo(midX + 3, cy - 2);
+                    ctx.fill();
+                }
+            }
+
+            // 4. Draw Force Vector
+            // Only draw if there is a significant force or velocity
+            if (Math.abs(force) > 0.05 || (isDragging && Math.abs(width/2 - (slabX + slabWidth/2)) > 5)) {
+                
+                const center = slabX + slabWidth/2;
+                const fDir = (width/2 - center) > 0 ? 1 : -1;
+                
+                // Visual arrow size scales with force magnitude
+                // We use Math.abs(force) to make it shrink as it settles
+                // If dragging, we show potential force
+                let displayForce = isDragging ? (2.0 * V * V * (Er-1)) : Math.abs(force) * 50;
+                
+                // Clamp visual size
+                displayForce = Math.min(displayForce, 60);
+                displayForce = Math.max(displayForce, 0);
+
+                if (displayForce > 1) {
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    
+                    const arrowLen = 20 + displayForce;
+
+                    ctx.beginPath();
+                    ctx.moveTo(center, cy);
+                    ctx.lineTo(center + (arrowLen * fDir), cy);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(center + (arrowLen * fDir), cy);
+                    ctx.lineTo(center + (arrowLen * fDir) - (10*fDir), cy - 5);
+                    ctx.lineTo(center + (arrowLen * fDir) - (10*fDir), cy + 5);
+                    ctx.fill();
+
+                    ctx.font = 'bold 16px Arial';
+                    ctx.fillText("F", center + (arrowLen/2 * fDir), cy - 15);
+                }
+            }
+        }
+
+        resetSim();
+        update();
+
+    </script>
+</body>
+</html>

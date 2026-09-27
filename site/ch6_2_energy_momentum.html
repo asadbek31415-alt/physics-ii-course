@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 6.2: Energy & Momentum</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    sep: "\\vec{\\mathcal{r}}",
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Energy &
+                Momentum
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Energy and Momentum</h1>
+
+        <!-- CONCEPT 1: POYNTING VECTOR -->
+        <section>
+            <h2>1. The Poynting Vector</h2>
+            <p>
+                Electromagnetic waves transport energy. The energy per unit time, per unit area, transported by the
+                fields is given by the <strong>Poynting vector</strong>, $\mathbf{S}$:
+            </p>
+            <div class="math-block">
+                $$ \mathbf{S} = \frac{1}{\mu_0} (\mathbf{E} \times \mathbf{B}) $$
+            </div>
+            <p>
+                As waves propagate through media (conductors), they lose energy, and their amplitude decays. This is
+                often characterized by the "skin depth".
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/propagation_media.html" title="Propagation Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_2_poynting_details.html?back=ch6_2_energy_momentum.html"><span aria-hidden="true">+</span> Deep Dive: The Poynting Vector</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 2: RADIATION PRESSURE -->
+        <section>
+            <h2>2. Radiation Pressure</h2>
+            <p>
+                Electromagnetic waves also carry momentum. When a wave strikes a surface, it transfers this momentum,
+                exerting a force known as radiation pressure.
+                <br>
+                For complete absorption, pressure $P = I/c$. For perfect reflection, $P = 2I/c$.
+            </p>
+
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/radiation_pressure.html" title="Radiation Pressure Diagram"
+                    scrolling="no"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch6_2_pressure_details.html?back=ch6_2_energy_momentum.html"><span aria-hidden="true">+</span> Deep Dive: Radiation Pressure</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundary Conditions</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1e1e1e;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: clamp(220px, 26vw, 280px) minmax(0, 1fr);
+        }
+        #scene-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .controls {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            background: rgba(0,0,0,0.75);
+            padding: 14px;
+            border-radius: 0;
+            color: white;
+            border: 1px solid #444;
+            border-left: 0;
+            border-top: 0;
+            border-bottom: 0;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .legend { margin-top: 10px; font-size: 0.85rem; }
+        .row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #scene-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .controls {
+                grid-column: 1;
+                grid-row: 2;
+                border-right: 0;
+                border-top: 1px solid #444;
+                padding: 10px 12px;
+                max-height: none;
+            }
+        }
+    </style>
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+    <script>window.MathJax = { tex: { inlineMath: [['$', '$']] }, svg: { fontCache: 'global' } };</script>
+    <script type="text/javascript" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div id="scene-container"></div>
+
+    <div class="controls">
+        <div style="font-weight: bold; margin-bottom: 5px;">Boundary Interface</div>
+        <div style="font-size: 0.9rem; color: #ccc;">Surface Current $\mathbf{K}$ at $z=0$</div>
+        <div class="legend">
+            <div class="row"><span class="dot" style="background:#ff4757;"></span> Current Sheet (K)</div>
+            <div class="row"><span class="dot" style="background:#2ed573;"></span> Potential (A)</div>
+            <div class="row"><span class="dot" style="background:#ffa502;"></span> B-Field (Slope of A)</div>
+        </div>
+        <label style="display:block; margin-top:10px; font-size: 0.9rem;">
+            <input type="checkbox" id="toggleGraph" checked> Show Graph Overlay
+        </label>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene Setup
+        const container = document.getElementById('scene-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e1e1e);
+        function getSceneSize() {
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+        const initialSize = getSceneSize();
+        const camera = new THREE.PerspectiveCamera(45, initialSize.width / initialSize.height, 0.1, 100);
+        camera.position.set(15, 5, 15);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(initialSize.width, initialSize.height);
+        container.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // 1. Surface Current Sheet (K) - Red Plane
+        const planeGeo = new THREE.PlaneGeometry(10, 10);
+        const planeMat = new THREE.MeshBasicMaterial({ 
+            color: 0xff4757, side: THREE.DoubleSide, transparent: true, opacity: 0.3 
+        });
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        scene.add(plane);
+
+        // Arrows for K (Current flow)
+        for(let x=-4; x<=4; x+=2) {
+            for(let z=-4; z<=4; z+=2) {
+                const dir = new THREE.Vector3(1, 0, 0); // Current flows in X
+                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(x-0.5, 0, z), 1, 0xff4757, 0.4, 0.3);
+                scene.add(arrow);
+            }
+        }
+
+        // 2. Vector Potential (A) - Green Arrows
+        // K is in X. A is parallel to K.
+        // A decays as |z| increases: A(z) = A_0 - c|z|
+        const groupA = new THREE.Group();
+        scene.add(groupA);
+
+        // 3. Magnetic Field (B) - Yellow Arrows
+        // B = curl A. Here, By = -dAx/dz.
+        // Above (z>0): A decreases, slope negative -> B positive Y? 
+        // Actually: B is discontinuity in tangential.
+        // If K is +x, B_above is -y (RH rule), B_below is +y.
+        const groupB = new THREE.Group();
+        scene.add(groupB);
+
+        for(let x=-4; x<=4; x+=2) {
+            for(let z=-4; z<=4; z+=2) {
+                // Generate vertical columns of vectors
+                for(let y=-3; y<=3; y+=1) {
+                    if(y===0) continue; 
+                    
+                    // -- A Field (Green) --
+                    // Continuous at y=0, decays away
+                    const magA = 1.0 - (Math.abs(y) * 0.2); 
+                    const dirA = new THREE.Vector3(1, 0, 0);
+                    const pos = new THREE.Vector3(x, y, z);
+                    // Center the arrow visually
+                    const arrowA = new THREE.ArrowHelper(dirA, new THREE.Vector3(x-magA/2, y, z), magA, 0x2ed573, 0.2, 0.1);
+                    groupA.add(arrowA);
+
+                    // -- B Field (Yellow) --
+                    // Constant magnitude, flips direction across surface
+                    const dirB = new THREE.Vector3(0, 0, y > 0 ? -1 : 1); // Perpendicular to K and Normal
+                    // wait, Kx cross n(y) = z. 
+                    // Above: n=+y. x cross y = z. B is in +z?
+                    // Let's use standard Right Hand Rule for infinite sheet.
+                    // Thumb along X. Fingers curl.
+                    // Above sheet: fingers point out of screen (+Z).
+                    // Below sheet: fingers point into screen (-Z).
+                    
+                    const finalDirB = new THREE.Vector3(0, 0, y > 0 ? 1 : -1);
+                    const arrowB = new THREE.ArrowHelper(finalDirB, pos, 0.8, 0xffa502, 0.3, 0.2);
+                    groupB.add(arrowB);
+                }
+            }
+        }
+
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        window.addEventListener('resize', () => {
+            const { width, height } = getSceneSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        // 2D Overlay (Canvas) for the graph
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.bottom = '10px';
+        canvas.style.right = '10px';
+        canvas.style.pointerEvents = 'none';
+        container.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        function drawGraph() {
+            if(!document.getElementById('toggleGraph').checked) {
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                return;
+            }
+            
+            const w = 300, h = 200;
+            canvas.width = w; canvas.height = h;
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(0,0,w,h);
+            
+            // Axes
+            ctx.strokeStyle = '#888';
+            ctx.beginPath();
+            ctx.moveTo(w/2, 20); ctx.lineTo(w/2, h-20); // Vertical (Z position)
+            ctx.moveTo(20, h/2); ctx.lineTo(w-20, h/2); // Horizontal (Magnitude)
+            ctx.stroke();
+            
+            // Labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('z (position)', w/2 + 5, 30);
+            ctx.fillText('0', w/2 + 5, h/2 - 5);
+            
+            // Plot A (Green) - Continuous "Tent" function
+            ctx.strokeStyle = '#2ed573';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w/2, h-20); // Bottom of graph (z high)
+            // Plot magnitude of A vs Z (vertical axis is Z)
+            // Actually let's rotate: X axis is Z-pos, Y axis is Field Value
+            
+            // X-axis: Z position from -3 to 3
+            // Y-axis: Field Magnitude
+            
+            // Plot A (Tent)
+            ctx.beginPath();
+            ctx.moveTo(20, h-20); // z = -infinity, A = low
+            ctx.lineTo(w/2, 20);  // z = 0, A = max (Peak)
+            ctx.lineTo(w-20, h-20); // z = +infinity, A = low
+            ctx.stroke();
+            ctx.fillStyle = '#2ed573';
+            ctx.fillText('A (Continuous)', w-80, h-25);
+
+            // Plot B (Yellow) - Step Function
+            ctx.strokeStyle = '#ffa502';
+            ctx.beginPath();
+            // z < 0, B is constant -1
+            ctx.moveTo(20, h/2 + 40); 
+            ctx.lineTo(w/2, h/2 + 40);
+            // Jump
+            ctx.moveTo(w/2, h/2 - 40);
+            // z > 0, B is constant +1
+            ctx.lineTo(w-20, h/2 - 40);
+            ctx.stroke();
+            
+            // Dashed line for jump
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(w/2, h/2 + 40);
+            ctx.lineTo(w/2, h/2 - 40);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#ffa502';
+            ctx.fillText('B (Discontinuous)', w-90, h/2 - 50);
+        }
+        
+        setInterval(drawGraph, 100);
+
+    </script>
+<script defer data-offline-bundle src="ch3_4_vector_potential_c2.0.offline.js"></script>
+
+
+</body>
+</html>

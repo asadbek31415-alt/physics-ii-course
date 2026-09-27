@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Magnetic Field of a Straight Wire</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+
+    <style>
+        .derivation-step {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .diagram-container {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+            background: #0f0f0f;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                <a href="ch3_2_biot_savart.html">Biot-Savart Law</a> > 
+                Infinite Straight Wire
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Magnetic Field of a Straight Wire</h1>
+        
+        <p>
+            <strong>Problem:</strong> Find the magnetic field a distance $s$ from a long straight wire carrying a steady current $I$.
+        </p>
+
+        <div class="diagram-container">
+            <!-- Simple SVG Diagram for Geometry -->
+            <svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                <!-- Wire -->
+                <line x1="100" y1="20" x2="100" y2="280" stroke="#666" stroke-width="4" />
+                <text x="80" y="40" fill="#fbbf24" font-family="sans-serif">I</text>
+                <polygon points="100,20 95,35 105,35" fill="#fbbf24" />
+
+                <!-- Point P -->
+                <circle cx="300" cy="150" r="4" fill="#4ade80" />
+                <text x="310" y="155" fill="#4ade80" font-family="sans-serif">P</text>
+
+                <!-- Distance s -->
+                <line x1="100" y1="150" x2="300" y2="150" stroke="#fff" stroke-dasharray="4" />
+                <text x="200" y="140" fill="#fff" font-family="sans-serif">s</text>
+
+                <!-- Element dl -->
+                <rect x="98" y="200" width="4" height="20" fill="#3b82f6" />
+                <text x="70" y="215" fill="#3b82f6" font-family="sans-serif">dl'</text>
+
+                <!-- Vector r -->
+                <line x1="100" y1="210" x2="300" y2="150" stroke="#fbbf24" stroke-width="2" />
+                <text x="210" y="190" fill="#fbbf24" font-family="sans-serif">r</text>
+
+                <!-- Angle Theta -->
+                <path d="M 140 150 Q 140 165 130 175" stroke="#aaa" fill="none" />
+                <text x="150" y="170" fill="#aaa" font-family="serif">θ</text>
+            </svg>
+        </div>
+
+        <section>
+            <h2>1. Setup the Biot-Savart Law</h2>
+            <p>
+                We begin with the general formula. The wire is aligned along the z-axis. The direction of the field, determined by the cross product $d\mathbf{l}' \times \mathbf{\hat{r}}$, is circumferential (into the page at point P). Thus, we only need to integrate the magnitude.
+            </p>
+            <div class="math-block">
+                $$ B = \frac{\mu_0 I}{4\pi} \int \frac{d\mathbf{l}' \times \mathbf{\hat{r}}}{r^2} $$
+            </div>
+            <p>
+                The magnitude of the cross product is $|d\mathbf{l}'| \sin(\alpha)$, where $\alpha$ is the angle between the current and the displacement vector. Looking at the geometry, if we define the angle $\theta$ from the horizontal $s$, then $\alpha = 90^\circ + \theta$, and $\sin(90^\circ+\theta) = \cos(\theta)$.
+            </p>
+            <div class="math-block">
+                $$ dB = \frac{\mu_0 I}{4\pi} \frac{dz \cos\theta}{r^2} $$
+            </div>
+        </section>
+
+        <section>
+            <h2>2. Trigonometric Substitution</h2>
+            <p>
+                We have three variables changing as we integrate along the wire: $z$, $r$, and $\theta$. It is easiest to express everything in terms of the angle $\theta$.
+            </p>
+            <div class="derivation-step">
+                <p>From the triangle in the diagram:</p>
+                <p>1. Relate distance $r$ to $s$: 
+                   $$ r = \frac{s}{\cos\theta} $$
+                </p>
+                <p>2. Relate height $z$ to $s$:
+                   $$ z = s \tan\theta $$
+                </p>
+                <p>3. Differentiate $z$ to get $dz$:
+                   $$ dz = s \sec^2\theta \, d\theta = \frac{s}{\cos^2\theta} d\theta $$
+                </p>
+            </div>
+        </section>
+
+        <section>
+            <h2>3. Solving the Integral</h2>
+            <p>Substitute these terms back into the Biot-Savart expression:</p>
+            <div class="math-block">
+                $$ B = \frac{\mu_0 I}{4\pi} \int \frac{\left( \frac{s}{\cos^2\theta} d\theta \right) \cos\theta}{\left( \frac{s}{\cos\theta} \right)^2} $$
+            </div>
+            <p>Simplifying the fraction:</p>
+            <div class="math-block">
+                $$ B = \frac{\mu_0 I}{4\pi} \int \frac{s \cos\theta}{s^2} d\theta = \frac{\mu_0 I}{4\pi s} \int \cos\theta \, d\theta $$
+            </div>
+            <p>
+                For an <strong>infinite</strong> wire, the angle $\theta$ spans from $-\pi/2$ (bottom infinity) to $+\pi/2$ (top infinity).
+            </p>
+            <div class="math-block">
+                $$ B = \frac{\mu_0 I}{4\pi s} \left[ \sin\theta \right]_{-\pi/2}^{\pi/2} $$
+            </div>
+            <div class="math-block">
+                $$ B = \frac{\mu_0 I}{4\pi s} (1 - (-1)) = \frac{\mu_0 I}{4\pi s} (2) $$
+            </div>
+        </section>
+
+        <section>
+            <h2>Final Result</h2>
+            <p>The magnetic field at distance $s$ from an infinite straight wire is:</p>
+            <div class="math-block" style="border: 1px solid var(--accent-color); padding: 20px;">
+                $$ B = \frac{\mu_0 I}{2\pi s} $$
+            </div>
+            <p>The direction follows the Right-Hand Rule: if your thumb points along the current $I$, your fingers curl in the direction of $\mathbf{B}$.</p>
+        </section>
+
+        <hr style="border-color: #2c3e50; margin: 3rem 0;">
+        
+        <div style="display: flex; justify-content: space-between;">
+            <a href="ch3_2_biot_savart.html" class="nav-link">← Back to Biot-Savart Law</a>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError : false
+            });
+        });
+    </script>
+</body>
+</html>

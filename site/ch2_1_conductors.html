@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductors</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        .iframe-container.conductor-lab-frame {
+            height: clamp(720px, 76vh, 840px);
+        }
+
+        .iframe-container.material-intro-frame {
+            height: clamp(680px, 70vh, 780px);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        /* List Styling for Properties */
+        ol.properties-list {
+            counter-reset: item;
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 2rem;
+        }
+
+        ol.properties-list li {
+            position: relative;
+            padding-left: 3.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        ol.properties-list li strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        ol.properties-list li::before {
+            content: counter(item);
+            counter-increment: item;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2.5rem;
+            height: 2.5rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 2.5rem;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electric_field_in_matter_index.html">Electric Fields in Matter</a> >
+                Conductors
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Conductors</h1>
+
+        <!-- SECTION 0: MATERIAL INTRODUCTION -->
+        <section data-concept-title="0. Conductors and Dielectrics" id="concept-0-conductors-and-dielectrics">
+            <h2>0. Conductors and Dielectrics</h2>
+            <p>
+                A <strong>conductor</strong> is a material, usually a metal such as copper, aluminum, or iron, in which
+                some electrons can move through the object. A <strong>dielectric</strong>, also called an insulator, is
+                a material such as plastic, glass, rubber, or dry wood. In a dielectric, charge cannot flow freely
+                through the whole object. It can only shift a little inside atoms or molecules, which we will study in
+                the next lesson.
+            </p>
+            <p>
+                A neutral conductor is not empty inside. It is made of atoms. In a metal, the positive nuclei stay in
+                place as part of the solid, while some electrons are able to move from place to place. In an ordinary
+                neutral piece of metal, the positive charge and negative charge balance in each small region. That means
+                the <em>net</em> charge of the interior is zero, and the whole conductor has no net charge unless extra
+                charge is added or induced.
+            </p>
+
+            <div class="iframe-container material-intro-frame">
+                <iframe src="diagrams/conductor_dielectric_intro.html" title="Conductor and Dielectric Comparison"></iframe>
+            </div>
+
+            <p>
+                Use the mode buttons to compare the two responses. In dielectric mode, electrons stay close to their
+                own atoms and only shift a little. In conductor mode, mobile electrons can move across the whole object,
+                so an outside field can create charge imbalance near the surfaces. The animation between modes is there
+                to make the difference visible, but the important idea is simple: dielectric charge shifts locally,
+                conductor charge can move through the material. The next concept studies conductor equilibrium more
+                carefully: the surface statement is about <strong>net excess charge</strong>, not a claim that every
+                electron leaves the inside.
+            </p>
+        </section>
+
+        <!-- SECTION 1: BASIC PROPERTIES -->
+        <section data-concept-title="1. Basic Electrostatic Properties" id="concept-1-1-basic-electrostatic-properties">
+            <h2>1. Basic Electrostatic Properties</h2>
+            <p>
+                These properties are statements about <strong>electrostatics</strong>: the charges have already had
+                time to move, and we are looking at the final equilibrium state where there is no continuing current
+                inside the conductor.
+            </p>
+            <p>
+                That starting point matters. If a conductor is placed in an external electric field, its mobile charges
+                immediately feel \(\vec{F}=q\vec{E}\). Electrons drift one way. Since the positive parts of the atoms
+                cannot flow through the metal, the other side is left with less negative charge, so it acts positive.
+                This separated, induced charge creates its own field in the opposite direction to the original field.
+                The motion continues only until the cancellation is complete.
+            </p>
+            <ol class="properties-list">
+                <li>
+                    <strong>\(\vec{E} = 0\) inside a conductor.</strong>
+                    At equilibrium, any nonzero internal field would make the free charges move again. Therefore the
+                    total field inside the conductor must be zero.
+                </li>
+                <li>
+                    <strong>\(\rho = 0\) inside a conductor.</strong>
+                    From Gauss's Law, \(\nabla \cdot \vec{E} = \rho/\epsilon_0\). Since \(\vec{E}=0\), \(\rho\) must be
+                    zero. Here \(\rho\) means the net charge density: positive charge and negative charge added
+                    together per volume.
+                </li>
+                <li>
+                    <strong>Any net charge resides on the surface.</strong>
+                    Since there is no net charge density in the interior, any excess charge has only one place left to
+                    reside: the surface.
+                </li>
+                <li>
+                    <strong>A conductor is an equipotential.</strong>
+                    Since \(\vec{E}=0\) inside, \(V(b)-V(a)=-\int_a^b \vec{E}\cdot d\vec{l}=0\) for any two points in
+                    or on the conductor.
+                </li>
+                <li>
+                    <strong>\(\vec{E}\) is perpendicular to the surface, just outside.</strong>
+                    If \(\vec{E}\) had a parallel component, charges would flow along the surface. In static
+                    equilibrium, this cannot happen.
+                </li>
+            </ol>
+
+            <p>
+                The key is not that conductors are magic; it is that free charges are allowed to rearrange until
+                \(\vec{E}=0\) in the metal. Then the rest follows. Gauss's law gives \(\rho=0\) in the interior, so
+                any excess charge must be on the surface. The zero field makes the whole conductor an equipotential.
+                And just outside the surface, any tangential part of \(\vec{E}\) would start surface charge flowing, so
+                the equilibrium field can only be perpendicular to the surface.
+            </p>
+
+            <!-- SIMULATOR: CONDUCTOR PROPERTIES -->
+            <div class="iframe-container conductor-lab-frame">
+                <iframe src="diagrams/conductor_properties_3d.html" title="Conductor Properties"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_1_conductors_properties_details.html?back=ch2_1_conductors.html%23concept-1-1-basic-electrostatic-properties"><span aria-hidden="true">+</span> Deep Dive: Basic Conductor Properties</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: INDUCED CHARGES -->
+        <section data-concept-title="2. Induced Charges" id="concept-2-2-induced-charges">
+            <h2>2. Induced Charges</h2>
+            <p>
+                If you hold a charge \(+q\) near a neutral conductor, the field of \(q\) pulls free electrons in the
+                conductor toward it, creating a patch of negative charge on the near side. This leaves a patch of
+                positive charge on the far side.
+            </p>
+            <p>
+                This process is called <strong>induction</strong>. The charge distribution on the surface adjusts itself
+                perfectly so that the total field inside the conductor remains zero.
+            </p>
+
+            <!-- SIMULATOR: INDUCTION -->
+            <div class="iframe-container">
+                <iframe src="diagrams/conductor_induction.html" title="Induction Simulation"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_1_conductors_induction_details.html?back=ch2_1_conductors.html%23concept-2-2-induced-charges"><span aria-hidden="true">+</span> Deep Dive: Induction & Charge Distribution</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: CAVITIES & FARADAY CAGES -->
+        <section data-concept-title="3. Cavities and the Faraday Cage" id="concept-3-3-cavities-and-the-faraday-cage">
+            <h2>3. Cavities and the Faraday Cage</h2>
+            <p>
+                Suppose we have a conductor with a cavity (a hole) inside it, and there are <strong>no charges within
+                    the cavity</strong>. What is the field inside the hole?
+            </p>
+            <p>
+                Regardless of the intense electric fields raging outside the conductor, the field inside the empty
+                cavity is identically zero. The conductor shields the cavity completely. This is the principle of the
+                <strong>Faraday Cage</strong>.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \oint_{\text{Cavity}} \vec{E} \cdot d\vec{l} = 0 $$
+            </div>
+
+            <!-- SIMULATOR: FARADAY CAGE -->
+            <div class="iframe-container">
+                <iframe src="diagrams/faraday_cage.html" title="Faraday Cage"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_1_conductors_cavity_details.html?back=ch2_1_conductors.html%23concept-3-3-cavities-and-the-faraday-cage"><span aria-hidden="true">+</span> Deep Dive: Cavities in Conductors</a>
+            </div>
+        </section>
+
+        <!-- SECTION 4: SURFACE CHARGE & FORCE -->
+        <section data-concept-title="4. Surface Charge and the Force on a Conductor" id="concept-4-4-surface-charge-and-the-force-on-a-conductor">
+            <h2>4. Surface Charge and the Force on a Conductor</h2>
+            <p>
+                We know that the field inside a conductor is zero, but the field immediately outside is non-zero and
+                perpendicular to the surface. This discontinuity implies that the surface charges themselves experience
+                a force.
+            </p>
+            <p>
+                Because the charges on the surface repel each other, they try to expand outward. This creates an
+                <strong>electrostatic pressure</strong> on the surface of the conductor, pulling it into the vacuum. The
+                force per unit area (\(f\)) is given by:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ f = \frac{1}{2} \sigma E_{\text{outside}} = \frac{\epsilon_0}{2} E^2 $$
+            </div>
+
+            <p>
+                This force is always directed <strong>outward</strong>, regardless of whether the surface charge is
+                positive or negative (since \(E^2\) is always positive).
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_1_conductors_force_details.html?back=ch2_1_conductors.html%23concept-4-4-surface-charge-and-the-force-on-a-conductor"><span aria-hidden="true">+</span> Deep Dive: Deriving Electrostatic Pressure</a>
+            </div>
+        </section>
+
+        <!-- SECTION 5: CAPACITORS -->
+        <section data-concept-title="5. Capacitors" id="concept-5-5-capacitors">
+            <h2>5. Capacitors</h2>
+            <p>
+                A <strong>Capacitor</strong> is formed by any two conductors separated by an insulator (or vacuum). If
+                we place a charge \(+Q\) on one conductor and \(-Q\) on the other, a potential difference \(V\) develops
+                between them.
+            </p>
+            <p>
+                The ratio of charge to potential difference is a constant called <strong>Capacitance</strong> (\(C\)).
+                It depends purely on the geometry of the conductors, not on the amount of charge.
+            </p>
+
+            <div class="math-block">
+                $$ C = \frac{Q}{V} $$
+            </div>
+
+            <p>
+                To "charge" a capacitor, work must be done against the electric field to move electrons from the
+                positive plate to the negative plate. This work is stored as potential energy \(W\) in the electric
+                field:
+            </p>
+
+            <div class="math-block">
+                $$ W = \frac{1}{2} C V^2 = \frac{1}{2} \frac{Q^2}{C} $$
+            </div>
+
+            <!-- Placeholder for potential capacitor simulation -->
+            <div class="iframe-container">
+                <iframe src="diagrams/capacitor_basics.html" title="Induction Simulation"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_1_conductors_capacitors_details.html?back=ch2_1_conductors.html%23concept-5-5-capacitors"><span aria-hidden="true">+</span> Deep Dive: Capacitance & Energy</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

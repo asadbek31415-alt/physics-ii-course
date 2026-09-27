@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetization</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                macros: {
+                    // Removed 'vec' macro to prevent recursion errors. 
+                    // Using standard \mathbf inside equations.
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\mathbf{l}",
+                    dtau: "d\\tau"
+                }
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="vendor/mathjax/tex-svg.js">
+        </script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* Note Box for Insights */
+        .note-box {
+            background-color: rgba(241, 196, 15, 0.1);
+            border-left: 4px solid var(--warning-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .note-title {
+            color: var(--warning-color);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Link Styling */
+        a.text-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--accent-color);
+        }
+
+        a.text-link:hover {
+            border-bottom-style: solid;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> >
+                Magnetization
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Magnetization</h1>
+
+        <p>
+            If you ask the average person what "magnetism" is, they will likely talk about refrigerator magnets or
+            compass needles—things that seem to have no obvious connection to moving charges. Yet, all magnetic
+            phenomena are ultimately due to electric charges in motion.
+        </p>
+        <p>
+            If you look at matter on an atomic scale, you find tiny currents: electrons orbiting nuclei and spinning on
+            their axes. These microscopic current loops act as magnetic dipoles. When an external magnetic field is
+            applied, these dipoles align or shift, causing the material to become <strong>magnetized</strong>.
+        </p>
+
+        <!-- SIMULATOR: ATOM AS CURRENT LOOP -->
+        <div class="iframe-container">
+            <iframe src="diagrams/atom_current_loop.html" title="Atom as Current Loop"></iframe>
+        </div>
+
+        <!-- SECTION 1: MATERIAL TYPES -->
+        <section data-concept-title="1. Diamagnets, Paramagnets, Ferromagnets" id="concept-1-1-diamagnets-paramagnets-ferromagnets">
+            <h2>1. Diamagnets, Paramagnets, Ferromagnets</h2>
+            <p>
+                Unlike electric polarization, where induced dipoles almost always line up <em>with</em> the electric
+                field, magnetic response is more varied. We classify materials based on how their internal dipoles
+                respond to an external field $\mathbf{B}$:
+            </p>
+
+            <ol style="color: var(--text-secondary); padding-left: 2rem; list-style: none;">
+                <li style="margin-bottom: 2rem; position: relative;">
+                    <span style="position: absolute; left: -2rem; color: var(--accent-color);">I.</span>
+                    <strong>Paramagnets:</strong> Materials containing unpaired electrons (like Aluminum or Oxygen).
+                    Their atomic dipoles try to align <em>parallel</em> to the external field. However, they are
+                    constantly jostled by thermal energy, so the alignment is usually very weak. They are weakly
+                    attracted to magnets.
+                </li>
+                <li style="margin-bottom: 2rem; position: relative;">
+                    <span style="position: absolute; left: -2rem; color: var(--accent-color);">II.</span>
+                    <strong>Diamagnets:</strong> Materials where the orbital motion of electrons shifts to create a
+                    field <em>opposite</em> to the external field. This effect is present in <em>all</em> matter (like
+                    Water or Copper) but is usually masked if paramagnetism is present. They are weakly repelled by
+                    magnets.
+                </li>
+                <li style="margin-bottom: 2rem; position: relative;">
+                    <span style="position: absolute; left: -2rem; color: var(--accent-color);">III.</span>
+                    <strong>Ferromagnets:</strong> Materials like Iron where quantum mechanical effects lock neighboring
+                    dipoles together into "domains." They retain their magnetization even after the external field is
+                    removed.
+                </li>
+            </ol>
+
+            <p
+                style="background: rgba(52, 152, 219, 0.1); padding: 1rem; border-left: 3px solid var(--accent-color); border-radius: 4px;">
+                <strong>Note:</strong> Ferromagnetism is theoretically more complex than the other two. We will focus on
+                Paramagnetism and Diamagnetism here, and return to Ferromagnets later in <a
+                    href="ch4_4_linear_media.html" class="text-link">Linear and Nonlinear Media</a>.
+            </p>
+
+            <!-- SIMULATOR: MATERIAL TYPES -->
+            <div class="iframe-container">
+                <iframe src="diagrams/magnetic_materials_types.html" title="Material Types Simulation"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 2: TORQUES AND FORCES -->
+        <section data-concept-title="2. Torques and Forces on Magnetic Dipoles" id="concept-2-2-torques-and-forces-on-magnetic-dipoles">
+            <h2>2. Torques and Forces on Magnetic Dipoles</h2>
+            <p>
+                To understand <strong>Paramagnetism</strong>, consider a single magnetic dipole $\mathbf{m}$ placed in a
+                uniform magnetic field $\mathbf{B}$. The field exerts a torque on the current loop, twisting it to line
+                up with the field direction.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \boldsymbol{\tau} = \mathbf{m} \times \mathbf{B} $$
+            </div>
+
+            <h3>The Battle Against Heat</h3>
+            <p>
+                If the torque lines them up, why aren't all paramagnets incredibly strong magnets? The answer is
+                <strong>Thermal Energy</strong>.
+                <br><br>
+                The atoms in a material are constantly vibrating and colliding due to heat (Temperature). This random
+                thermal motion kicks the dipoles around, scrambling their orientation. The magnetization we observe is a
+                statistical balance: the magnetic field tries to order them, and heat tries to disorder them.
+            </p>
+
+            <div class="math-block">
+                $$ \mathbf{F} = \nabla(\mathbf{m} \cdot \mathbf{B}) $$
+            </div>
+            <p style="text-align: center; font-size: 0.9rem; margin-top: -1rem;">(Force on a dipole in a non-uniform
+                field)</p>
+
+            <!-- SIMULATOR: TORQUE -->
+            <div class="iframe-container">
+                <iframe src="diagrams/dipole_torque.html" title="Dipole Torque Simulation"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="derivation_force_closed_loop.html?back=ch4_1_magnetization.html%23concept-2-2-torques-and-forces-on-magnetic-dipoles"><span aria-hidden="true">+</span> Deep Dive: The Magnetic Dipole</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: ATOMIC ORBITS (DIAMAGNETISM) -->
+        <section data-concept-title="3. Effect of a Magnetic Field on Atomic Orbits" id="concept-3-3-effect-of-a-magnetic-field-on-atomic-orbits">
+            <h2>3. Effect of a Magnetic Field on Atomic Orbits</h2>
+            <p>
+                While electron spin and torque explain paramagnetism, what explains <strong>Diamagnetism</strong>?
+            </p>
+            <p>
+                Electrons revolve around the nucleus, creating an orbital dipole moment. When a magnetic field is
+                applied perpendicular to the orbit, the magnetic force $-e(\mathbf{v} \times \mathbf{B})$ acts radially.
+                This changes the centripetal force, causing the electron to speed up or slow down.
+            </p>
+
+            <div class="note-box">
+                <span class="note-title">Note on the Right Hand Rule</span>
+                <p style="margin:0; font-size: 0.95rem;">
+                    Be careful with signs! The Right Hand Rule applies to current ($I$) or positive charge. Because the
+                    electron has a <strong>negative charge</strong> ($-e$), the current flows opposite to the velocity
+                    ($\mathbf{v}$).
+                    <br><br>
+                    Consequently, the magnetic force direction is opposite to what you would get for a positive charge.
+                    This leads to the specific result that the induced field <em>opposes</em> the external field.
+                </p>
+            </div>
+
+            <p>
+                According to Lenz's law, this change creates an induced dipole moment $\Delta \mathbf{m}$ that is always
+                <strong>opposite</strong> to the direction of $\mathbf{B}$. This effect exists in all matter, though it
+                is often masked by stronger paramagnetism.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \Delta \mathbf{m} = - \frac{e^2 R^2}{4m_e} \mathbf{B} $$
+            </div>
+
+            <!-- SIMULATOR: ORBIT CHANGE -->
+            <div class="iframe-container">
+                <iframe src="diagrams/atomic_orbit_change.html" title="Atomic Orbit Simulation"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 4: MAGNETIZATION DEFINITION -->
+        <section data-concept-title="4. Magnetization (M)" id="concept-4-4-magnetization-m">
+            <h2>4. Magnetization (M)</h2>
+            <p>
+                To treat these effects macroscopically, we don't want to track billions of atomic dipoles. Instead, we
+                define a vector field called <strong>Magnetization</strong>, $\mathbf{M}$.
+            </p>
+            <p>
+                $\mathbf{M}$ is defined as the magnetic dipole moment per unit volume. It plays a role analogous to
+                Polarization $\mathbf{P}$ in electrostatics.
+            </p>
+
+            <div class="math-block">
+                $$ \mathbf{M} \equiv \frac{d\mathbf{m}}{dV} $$
+            </div>
+
+            <p>
+                If a material has a magnetization $\mathbf{M}$, it creates a magnetic field of its own. We calculate
+                this field using the method of <strong>Bound Currents</strong>, which we will explore in the next
+                section.
+            </p>
+
+            <!-- SIMULATOR: MAGNETIZATION VECTOR FIELD -->
+            <div class="iframe-container">
+                <iframe src="diagrams/magnetization_definition.html" title="Magnetization Definition"></iframe>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

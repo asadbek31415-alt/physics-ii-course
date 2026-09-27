@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Wire Simulation</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js & Utils -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <script src="../vendor/tween.umd.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.95);
+            --accent: #58a6ff;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(240px, 28vw, 320px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas-container { position: relative; grid-column: 2; grid-row: 1; width: 100%; height: 100%; z-index: 0; }
+        #canvas-container canvas { display: block; width: 100%; height: 100%; }
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .top-bar {
+            position: relative; top: auto; width: 100%;
+            display: flex; justify-content: center; pointer-events: auto;
+            margin-bottom: 12px;
+        }
+        
+        .mode-toggle {
+            background: #21262d; border: 1px solid var(--accent); color: #fff;
+            padding: 10px 24px; border-radius: 30px; cursor: pointer; font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: 0.3s;
+        }
+        .mode-toggle:hover { background: #1f6feb; border-color: #fff; }
+
+        .side-panel {
+            position: relative; top: auto; left: auto;
+            width: 100%; max-height: none;
+            background: var(--panel-bg);
+            border-radius: 8px; border: 1px solid var(--border-color);
+            border-left: 5px solid var(--accent);
+            display: flex; flex-direction: column;
+            pointer-events: auto;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .side-panel.collapsed { display: none; transform: none; opacity: 0; pointer-events: none; }
+
+        .close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; color: #888;
+            border: none; font-size: 1.5rem; cursor: pointer;
+            width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; transition: 0.2s;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .open-btn {
+            position: relative; top: auto; left: auto;
+            width: 100%; height: 40px;
+            background: var(--accent); color: white;
+            border: none; border-radius: 6px;
+            font-weight: bold; font-size: 0.95rem; cursor: pointer;
+            pointer-events: auto; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: 0.3s;
+            z-index: 5; opacity: 0; transform: none; pointer-events: none;
+            margin-bottom: 12px;
+        }
+        .open-btn.visible { opacity: 1; transform: none; pointer-events: auto; }
+
+        .panel-content { padding: 20px 20px 30px 20px; overflow-y: auto; }
+        h2 { margin: 0 0 15px 0; font-size: 1.3rem; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        h3 { margin: 20px 0 8px 0; font-size: 1rem; color: var(--accent); text-transform: uppercase; }
+        p { font-size: 0.95rem; line-height: 1.6; color: #c9d1d9; }
+        .math-display { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; margin: 12px 0; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        .hidden { display: none; }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid var(--border-color);
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="top-bar">
+            <button class="mode-toggle" onclick="toggleMode()">
+                Mode: <span id="mode-label" style="font-weight:bold">Result (3D)</span>
+            </button>
+        </div>
+
+        <button class="open-btn" onclick="openPanel()" id="btn-open" title="Show Info">i</button>
+
+        <div class="side-panel" id="info-panel">
+            <button class="close-btn" onclick="closePanel()" title="Hide Panel">×</button>
+            <div class="panel-content">
+                <div id="content-calc" class="hidden">
+                    <h2>Derivation Steps</h2>
+                    <h3>1. Cylindrical Symmetry</h3>
+                    <p>The field magnitude is constant at radius $r$. We choose a <strong>circular Amperian loop</strong> (yellow).</p>
+                    <div class="math-display">$$ \oint \mathbf{B} \cdot d\mathbf{l} = B(2\pi r) $$</div>
+                    <h3>2. Solve</h3>
+                    <div class="math-display">$$ B(2\pi r) = \mu_0 I \implies B = \frac{\mu_0 I}{2\pi r} $$</div>
+                </div>
+
+                <div id="content-result">
+                    <h2>The Infinite Wire</h2>
+                    <p>A long straight wire carrying current $I$ creates a magnetic field that circles the wire.</p>
+                    <h3>Visualization</h3>
+                    <p>Field strength decays as $1/r$.</p>
+                    <ul>
+                        <li><span style="color:#fff; font-weight:bold">Near:</span> Strong (Fast)</li>
+                        <li><span style="color:#5588aa; font-weight:bold">Far:</span> Weak (Slow)</li>
+                    </ul>
+                    <div class="math-display">$$ \mathbf{B} = \frac{\mu_0 I}{2\pi r} \hat{\phi} $$</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const CONFIG = {
+        wireRadius: 0.5, wireHeight: 50, loopRadius: 5,
+        colors: { wire: 0xb87333, field: 0x58a6ff, loop: 0xffff00, current: 0xff3333 }
+    };
+
+    let state = { mode: 'result' };
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const container = document.getElementById('canvas-container');
+    container.appendChild(renderer.domElement);
+
+    function resizeRenderer() {
+        const rect = container.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(rect.width));
+        const height = Math.max(1, Math.floor(rect.height));
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+    }
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 10, 10);
+    scene.add(dirLight);
+
+    const world = new THREE.Group();
+    scene.add(world);
+
+    // Objects
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(CONFIG.wireRadius, CONFIG.wireRadius, CONFIG.wireHeight, 32), new THREE.MeshStandardMaterial({ color: CONFIG.colors.wire, metalness: 0.8, roughness: 0.3 }));
+    world.add(wire);
+
+    const currentArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -5, 0), 10, CONFIG.colors.current, 2, 1.5);
+    world.add(currentArrow);
+    
+    const amperianLoop = new THREE.Mesh(new THREE.TorusGeometry(CONFIG.loopRadius, 0.05, 16, 100), new THREE.MeshBasicMaterial({ color: CONFIG.colors.loop }));
+    amperianLoop.rotation.x = Math.PI / 2;
+    amperianLoop.visible = false;
+    world.add(amperianLoop);
+
+    // Current Out Indicator (Circle-Dot)
+    const currentSign = new THREE.Group();
+    currentSign.add(new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.06, 16, 100), new THREE.MeshBasicMaterial({color: CONFIG.colors.current})));
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), new THREE.MeshBasicMaterial({color: CONFIG.colors.current}));
+    dot.rotation.x = -Math.PI / 2;
+    currentSign.add(dot);
+    currentSign.rotation.x = Math.PI / 2;
+    currentSign.visible = false;
+    world.add(currentSign);
+
+    // Labels & Vectors
+    function createLabel(text, color) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 128; canvas.height = 64;
+        ctx.fillStyle = color; ctx.font = "Bold 40px Arial"; ctx.textAlign = "center";
+        ctx.fillText(text, 64, 45);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
+        sprite.scale.set(2, 1, 1);
+        return sprite;
+    }
+
+    const vectorGroup = new THREE.Group();
+    const arrowB = new THREE.ArrowHelper(new THREE.Vector3(0,0,-1), new THREE.Vector3(CONFIG.loopRadius, 0, 0), 3, CONFIG.colors.field, 0.8, 0.6);
+    const arrowDl = new THREE.ArrowHelper(new THREE.Vector3(0,0,-1), new THREE.Vector3(CONFIG.loopRadius, 0.3, 0), 2, CONFIG.colors.loop, 0.8, 0.6);
+    const lblB = createLabel("B", "#58a6ff"); lblB.position.set(CONFIG.loopRadius, 0, -3.5);
+    const lblDl = createLabel("dl", "#ffff00"); lblDl.position.set(CONFIG.loopRadius, 0.8, -2);
+    const lblR = createLabel("r", "#ffffff"); lblR.position.set(CONFIG.loopRadius/2, 0.5, 0);
+    const rLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(CONFIG.loopRadius,0,0)]), new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.5, gapSize: 0.2 }));
+    rLine.computeLineDistances();
+    vectorGroup.add(arrowB, arrowDl, lblB, lblDl, lblR, rLine);
+    vectorGroup.visible = false;
+    world.add(vectorGroup);
+
+    // Particles
+    const pCount = 1200;
+    const particles = new THREE.InstancedMesh(new THREE.SphereGeometry(0.08, 4, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), pCount);
+    world.add(particles);
+
+    const pData = Array.from({length: pCount}, () => ({
+        r: 1.5 + Math.random() * 12, angle: Math.random() * Math.PI * 2, y: (Math.random() - 0.5) * 30, speed: 2.0 / (Math.pow(1.5 + Math.random() * 12, 2))
+    }));
+
+    const dummy = new THREE.Object3D();
+    const tempColor = new THREE.Color();
+
+    function updateParticles() {
+        for(let i=0; i<pCount; i++) {
+            const p = pData[i];
+            p.angle -= (2.0 / (p.r * p.r)) * 0.5; // Reversed rotation
+            dummy.position.set(p.r * Math.cos(p.angle), p.y, p.r * Math.sin(p.angle));
+            const normR = (p.r - 1.5) / 12;
+            const s = 1.5 * (1 - normR * 0.7); dummy.scale.set(s, s, s);
+            tempColor.setHSL(0.58, 1.0, 1.0 - normR * 0.8);
+            dummy.updateMatrix();
+            particles.setMatrixAt(i, dummy.matrix);
+            particles.setColorAt(i, tempColor);
+        }
+        particles.instanceMatrix.needsUpdate = true;
+        if(particles.instanceColor) particles.instanceColor.needsUpdate = true;
+    }
+
+    // Fix first frame: Update particles before first render
+    updateParticles();
+
+    const camResult = { pos: new THREE.Vector3(15, 12, 15) };
+    const camCalc = { pos: new THREE.Vector3(0, 25, 0) };
+    camera.position.copy(camResult.pos);
+
+    function toggleMode() {
+        state.mode = state.mode === 'result' ? 'calc' : 'result';
+        const isCalc = state.mode === 'calc';
+        document.getElementById('mode-label').innerText = isCalc ? "Calculation (Loop)" : "Result (3D)";
+        document.getElementById('mode-label').style.color = isCalc ? "#ffff00" : "#fff";
+        document.getElementById('content-calc').classList.toggle('hidden', !isCalc);
+        document.getElementById('content-result').classList.toggle('hidden', isCalc);
+
+        if(isCalc) {
+            particles.visible = false;
+            new TWEEN.Tween(camera.position).to(camCalc.pos, 1000).easing(TWEEN.Easing.Cubic.InOut).onUpdate(()=>controls.update()).onComplete(()=>{
+                amperianLoop.visible = true; vectorGroup.visible = true; currentSign.visible = true;
+                wire.visible = false; currentArrow.visible = false;
+            }).start();
+        } else {
+            amperianLoop.visible = false; vectorGroup.visible = false; currentSign.visible = false;
+            wire.visible = true; currentArrow.visible = true;
+            new TWEEN.Tween(camera.position).to(camResult.pos, 1000).easing(TWEEN.Easing.Cubic.InOut).onUpdate(()=>controls.update()).onComplete(()=>particles.visible = true).start();
+        }
+    }
+
+    function closePanel() { document.getElementById('info-panel').classList.add('collapsed'); document.getElementById('btn-open').classList.add('visible'); }
+    function openPanel() { document.getElementById('info-panel').classList.remove('collapsed'); document.getElementById('btn-open').classList.remove('visible'); }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        TWEEN.update(time);
+        controls.update();
+        if(particles.visible) updateParticles();
+        renderer.render(scene, camera);
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => renderMathInElement(document.body, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}] }));
+    window.addEventListener('resize', resizeRenderer);
+    resizeRenderer();
+    animate();
+</script>
+</body>
+</html>

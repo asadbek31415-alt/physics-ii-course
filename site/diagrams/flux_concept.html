@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Flux Concept</title>
+    
+    <!-- ADDED: MathJax for LaTeX rendering inside the iframe -->
+    <script>
+        MathJax = { 
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } 
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #eee; }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            width: 280px;
+            pointer-events: auto;
+            /* Ensure text is readable */
+            font-size: 0.95rem;
+        }
+
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: 600; align-items: center; }
+        .value { color: #3498db; font-family: monospace; font-size: 1.1em; }
+        
+        input[type=range] { width: 100%; accent-color: #3498db; margin-bottom: 15px; cursor: pointer; }
+
+        .legend { font-size: 0.85rem; color: #aaa; margin-top: 5px; }
+        .legend div { margin-bottom: 4px; }
+        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        
+        /* Flux Bar */
+        .bar-container { width: 100%; height: 8px; background: #444; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+        .bar-fill { height: 100%; background: #3498db; width: 100%; transition: width 0.1s; }
+    </style>
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="controls">
+        <div class="label-row">
+            <span>Angle ($\theta$)</span>
+            <span id="angle-val" class="value">0°</span>
+        </div>
+        <input type="range" id="slider" min="0" max="90" step="1" value="0">
+
+        <div class="label-row">
+            <span>Flux ($\Phi_E \propto \cos\theta$)</span>
+            <span id="flux-val" class="value">1.00</span>
+        </div>
+        <div class="bar-container">
+            <div id="flux-bar" class="bar-fill"></div>
+        </div>
+
+        <div class="legend" style="margin-top: 15px;">
+            <div><span class="dot" style="background:#ffd700"></span>Electric Field ($\vec{E}$)</div>
+            <div><span class="dot" style="background:#ff00ff"></span>Area Vector ($d\vec{a}$)</div>
+            <div><span class="dot" style="background:#3498db"></span>Surface</div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(5, 4, 8);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- OBJECTS ---
+
+        // 1. The Surface (Square Plane)
+        const geometry = new THREE.PlaneGeometry(3, 3);
+        const material = new THREE.MeshPhongMaterial({ 
+            color: 0x3498db, 
+            side: THREE.DoubleSide, 
+            transparent: true, 
+            opacity: 0.6,
+            shininess: 100
+        });
+        const surface = new THREE.Mesh(geometry, material);
+        scene.add(surface);
+
+        // 2. The Normal Vector (da)
+        const normalOrigin = new THREE.Vector3(0, 0, 0);
+        const normalDir = new THREE.Vector3(0, 0, 1); // Initially Z+
+        const normalArrow = new THREE.ArrowHelper(normalDir, normalOrigin, 2, 0xff00ff, 0.4, 0.2);
+        // Attach arrow to surface so it rotates with it
+        surface.add(normalArrow);
+
+        // 3. Electric Field (Grid of Arrows)
+        const fieldGroup = new THREE.Group();
+        const fieldDir = new THREE.Vector3(0, 0, 1); // Field flows along Z
+        const fieldColor = 0xffd700;
+
+        for (let x = -2; x <= 2; x += 1) {
+            for (let y = -2; y <= 2; y += 1) {
+                // Don't put arrow exactly in center to avoid cluttering the normal vector
+                if (x === 0 && y === 0) continue; 
+
+                const origin = new THREE.Vector3(x, y, -3);
+                const arrow = new THREE.ArrowHelper(fieldDir, origin, 6, fieldColor, 0.3, 0.15);
+                fieldGroup.add(arrow);
+            }
+        }
+        scene.add(fieldGroup);
+
+        // --- LOGIC ---
+        const slider = document.getElementById('slider');
+        const angleVal = document.getElementById('angle-val');
+        const fluxVal = document.getElementById('flux-val');
+        const fluxBar = document.getElementById('flux-bar');
+
+        function update() {
+            const deg = parseFloat(slider.value);
+            const rad = deg * (Math.PI / 180);
+            
+            // Rotate Surface (around Y axis)
+            surface.rotation.y = rad;
+
+            // Calculate Flux Factor (cos theta)
+            // Field is (0,0,1). Normal starts at (0,0,1).
+            // Rotating around Y moves Normal to (sin, 0, cos).
+            // Dot product = cos(rad).
+            const flux = Math.cos(rad);
+
+            // UI Updates
+            angleVal.innerText = `${deg}°`;
+            fluxVal.innerText = flux.toFixed(2);
+            fluxBar.style.width = `${flux * 100}%`;
+
+            // Visual Feedback: Dim the surface when flux is low
+            surface.material.opacity = 0.2 + (flux * 0.5);
+            
+            // Change color of Flux bar based on value
+            fluxBar.style.backgroundColor = flux > 0.1 ? '#3498db' : '#e74c3c';
+        }
+
+        slider.addEventListener('input', update);
+        update(); // Init
+
+        // --- ANIMATION ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+<script defer data-offline-bundle src="flux_concept.0.offline.js"></script>
+
+
+</body>
+</html>

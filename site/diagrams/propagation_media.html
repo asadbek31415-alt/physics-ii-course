@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microscopic Resistance (Matter.js + Three.js)</title>
+
+    <!-- Fonts -->
+    
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <!-- Physics Engine: Matter.js -->
+    <script src="../vendor/matter.min.js"></script>
+
+    <!-- Classic build: this lesson also opens directly from the offline course folder. -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Inter', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 310px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            outline: none;
+            width: 100%;
+            height: 100%;
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            background: rgba(12, 12, 12, 0.9);
+            border: 0;
+            border-right: 1px solid #333;
+            border-radius: 0;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            color: #eee;
+            user-select: none;
+            font-size: 0.9rem;
+            z-index: 1000;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        h2 {
+            margin: 0 0 5px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #3498db;
+        }
+
+        .subtitle {
+            font-size: 0.7rem;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            appearance: none;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3498db;
+            border: 2px solid #1c2734;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .stats-panel {
+            border-top: 1px solid #222;
+            padding-top: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .stat-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #999;
+        }
+
+        .stat-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #111;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .stat-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #bar-j {
+            background: #3498db;
+        }
+
+        #bar-p {
+            background: #e74c3c;
+        }
+
+        .formula-display {
+            margin-top: 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: #3498db;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 1;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid #333;
+                padding: 12px;
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            .control-group {
+                margin-bottom: 14px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="ui-layer">
+        <h2>Ohm's Law Dynamics</h2>
+        <div class="subtitle">Microscopic Conductivity</div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Conductivity ($\sigma$)</span>
+                <span id="val-sigma" style="color: #3498db">Medium</span>
+            </div>
+            <input type="range" id="slider-sigma" min="0" max="100" value="70">
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-row">
+                <div class="stat-header">
+                    <span>Current Density ($J$)</span>
+                    <span id="txt-j">0.0</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div id="bar-j" class="stat-bar"></div>
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-header">
+                    <span>Joule Heating ($P$)</span>
+                    <span id="txt-p">0.0</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div id="bar-p" class="stat-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="formula-display" id="formula">
+            $J = \sigma E$
+        </div>
+    </div>
+
+    <script>
+
+        // MathJax Sync
+        function updateMath() {
+            if (window.MathJax && window.MathJax.typeset) {
+                MathJax.typesetPromise().catch((err) => console.log(err.message));
+            }
+        }
+
+        // ================= CONFIGURATION =================
+        const CONFIG = {
+            width: 800,
+            height: 480,
+            electronSize: 4.5,
+            atomSize: 15,
+            eCount: 180,
+            baseForce: 0.00022,
+        };
+
+        // ================= MATTER.JS SETUP =================
+        const Engine = Matter.Engine,
+            World = Matter.World,
+            Bodies = Matter.Bodies,
+            Body = Matter.Body,
+            Events = Matter.Events;
+
+        const engine = Engine.create();
+        engine.world.gravity.y = 0;
+        engine.world.gravity.x = 0;
+        const world = engine.world;
+
+        let electrons = [];
+        let atoms = [];
+
+        // ================= THREE.JS SETUP =================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+
+        const camera = new THREE.PerspectiveCamera(40, 1, 1, 1000);
+        camera.position.set(0, 0, 750);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        function resizeRenderer() {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(100, 100, 200);
+        scene.add(dirLight);
+
+        // Materials
+        const atomGeo = new THREE.SphereGeometry(CONFIG.atomSize, 16, 16);
+        const electronGeo = new THREE.SphereGeometry(CONFIG.electronSize, 8, 8);
+        const electronMat = new THREE.MeshStandardMaterial({
+            color: 0x3498db,
+            emissive: 0x3498db,
+            emissiveIntensity: 1.5
+        });
+
+        // ================= CORE LOGIC =================
+
+        function spawnAtoms(conductivity) {
+            const count = Math.round(135 - (conductivity * 1.25));
+
+            atoms.forEach(a => {
+                World.remove(world, a.body);
+                scene.remove(a.mesh);
+            });
+            atoms = [];
+
+            const rows = Math.ceil(Math.sqrt(count * (CONFIG.height / CONFIG.width)));
+            const cols = Math.ceil(count / (rows || 1));
+            const cellW = CONFIG.width / (cols || 1);
+            const cellH = CONFIG.height / (rows || 1);
+
+            for (let i = 0; i < count; i++) {
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                const x = -CONFIG.width / 2 + (c + 0.5) * cellW + (Math.random() - 0.5) * cellW * 0.5;
+                const y = -CONFIG.height / 2 + (r + 0.5) * cellH + (Math.random() - 0.5) * cellH * 0.5;
+
+                const body = Bodies.circle(x, y, CONFIG.atomSize, { isStatic: true, restitution: 0.1 });
+                const mesh = new THREE.Mesh(atomGeo, new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.3, roughness: 0.7 }));
+                mesh.position.set(x, -y, 0);
+
+                World.add(world, body);
+                scene.add(mesh);
+                atoms.push({ body, mesh, heat: 0 });
+            }
+        }
+
+        function initElectrons() {
+            electrons.forEach(e => {
+                World.remove(world, e.body);
+                scene.remove(e.mesh);
+            });
+            electrons = [];
+
+            for (let i = 0; i < CONFIG.eCount; i++) {
+                const x = (Math.random() - 0.5) * CONFIG.width;
+                const y = (Math.random() - 0.5) * CONFIG.height;
+                const body = Bodies.circle(x, y, CONFIG.electronSize, {
+                    friction: 0,
+                    frictionAir: 0,
+                    restitution: 0.9,
+                    mass: 0.1,
+                    slop: 0.02
+                });
+                const mesh = new THREE.Mesh(electronGeo, electronMat);
+
+                Body.setVelocity(body, { x: 3 + Math.random() * 2, y: (Math.random() - 0.5) * 4 });
+                World.add(world, body);
+                scene.add(mesh);
+                electrons.push({ body, mesh });
+            }
+        }
+
+        // ================= SIMULATION LOOP =================
+
+        let currentJ = 0;
+        let currentP = 0;
+        let frameCrossings = 0;
+
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach(pair => {
+                const atom = atoms.find(a => a.body === pair.bodyA || a.body === pair.bodyB);
+                if (atom) {
+                    atom.heat = Math.min(atom.heat + 0.45, 1.0);
+                    currentP += 0.85;
+                }
+            });
+        });
+
+        function update() {
+            Engine.update(engine, 1000 / 60);
+
+            electrons.forEach(e => {
+                // Apply constant E-field force (Drift)
+                Body.applyForce(e.body, e.body.position, { x: CONFIG.baseForce, y: 0 });
+
+                // Speed limit for numerical stability
+                const speed = e.body.speed;
+                if (speed > 12) Body.setSpeed(e.body, 12);
+
+                // PERIODIC BOUNDARY X
+                if (e.body.position.x > CONFIG.width / 2) {
+                    Body.setPosition(e.body, { x: -CONFIG.width / 2, y: e.body.position.y });
+                    frameCrossings++;
+                } else if (e.body.position.x < -CONFIG.width / 2) {
+                    Body.setPosition(e.body, { x: CONFIG.width / 2, y: e.body.position.y });
+                }
+
+                // PERIODIC BOUNDARY Y (Fixes clustering at top/bottom edges)
+                if (e.body.position.y > CONFIG.height / 2) {
+                    Body.setPosition(e.body, { x: e.body.position.x, y: -CONFIG.height / 2 });
+                } else if (e.body.position.y < -CONFIG.height / 2) {
+                    Body.setPosition(e.body, { x: e.body.position.x, y: CONFIG.height / 2 });
+                }
+
+                e.mesh.position.x = e.body.position.x;
+                e.mesh.position.y = -e.body.position.y;
+            });
+
+            atoms.forEach(a => {
+                if (a.heat > 0.01) {
+                    a.heat *= 0.93;
+                    const s = 1 + a.heat * 0.28;
+                    a.mesh.scale.set(s, s, s);
+                    a.mesh.material.color.setRGB(0.2 + a.heat * 0.7, 0.2, 0.2);
+                    a.mesh.position.x = a.body.position.x + (Math.random() - 0.5) * a.heat * 5;
+                    a.mesh.position.y = -a.body.position.y + (Math.random() - 0.5) * a.heat * 5;
+                } else {
+                    a.mesh.scale.set(1, 1, 1);
+                    a.mesh.material.color.setHex(0x333333);
+                    a.mesh.position.set(a.body.position.x, -a.body.position.y, 0);
+                }
+            });
+
+            currentJ = currentJ * 0.96 + (frameCrossings * 2.8) * 0.04;
+            frameCrossings = 0;
+            currentP *= 0.92;
+
+            document.getElementById('txt-j').innerText = currentJ.toFixed(1);
+            document.getElementById('txt-p').innerText = (currentP * 0.12).toFixed(1);
+            document.getElementById('bar-j').style.width = Math.min(currentJ * 12, 100) + '%';
+            document.getElementById('bar-p').style.width = Math.min(currentP * 2.5, 100) + '%';
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(update);
+        }
+
+        // ================= CONTROLS =================
+
+        const slider = document.getElementById('slider-sigma');
+        const valLabel = document.getElementById('val-sigma');
+
+        slider.oninput = () => {
+            const v = parseInt(slider.value);
+            if (v < 30) valLabel.innerText = "Low (Resistor)";
+            else if (v < 75) valLabel.innerText = "Medium";
+            else valLabel.innerText = "High (Conductor)";
+
+            spawnAtoms(v);
+            document.getElementById('formula').innerText = v < 50 ? '$P = I^2 R \\text{ (Joule Heating Loss)}$' : '$J = \\sigma E \\text{ (Ohm\'s Law)}$';
+            updateMath();
+        };
+
+        window.addEventListener('resize', () => {
+            resizeRenderer();
+        });
+
+        // Initialize
+        resizeRenderer();
+        spawnAtoms(70);
+        initElectrons();
+        update();
+        setTimeout(updateMath, 800);
+
+    </script>
+</body>
+
+</html>

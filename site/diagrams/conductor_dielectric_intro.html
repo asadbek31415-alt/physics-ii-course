@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductor and Dielectric Intro</title>
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #0f172a;
+            color: white;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        #lab {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+            background: #0f172a;
+            min-height: 0;
+        }
+
+        #controls {
+            box-sizing: border-box;
+            background: rgba(18, 22, 28, 0.94);
+            padding: 16px;
+            border-right: 1px solid #475569;
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 0;
+            user-select: none;
+        }
+
+        #stage {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            background: #08111f;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        h1 {
+            font-size: 1.05rem;
+            color: #38bdf8;
+            margin: 0 0 0.8rem;
+        }
+
+        h2 {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #475569;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+
+        .btn {
+            width: 100%;
+            min-height: 42px;
+            padding: 9px;
+            background: #182235;
+            color: white;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn:hover {
+            background: #253249;
+        }
+
+        .btn.active {
+            background: #0e7490;
+            border-color: #38bdf8;
+        }
+
+        #readout {
+            background: rgba(0, 0, 0, 0.28);
+            border-left: 3px solid #38bdf8;
+            padding: 10px 12px;
+            color: #b8c7da;
+            font-size: 0.84rem;
+            line-height: 1.38;
+            margin-top: 14px;
+        }
+
+        #readout strong {
+            display: block;
+            color: #e5e7eb;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        #guide {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            line-height: 1.36;
+            color: #d8e4f2;
+            margin-top: 12px;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 10px;
+            align-items: center;
+            color: #c8d4e4;
+            font-size: 0.8rem;
+            line-height: 1.25;
+        }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+        }
+
+        .line {
+            width: 18px;
+            height: 3px;
+            border-radius: 3px;
+            background: #facc15;
+        }
+
+        .highlight {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        @media (max-width: 760px) {
+            #lab {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #controls {
+                border-right: 0;
+                border-bottom: 1px solid #475569;
+                padding: 10px 12px;
+                overflow: hidden;
+            }
+
+            #guide {
+                display: none;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div id="lab">
+        <aside id="controls">
+            <h1>Material Response</h1>
+            <h2>Material Mode</h2>
+            <div class="mode-grid" aria-label="Material mode">
+                <button type="button" class="btn active" id="dielectricBtn">Dielectric</button>
+                <button type="button" class="btn" id="conductorBtn">Conductor</button>
+            </div>
+
+            <div class="section">
+                <h2>Outside Field</h2>
+                <div class="mode-grid" aria-label="Outside electric field">
+                    <button type="button" class="btn" id="fieldOffBtn">Off</button>
+                    <button type="button" class="btn active" id="fieldOnBtn">On</button>
+                </div>
+            </div>
+
+            <div id="readout" aria-live="polite">
+                <strong id="stateTitle">Dielectric: charges stay local</strong>
+                <span id="stateText">The electron cloud shifts a little, but each electron remains near its atom.</span>
+            </div>
+
+            <div class="section">
+                <h2>Legend</h2>
+                <div class="legend">
+                    <span class="dot" style="background:#f87171"></span><span>positive atom centers</span>
+                    <span class="dot" style="background:#4dabf7"></span><span>negative electrons</span>
+                    <span class="line"></span><span>external electric field</span>
+                    <span class="dot" style="background:#fbbf24"></span><span>surface imbalance in a conductor</span>
+                </div>
+            </div>
+
+            <div id="guide">
+                <strong>Purpose:</strong><br><br>
+                Dielectric mode shows <span class="highlight">local shifting</span>: atoms become tiny dipoles.<br><br>
+                Conductor mode shows <span class="highlight">long-range motion</span>: mobile electrons can move across the whole object and collect near a surface.
+            </div>
+        </aside>
+        <main id="stage">
+            <canvas id="canvas" aria-label="Conductor versus dielectric material response"></canvas>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const dielectricBtn = document.getElementById('dielectricBtn');
+        const conductorBtn = document.getElementById('conductorBtn');
+        const fieldOffBtn = document.getElementById('fieldOffBtn');
+        const fieldOnBtn = document.getElementById('fieldOnBtn');
+        const stateTitle = document.getElementById('stateTitle');
+        const stateText = document.getElementById('stateText');
+
+        const COLS = 9;
+        const ROWS = 5;
+        const sites = [];
+        for (let row = 0; row < ROWS; row += 1) {
+            for (let col = 0; col < COLS; col += 1) {
+                sites.push({
+                    col,
+                    row,
+                    phase: row * 0.73 + col * 1.17
+                });
+            }
+        }
+
+        let targetMode = 0;
+        let modeMix = 0;
+        let targetField = 1;
+        let fieldMix = 1;
+        let time = 0;
+
+        function setMode(value) {
+            targetMode = value;
+            dielectricBtn.classList.toggle('active', value === 0);
+            conductorBtn.classList.toggle('active', value === 1);
+            updateCopy();
+        }
+
+        function setField(value) {
+            targetField = value;
+            fieldOffBtn.classList.toggle('active', value === 0);
+            fieldOnBtn.classList.toggle('active', value === 1);
+            updateCopy();
+        }
+
+        dielectricBtn.addEventListener('click', () => setMode(0));
+        conductorBtn.addEventListener('click', () => setMode(1));
+        fieldOffBtn.addEventListener('click', () => setField(0));
+        fieldOnBtn.addEventListener('click', () => setField(1));
+
+        function updateCopy() {
+            if (targetField === 0) {
+                stateTitle.textContent = targetMode === 0 ? 'Neutral dielectric' : 'Neutral conductor';
+                stateText.textContent = 'With no outside field, positive and negative charge balance throughout the material.';
+                return;
+            }
+
+            if (targetMode === 0) {
+                stateTitle.textContent = 'Dielectric: charges stay local';
+                stateText.textContent = 'The electron cloud shifts a little, but each electron remains near its atom.';
+            } else {
+                stateTitle.textContent = 'Conductor: charges move through';
+                stateText.textContent = 'Mobile electrons cross the material and build a surface imbalance.';
+            }
+        }
+
+        function resize() {
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+            canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function smooth(value) {
+            return value * value * (3 - 2 * value);
+        }
+
+        function roundedRect(x, y, w, h, r) {
+            const rr = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + rr, y);
+            ctx.arcTo(x + w, y, x + w, y + h, rr);
+            ctx.arcTo(x + w, y + h, x, y + h, rr);
+            ctx.arcTo(x, y + h, x, y, rr);
+            ctx.arcTo(x, y, x + w, y, rr);
+            ctx.closePath();
+        }
+
+        function drawArrow(x1, y1, x2, y2, color, alpha = 1) {
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2.3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - 10 * Math.cos(angle - 0.42), y2 - 10 * Math.sin(angle - 0.42));
+            ctx.lineTo(x2 - 10 * Math.cos(angle + 0.42), y2 - 10 * Math.sin(angle + 0.42));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function label(text, x, y, size = 13, color = '#e5e7eb', align = 'center') {
+            ctx.font = `700 ${size}px Segoe UI, Arial, sans-serif`;
+            ctx.fillStyle = color;
+            ctx.textAlign = align;
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x, y);
+        }
+
+        function wrapLabel(text, x, y, maxWidth, color = '#b8c7da') {
+            ctx.font = '700 13px Segoe UI, Arial, sans-serif';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const words = text.split(' ');
+            const lines = [];
+            let line = '';
+            for (const word of words) {
+                const test = line ? `${line} ${word}` : word;
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    lines.push(line);
+                    line = word;
+                } else {
+                    line = test;
+                }
+            }
+            if (line) lines.push(line);
+            const start = y - (lines.length - 1) * 8;
+            lines.forEach((part, index) => ctx.fillText(part, x, start + index * 16));
+        }
+
+        function bodyRect(width, height) {
+            const margin = Math.max(22, width * 0.055);
+            const top = height * 0.22;
+            const h = Math.min(height * 0.52, 285);
+            return {
+                x: margin,
+                y: top,
+                w: width - margin * 2,
+                h
+            };
+        }
+
+        function atomPosition(site, body) {
+            const padX = body.w * 0.13;
+            const padY = body.h * 0.18;
+            return {
+                x: body.x + padX + (site.col / (COLS - 1)) * (body.w - padX * 2),
+                y: body.y + padY + (site.row / (ROWS - 1)) * (body.h - padY * 2)
+            };
+        }
+
+        function electronPosition(site, body, atom) {
+            const activeField = fieldMix;
+            const conductor = smooth(modeMix);
+            const bound = 1 - conductor;
+            const wobble = Math.sin(time * 0.022 + site.phase) * 1.2;
+            const dielectricShift = activeField * 13;
+            const dielectricX = atom.x - dielectricShift;
+            const dielectricY = atom.y + Math.cos(time * 0.016 + site.phase) * 1.2;
+
+            const sideRank = site.col / (COLS - 1);
+            const surfaceX = body.x + body.w * (0.08 + Math.pow(sideRank, 2) * 0.17);
+            const surfaceY = body.y + body.h * (0.13 + (site.row + 0.5) / ROWS * 0.74)
+                + (site.col % 3 - 1) * 5 + wobble;
+
+            const neutralX = atom.x + Math.sin(site.phase) * 6;
+            const conductorX = lerp(neutralX, surfaceX, activeField);
+            const conductorY = lerp(atom.y + wobble, surfaceY, activeField);
+
+            return {
+                x: dielectricX * bound + conductorX * conductor,
+                y: dielectricY * bound + conductorY * conductor
+            };
+        }
+
+        function drawField(width, height) {
+            if (fieldMix < 0.02) return;
+            const top = height * 0.105;
+            const left = width * 0.2;
+            const right = width * 0.82;
+            const alpha = 0.28 + fieldMix * 0.62;
+            for (let i = 0; i < 4; i += 1) {
+                drawArrow(left, top + i * 34, right, top + i * 34, '#facc15', alpha);
+            }
+            label('outside electric field', width * 0.51, top - 19, 13, '#facc15');
+        }
+
+        function drawMaterial(width, height) {
+            const body = bodyRect(width, height);
+            const conductor = smooth(modeMix);
+            const activeField = fieldMix;
+            const surfaceCharge = conductor * activeField;
+
+            roundedRect(body.x, body.y, body.w, body.h, 20);
+            ctx.fillStyle = 'rgba(23, 32, 51, 0.86)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            if (surfaceCharge > 0.02) {
+                const band = body.w * (0.10 + 0.05 * surfaceCharge);
+                const leftGrad = ctx.createLinearGradient(body.x, 0, body.x + band, 0);
+                leftGrad.addColorStop(0, `rgba(77, 171, 247, ${0.25 + surfaceCharge * 0.35})`);
+                leftGrad.addColorStop(1, 'rgba(77, 171, 247, 0)');
+                ctx.fillStyle = leftGrad;
+                roundedRect(body.x + 1, body.y + 1, band, body.h - 2, 18);
+                ctx.fill();
+
+                const rightGrad = ctx.createLinearGradient(body.x + body.w - band, 0, body.x + body.w, 0);
+                rightGrad.addColorStop(0, 'rgba(248, 113, 113, 0)');
+                rightGrad.addColorStop(1, `rgba(248, 113, 113, ${0.22 + surfaceCharge * 0.34})`);
+                ctx.fillStyle = rightGrad;
+                roundedRect(body.x + body.w - band - 1, body.y + 1, band, body.h - 2, 18);
+                ctx.fill();
+            }
+
+            const tetherAlpha = (1 - conductor) * 0.48;
+            const atomRadius = clamp(body.w / 102, 3.8, 5.8);
+            const electronRadius = clamp(body.w / 90, 4.2, 6.4);
+
+            sites.forEach((site) => {
+                const atom = atomPosition(site, body);
+                const electron = electronPosition(site, body, atom);
+
+                if (tetherAlpha > 0.04) {
+                    ctx.strokeStyle = `rgba(148, 163, 184, ${tetherAlpha})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(atom.x, atom.y, electronRadius * 2.85, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    if (activeField > 0.05) {
+                        ctx.strokeStyle = `rgba(74, 222, 128, ${0.16 + tetherAlpha * 0.5})`;
+                        ctx.beginPath();
+                        ctx.moveTo(atom.x, atom.y);
+                        ctx.lineTo(electron.x, electron.y);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.fillStyle = '#f87171';
+                ctx.beginPath();
+                ctx.arc(atom.x, atom.y, atomRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#4dabf7';
+                ctx.beginPath();
+                ctx.arc(electron.x, electron.y, electronRadius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            const labelY = body.y + body.h + 24;
+            if (surfaceCharge > 0.16) {
+                label('negative surface charge', body.x + body.w * 0.16, labelY, 13, '#4dabf7');
+                label('positive imbalance', body.x + body.w * 0.84, labelY, 13, '#f87171');
+            } else if (activeField > 0.08) {
+                wrapLabel('small local shifts near each atom', body.x + body.w / 2, labelY, body.w * 0.8, '#4ade80');
+            } else {
+                wrapLabel('neutral material: charges balance locally', body.x + body.w / 2, labelY, body.w * 0.8, '#4ade80');
+            }
+
+            const modeLabel = conductor < 0.5 ? 'Dielectric: local shifting' : 'Conductor: long-range motion';
+            label(modeLabel, body.x + body.w / 2, body.y + 22, 15, '#38bdf8');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 1;
+            modeMix += (targetMode - modeMix) * 0.075;
+            fieldMix += (targetField - fieldMix) * 0.08;
+
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+            ctx.clearRect(0, 0, width, height);
+            drawField(width, height);
+            drawMaterial(width, height);
+        }
+
+        updateCopy();
+        animate();
+    </script>
+</body>
+</html>

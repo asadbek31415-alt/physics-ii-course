@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potential Continuity Path</title>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000; /* Black background for iframe */
+            font-family: 'Inter', sans-serif;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 39, 52, 0.9);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 280px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #b0c4de;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3498db;
+            margin: 5px 0;
+        }
+
+        .math-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(28, 39, 52, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            border-left: 3px solid #3498db;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        
+        <div class="math-display" id="math-text">
+            ΔV = -E • dl
+        </div>
+
+        <div class="controls">
+            <div class="label-row">
+                <span>Path Length (dl)</span>
+                <span id="dist-val">Large</span>
+            </div>
+            <input type="range" id="distSlider" min="0" max="100" value="80">
+            <div style="font-size: 0.75rem; color: #888; text-align: center;">
+                Shrink path to see ΔV vanish
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('distSlider');
+        const distVal = document.getElementById('dist-val');
+        const mathText = document.getElementById('math-text');
+
+        let width, height;
+        let centerX, centerY;
+        let separation = 80; // Controlled by slider
+
+        // Colors
+        const c_surface = "#3498db"; // Blue sheet
+        const c_field = "rgba(52, 152, 219, 0.4)";
+        const c_path = "#f1c40f"; // Yellow path
+        const c_point = "#fff";
+        const c_text = "#b0c4de";
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            centerX = width / 2;
+            centerY = height / 2;
+            
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+
+        slider.addEventListener('input', (e) => {
+            separation = parseInt(e.target.value);
+            
+            // Update Text
+            if (separation === 0) {
+                distVal.innerText = "Zero (Limit)";
+                distVal.style.color = "#2ecc71";
+                mathText.innerHTML = "ΔV = 0 &nbsp; (Continuous)";
+                mathText.style.borderColor = "#2ecc71";
+            } else {
+                distVal.innerText = separation + " units";
+                distVal.style.color = c_text;
+                mathText.innerHTML = `ΔV ≈ -E • ${separation}`;
+                mathText.style.borderColor = "#3498db";
+            }
+            
+            draw();
+        });
+
+        function drawArrow(x, y, len, dirY) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + len * dirY);
+            // Arrowhead
+            ctx.lineTo(x - 4, y + (len * dirY) - (8 * dirY));
+            ctx.moveTo(x, y + len * dirY);
+            ctx.lineTo(x + 4, y + (len * dirY) - (8 * dirY));
+            ctx.strokeStyle = c_field;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Surface Charge (Horizontal Line)
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.strokeStyle = c_surface;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Label Surface
+            ctx.fillStyle = c_surface;
+            ctx.font = "14px Inter";
+            ctx.fillText("Surface Charge σ", 20, centerY - 10);
+
+            // 2. Draw Electric Field (Discontinuous)
+            // Points UP above, DOWN below
+            const arrowSpacing = 60;
+            for(let x = arrowSpacing/2; x < width; x += arrowSpacing) {
+                // Above
+                drawArrow(x, centerY - 10, 50, -1);
+                // Below
+                drawArrow(x, centerY + 10, 50, 1);
+            }
+
+            // 3. Draw Integration Path
+            const halfSep = separation / 2;
+            const topY = centerY - halfSep;
+            const botY = centerY + halfSep;
+
+            if (separation > 0) {
+                // Draw Line
+                ctx.beginPath();
+                ctx.moveTo(centerX, botY);
+                ctx.lineTo(centerX, topY);
+                ctx.strokeStyle = c_path;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw Bracket/Dimension
+                ctx.beginPath();
+                ctx.moveTo(centerX + 15, botY);
+                ctx.lineTo(centerX + 25, botY);
+                ctx.lineTo(centerX + 25, topY);
+                ctx.lineTo(centerX + 15, topY);
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Label dl
+                ctx.fillStyle = "#fff";
+                ctx.fillText("dl", centerX + 35, centerY + 4);
+            }
+
+            // 4. Draw Points a and b
+            // Point b (Above)
+            ctx.beginPath();
+            ctx.arc(centerX, topY, 5, 0, Math.PI*2);
+            ctx.fillStyle = c_point;
+            ctx.fill();
+            ctx.fillStyle = c_path;
+            ctx.fillText("b", centerX - 20, topY + 5);
+
+            // Point a (Below)
+            ctx.beginPath();
+            ctx.arc(centerX, botY, 5, 0, Math.PI*2);
+            ctx.fillStyle = c_point;
+            ctx.fill();
+            ctx.fillStyle = c_path;
+            ctx.fillText("a", centerX - 20, botY + 5);
+
+            // 5. Visual Feedback when merged
+            if (separation === 0) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 8, 0, Math.PI*2);
+                ctx.fillStyle = "#2ecc71"; // Green for success
+                ctx.fill();
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        resize();
+        draw();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Maxwell's Equations in Matter</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                macros: {
+                    pd: ["\\frac{\\partial #1}{\\partial #2}", 2],
+                    vec: ["\\mathbf{#1}", 1],
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > <a
+                    href="ch5_3_maxwells_equations.html">Maxwell's Equations</a> > Equations in Matter
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Maxwell's Equations in Matter</h1>
+
+        <p class="intro-text">
+            While Maxwell's equations in their fundamental (vacuum) form are complete, they become incredibly difficult
+            to use inside materials. Why? Because every atom has polarized charges and currents that we don't directly
+            control.
+            To solve this, we reformulate the laws to focus only on the <strong>free</strong> charges and currents that
+            we actually measure.
+        </p>
+
+        <!-- SECTION 1: BEYOND THE STATIC CASE -->
+        <section>
+            <h2>1. The Problem of Bound Charges</h2>
+            <p>
+                As we learned in electrostatics and magnetostatics, polarized matter creates its own internal charge and
+                current distributions:
+            </p>
+            <div class="math-block">
+                $$ \rho_b = -\div \vec{P} \quad \text{and} \quad \vec{J}_b = \curl \vec{M} $$
+            </div>
+            <p>
+                In <strong>electrodynamics</strong> (non-static cases), there is one more crucial effect to consider:
+                the <strong>Polarization Current</strong>.
+            </p>
+
+            <div class="highlight-box">
+                <h3>The Polarization Current ($\vec{J}_p$)</h3>
+                <p>
+                    When electric polarization $\vec{P}$ changes with time, it implies a physical motion of bound
+                    charges.
+                    If you imagine a small chunk of material where the displacement of charge increases, that motion
+                    constitutes a current.
+                </p>
+                <div class="math-block">
+                    $$ \vec{J}_p = \pd{\vec{P}}{t} $$
+                </div>
+                <p style="font-size: 0.9rem; color: #aaa; margin-top: 10px;">
+                    Note: This is consistent with the continuity equation, as $\div \vec{J}_p = \pd{}{t}(\div \vec{P}) =
+                    -\pd{\rho_b}{t}$.
+                </p>
+            </div>
+        </section>
+
+        <!-- SECTION 2: DIVIDING THE SOURCES -->
+        <section>
+            <h2>2. Dividing the Sources</h2>
+            <p>
+                To simplify the equations, we separate the total charge density $\rho$ and current density $\vec{J}$
+                into
+                free and bound components:
+            </p>
+            <div class="math-block">
+                $$ \rho = \rho_f + \rho_b = \rho_f - \div \vec{P} $$
+                $$ \vec{J} = \vec{J}_f + \vec{J}_b + \vec{J}_p = \vec{J}_f + \curl \vec{M} + \pd{\vec{P}}{t} $$
+            </div>
+            <p>
+                By substituting these into the fundamental Maxwell's equations, we can "hide" the bound terms inside
+                newly defined <strong>auxiliary fields</strong>.
+            </p>
+        </section>
+
+        <!-- SECTION 3: THE MACROSCOPIC SET -->
+        <section>
+            <h2>3. The Macroscopic Maxwell's Equations</h2>
+            <p>
+                With the auxiliary fields defined as $\vec{D} = \epsilon_0 \vec{E} + \vec{P}$ and $\vec{H} =
+                \frac{1}{\mu_0}\vec{B} - \vec{M}$,
+                the equations take their most convenient form for working with matter:
+            </p>
+
+            <div class="concept-card" style="border: 2px solid var(--accent-color);">
+                <div class="math-block">
+                    $$
+                    \begin{align}
+                    \text{(i)} \quad & \div \vec{D} = \rho_f \\
+                    \text{(ii)} \quad & \div \vec{B} = 0 \\
+                    \text{(iii)} \quad & \curl \vec{E} = -\pd{\vec{B}}{t} \\
+                    \text{(iv)} \quad & \curl \vec{H} = \vec{J}_f + \pd{\vec{D}}{t}
+                    \end{align}
+                    $$
+                </div>
+            </div>
+
+            <p style="margin-top: 1.5rem;">
+                This version is called the <strong>Macroscopic</strong> form. It tells us that:
+            </p>
+            <ul class="key-points">
+                <li>$\vec{D}$ is generated by <strong>free charges</strong> only.</li>
+                <li>$\vec{H}$ is generated by <strong>free currents</strong> and changing $\vec{D}$ fields.</li>
+            </ul>
+        </section>
+
+        <!-- SECTION 4: CONSTITUTIVE RELATIONS -->
+        <section>
+            <h2>4. Constitutive Relations</h2>
+            <p>
+                The equations above are not yet solvable on their own because we have 4 equations but 6 field unknowns
+                ($\vec{E}, \vec{B}, \vec{D}, \vec{H}, \vec{P}, \vec{M}$). We need to know how the material physically
+                responds to the applied fields.
+            </p>
+            <p>
+                For <strong>linear media</strong>, these relationships are simple:
+            </p>
+            <div class="math-block">
+                $$ \vec{D} = \epsilon \vec{E}, \quad \vec{H} = \frac{1}{\mu} \vec{B} $$
+            </div>
+            <p>
+                Where $\epsilon = \epsilon_0(1 + \chi_e)$ is the permittivity and $\mu = \mu_0(1 + \chi_m)$ is the
+                permeability of the material.
+            </p>
+
+            <div class="highlight-box" style="background: rgba(243, 156, 18, 0.05); border-color: #f39c12;">
+                <p style="margin: 0; color: #f39c12; font-weight: bold; margin-bottom: 0.5rem;">The Displacement Current
+                    Revisited</p>
+                <p style="margin: 0; font-size: 0.95rem;">
+                    In this macroscopic context, the quantity $\vec{J}_d = \pd{\vec{D}}{t}$ is the generalized
+                    <strong>displacement current density</strong>. It includes both Maxwell's original vacuum term
+                    ($\epsilon_0 \pd{\vec{E}}{t}$) and the physical polarization current ($\pd{\vec{P}}{t}$)
+                    resulting from the motion of bound charges.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

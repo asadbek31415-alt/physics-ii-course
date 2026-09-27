@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Boundary Conditions</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}",
+                    dtau: "d\\tau"
+                    /* Removed 'partial' macro to prevent recursion error */
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 2rem;
+            font-size: 1.4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 400px;
+            /* Standard height */
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Back Button Wrapper */
+        .back-wrapper {
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+
+        .back-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electrostatics_index.html">Electrostatics</a> >
+                <a href="ch1_3_electric_potential.html">Electric Potential</a> >
+                Boundary Conditions
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Boundary Conditions</h1>
+
+        <p>
+            What happens to the electric potential when you cross a surface charged with density \(\sigma\)? Does it
+            jump? Does it bend?
+        </p>
+
+        <!-- SECTION 1: WHY -->
+        <section>
+            <h2>1. Why do we study this?</h2>
+            <p>
+                In real-world physics problems, we rarely know the charge distribution \(\rho\) everywhere. Instead, we
+                usually have empty space (where \(\rho=0\)) bounded by charged surfaces.
+            </p>
+            <p>
+                To solve these problems, we solve Laplace's Equation (\(\nabla^2 V = 0\)) in the empty regions. However,
+                differential equations have infinite solutions. To pick the <em>correct</em> solution, we need to know
+                how to "stitch" the regions together at the boundaries. These rules are the <strong>Boundary
+                    Conditions</strong>.
+            </p>
+        </section>
+
+        <!-- SECTION 2: THE FIELD JUMP -->
+        <section>
+            <h2>2. The Field Discontinuity</h2>
+            <p>
+                From Gauss's Law, we know that the electric field undergoes a discontinuous jump when crossing a surface
+                charge \(\sigma\). If we draw a "Gaussian Pillbox" across the surface, the flux tells us that the
+                perpendicular component changes:
+            </p>
+            <div class="math-block">
+                $$ \vec{E}_{\text{above}} - \vec{E}_{\text{below}} = \frac{\sigma}{\epsilon_0} \hat{n} $$
+            </div>
+            <p>
+                The field physically jumps. For example, if you have a single sheet of charge, the field points
+                <em>up</em> above it and <em>down</em> below it. This sudden reversal is a discontinuity.
+            </p>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                <em>(Note: We will see a crucial application of this in the next chapter when we study Conductors, where
+                    the field drops to zero instantly inside the material.)</em>
+            </p>
+        </section>
+
+        <!-- SECTION 3: POTENTIAL CONTINUITY -->
+        <section>
+            <h2>3. The Potential Continuity</h2>
+            <p>
+                Does the potential \(V\) also jump? Let's calculate the potential difference between a point \(a\) just
+                below and \(b\) just above the surface:
+            </p>
+            <div class="math-block">
+                $$ V_{\text{above}} - V_{\text{below}} = - \int_a^b \vec{E} \cdot d\vec{l} $$
+            </div>
+
+            <div class="iframe-container" style="height: 300px;">
+                <!-- Diagram showing path shrinking to zero -->
+                <iframe src="diagrams/potential_continuity_path.html" title="Path Integral Shrinking"></iframe>
+            </div>
+
+            <p>
+                As the distance between \(a\) and \(b\) shrinks to zero, the integral vanishes (because \(\vec{E}\) is
+                finite, and the path length is zero). Therefore:
+            </p>
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ V_{\text{above}} = V_{\text{below}} $$
+            </div>
+            <p>
+                <strong>Conclusion:</strong> The potential is continuous everywhere. It never "breaks" or jumps, even
+                when crossing a charge sheet.
+            </p>
+        </section>
+
+        <!-- SECTION 4: THE KINK -->
+        <section>
+            <h2>4. The "Kink" in the Potential</h2>
+            <p>
+                While \(V\) is continuous, its slope is not. Since \(\vec{E} = -\nabla V\), the discontinuity in
+                \(\vec{E}\) implies a discontinuity in the gradient of \(V\).
+            </p>
+            <p>
+                To see exactly where the formula comes from, let's look at the normal component (perpendicular to the
+                surface) of the field jump:
+            </p>
+            <div class="math-block">
+                $$ E_{above}^{\perp} - E_{below}^{\perp} = \frac{\sigma}{\epsilon_0} $$
+            </div>
+            <p>
+                The normal component of the electric field is related to the derivative of the potential along the
+                normal direction \(\hat{n}\):
+            </p>
+            <div class="math-block">
+                $$ E_n = -\frac{\partial V}{\partial n} $$
+            </div>
+            <p>
+                Substituting this into our field jump equation:
+            </p>
+            <div class="math-block">
+                $$ \left( -\frac{\partial V_{above}}{\partial n} \right) - \left( -\frac{\partial V_{below}}{\partial n}
+                \right) = \frac{\sigma}{\epsilon_0} $$
+            </div>
+            <p>
+                Simplifying the signs, we get the fundamental boundary condition for the potential gradient:
+            </p>
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \frac{\partial V_{above}}{\partial n} - \frac{\partial V_{below}}{\partial n} =
+                -\frac{\sigma}{\epsilon_0} $$
+            </div>
+            <p>
+                This means the graph of \(V\) has a sharp <strong>"kink"</strong> at the boundary. The change in slope
+                is directly proportional to the surface charge density \(\sigma\).
+            </p>
+
+            <!-- DIAGRAM PLACEHOLDER -->
+            <div class="iframe-container">
+                <!-- Placeholder for a diagram showing E jumping and V kinking -->
+                <iframe src="diagrams/boundary_conditions_diagram.html"
+                    title="Boundary Conditions Visualization"></iframe>
+            </div>
+            <p style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+                <em>Visualizing the Boundary: Notice how the Field (arrows) jumps, but the Potential (height) is
+                    continuous, forming a sharp peak or valley.</em>
+            </p>
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch1_3_electric_potential.html" class="back-btn">← Return to Electric Potential</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

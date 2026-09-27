@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Induced Electric Field Visualization</title>
+    <style>
+        body { margin: 0; background-color: #0b0e14; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+        }
+        .label { margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
+        .b-color { background-color: #00aaff; }
+        .e-color { background-color: #ffcc00; }
+        .s-color { background-color: #ff3300; }
+        .math { font-style: italic; font-family: serif; font-size: 1.1em; }
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="label"><div class="dot b-color"></div> <span>Magnetic Field <span class="math">(B)</span></span></div>
+        <div class="label"><div class="dot s-color"></div> <span>Source Term <span class="math">(-∂B/∂t)</span></span></div>
+        <div class="label"><div class="dot e-color"></div> <span>Induced Electric Field <span class="math">(E)</span></span></div>
+    </div>
+
+    <div id="legend">Scroll to Zoom • Drag to Rotate<br>Notice: E is zero when B is at its maximum height.</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Setup Scene ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        camera.position.set(6, 4, 6);
+        controls.enableDamping = true;
+
+        // Colors
+        const B_COLOR = 0x00aaff;
+        const E_COLOR = 0xffcc00;
+        const S_COLOR = 0xff3300;
+
+        // --- 1. The Magnetic Flux Area (Cylindrical region) ---
+        const bArrows = new THREE.Group();
+        const density = 0.5;
+        for (let x = -1; x <= 1; x += density) {
+            for (let z = -1; z <= 1; z += density) {
+                if (x*x + z*z > 1.2) continue;
+                const arrow = new THREE.ArrowHelper(
+                    new THREE.Vector3(0, 1, 0), 
+                    new THREE.Vector3(x, -1, z), 
+                    2, B_COLOR, 0.2, 0.1
+                );
+                bArrows.add(arrow);
+            }
+        }
+        scene.add(bArrows);
+
+        // --- 2. The Source Vector (-dB/dt) ---
+        // This is the "Current" analog in the center
+        const sourceArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 1, 0), 
+            new THREE.Vector3(0, -1.5, 0), 
+            3, S_COLOR, 0.5, 0.2
+        );
+        scene.add(sourceArrow);
+
+        // --- 3. The Induced E-Field Rings ---
+        const eArrows = new THREE.Group();
+        function createRing(radius, count, y) {
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const pos = new THREE.Vector3(x, y, z);
+                // Placeholder dir
+                const arrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), pos, 1, E_COLOR, 0.2, 0.1);
+                eArrows.add(arrow);
+            }
+        }
+        createRing(1.8, 12, 0); // Inner ring
+        createRing(3.0, 18, 0); // Outer ring
+        scene.add(eArrows);
+
+        // Floor Grid
+        const grid = new THREE.GridHelper(12, 12, 0x222222, 0x222222);
+        grid.position.y = -1.5;
+        scene.add(grid);
+
+        // --- Animation Logic ---
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.015;
+
+            // Physics: B(t) = sin(t)
+            const bVal = Math.sin(time);
+            // Source term: -dB/dt = -cos(t)
+            const sVal = -Math.cos(time);
+
+            // Update B-Field
+            bArrows.children.forEach(a => {
+                a.scale.set(1, Math.abs(bVal) + 0.001, 1);
+                a.setDirection(new THREE.Vector3(0, Math.sign(bVal) || 1, 0));
+                a.line.material.opacity = Math.abs(bVal) * 0.8 + 0.2;
+                a.line.material.transparent = true;
+            });
+
+            // Update Source Arrow
+            sourceArrow.scale.set(1, Math.abs(sVal) + 0.001, 1);
+            sourceArrow.setDirection(new THREE.Vector3(0, Math.sign(sVal) || 1, 0));
+            sourceArrow.line.material.opacity = Math.abs(sVal);
+            sourceArrow.line.material.transparent = true;
+
+            // Update E-Field (The Swirl)
+            eArrows.children.forEach(a => {
+                const radius = Math.sqrt(a.position.x**2 + a.position.z**2);
+                
+                // Strength falls with 1/r (Biot-Savart Analogy)
+                const strength = (Math.abs(sVal) * 2.5) / radius;
+                a.setLength(strength, 0.2, 0.1);
+                
+                // Direction: Tangential swirling based on source sign
+                const angle = Math.atan2(a.position.z, a.position.x);
+                const tangent = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+                a.setDirection(tangent.multiplyScalar(Math.sign(sVal)));
+                
+                a.line.material.opacity = Math.min(strength, 1);
+                a.line.material.transparent = true;
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+<script defer data-offline-bundle src="induced_efield.0.offline.js"></script>
+
+
+</body>
+</html>

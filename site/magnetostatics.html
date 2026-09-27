@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetostatics</title>
+    
+    <!-- PASTE THE SAME CSS FROM YOUR MAIN INDEX.HTML HERE -->
+    <style>
+        /* Use the exact same CSS as your index.html */
+        :root { --bg-color: #121a23; --card-bg: #1c2734; --text-primary: #e0e0e0; --text-secondary: #94a3b8; --primary-color: #3498db; --border-color: #2c3e50; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-color); color: var(--text-primary); }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        .header-bar { border-bottom: 1px solid var(--border-color); padding: 1rem 0; margin-bottom: 2rem; }
+        a { color: var(--primary-color); text-decoration: none; }
+        .topic-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; transition: transform 0.2s; }
+        .topic-card:hover { transform: translateY(-5px); border-color: var(--primary-color); }
+        h2 { margin-top: 0; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 10px 0; }
+        li a { display: block; padding: 8px; border-radius: 4px; background: rgba(255,255,255,0.03); }
+        li a:hover { background: rgba(52, 152, 219, 0.15); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="container" style="padding:0;">
+            <a href="index.html">← Back to Home</a>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Magnetostatics</h1>
+        <div class="topic-card">
+            <h2>5.1 The Lorentz Force Law</h2>
+            <ul>
+                <li><a href="ch3_1_lorentz_force.html">Magnetic Fields & Forces</a></li>
+                <li><a href="ch3_1_lorentz_force.html#electric-currents">Currents (Line, Surface, Volume)</a></li>
+            </ul>
+        </div>
+        <div class="topic-card">
+            <h2>5.2 The Biot-Savart Law</h2>
+            <ul>
+                <li><a href="ch3_2_biot_savart.html">Steady Currents & The Law</a></li>
+            </ul>
+        </div>
+        <div class="topic-card">
+            <h2>5.3 Divergence and Curl of B</h2>
+            <ul>
+                <li><a href="ch3_3_div_curl.html">Ampère's Law</a></li>
+            </ul>
+        </div>
+        <div class="topic-card">
+            <h2>5.4 Magnetic Vector Potential</h2>
+            <ul>
+                <li><a href="ch3_4_vector_potential.html">Vector Potential & Boundary Conditions</a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

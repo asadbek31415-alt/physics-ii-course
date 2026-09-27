@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Line Charge Integration</title>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #121a23;
+            font-family: 'Inter', sans-serif;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+
+
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 39, 52, 0.95);
+            padding: 10px 15px;
+            /* Compact padding */
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            /* Reduced gap */
+            width: 300px;
+            /* Reduced width */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            /* Smaller font */
+            color: #b0c4de;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3498db;
+            margin: 2px 0;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+
+        <div class="controls">
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Distance (z)</span>
+                    <span id="z-val">1.0 L</span>
+                </div>
+                <input type="range" id="zSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <span>Integration Sweep (dx)</span>
+                    <span id="x-val">Total V</span>
+                </div>
+                <input type="range" id="xSlider" min="-1" max="1" step="0.01" value="-1">
+            </div>
+
+            <div style="font-size: 0.75rem; color: #888; text-align: center;">
+                Drag "Sweep" to accumulate potential
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const zSlider = document.getElementById('zSlider');
+        const xSlider = document.getElementById('xSlider');
+        const zDisplay = document.getElementById('z-val');
+
+        let L = 1.0;
+        let z = 1.0;
+        let currentX = -1.0;
+
+        let width, height;
+        let geoCx, geoCy, scaleGeo;
+        let graphX, graphY, graphW, graphH;
+
+        const c_rod = "#7f8c8d";
+        const c_highlight = "#3498db";
+        const c_hypot = "#f1c40f";
+        const c_graph_fill = "rgba(52, 152, 219, 0.3)";
+        const c_text = "#b0c4de";
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
+            // --- LAYOUT ADJUSTMENTS ---
+            // Moved everything up significantly
+
+            // Left Side: Geometry
+            geoCx = width * 0.25;
+            geoCy = height * 0.5; // Moved up from 0.6
+            scaleGeo = Math.min(width, height) * 0.22;
+
+            // Right Side: Calculus Graph
+            graphX = width * 0.55;
+            graphY = height * 0.15; // Moved up from 0.2
+            graphW = width * 0.4;
+            graphH = height * 0.45; // Reduced height slightly
+
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+
+        zSlider.addEventListener('input', (e) => {
+            z = parseFloat(e.target.value);
+            zDisplay.innerText = z.toFixed(1) + " L";
+            draw();
+        });
+
+        xSlider.addEventListener('input', (e) => {
+            currentX = parseFloat(e.target.value);
+            draw();
+        });
+
+        function integrand(x, z_dist) {
+            return 1.0 / Math.sqrt(x * x + z_dist * z_dist);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // --- 1. GEOMETRY VIEW ---
+            // Draw Axes
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255,255,255,0.15)";
+            ctx.lineWidth = 1;
+            // X-axis
+            ctx.moveTo(geoCx - 1.4 * scaleGeo, geoCy);
+            ctx.lineTo(geoCx + 1.4 * scaleGeo, geoCy);
+            // Z-axis
+            ctx.moveTo(geoCx, geoCy + 0.3 * scaleGeo);
+            ctx.lineTo(geoCx, geoCy - 3.2 * scaleGeo);
+            ctx.stroke();
+
+            ctx.fillStyle = "rgba(255,255,255,0.4)";
+            ctx.font = "italic 13px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText("x", geoCx + 1.35 * scaleGeo, geoCy + 15);
+            ctx.fillText("z", geoCx + 12, geoCy - 3.1 * scaleGeo);
+
+            const rodStart = geoCx - L * scaleGeo;
+            const rodEnd = geoCx + L * scaleGeo;
+
+            ctx.beginPath();
+            ctx.moveTo(rodStart, geoCy);
+            ctx.lineTo(rodEnd, geoCy);
+            ctx.strokeStyle = c_rod;
+            ctx.lineWidth = 6;
+            ctx.lineCap = "round";
+            ctx.stroke();
+
+            ctx.fillStyle = c_text;
+            ctx.font = "14px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText("Charged Rod (λ)", geoCx, geoCy + 25);
+            ctx.fillText("-L", rodStart, geoCy + 25);
+            ctx.fillText("+L", rodEnd, geoCy + 25);
+
+            const pY = geoCy - z * scaleGeo;
+            ctx.beginPath();
+            ctx.arc(geoCx, pY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.textAlign = "left";
+            ctx.fillText("P", geoCx + 10, pY);
+
+            ctx.beginPath();
+            ctx.moveTo(geoCx, geoCy);
+            ctx.lineTo(geoCx, pY);
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillText("z", geoCx + 5, (geoCy + pY) / 2);
+
+            const dxPix = (currentX * scaleGeo) + geoCx;
+
+            ctx.beginPath();
+            ctx.moveTo(dxPix - 5, geoCy);
+            ctx.lineTo(dxPix + 5, geoCy);
+            ctx.strokeStyle = c_highlight;
+            ctx.lineWidth = 10;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(dxPix, geoCy);
+            ctx.lineTo(geoCx, pY);
+            ctx.strokeStyle = c_hypot;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const midX = (dxPix + geoCx) / 2;
+            const midY = (geoCy + pY) / 2;
+            ctx.fillStyle = c_hypot;
+            ctx.fillText("r", midX - 15, midY);
+
+            // --- 2. CALCULUS VIEW ---
+            const originX = graphX + graphW / 2;
+            const originY = graphY + graphH;
+
+            ctx.beginPath();
+            ctx.moveTo(graphX, originY);
+            ctx.lineTo(graphX + graphW, originY);
+            ctx.moveTo(originX, originY);
+            ctx.lineTo(originX, graphY);
+            ctx.strokeStyle = "#555";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = c_text;
+            ctx.textAlign = "center";
+            ctx.fillText("Position (x)", originX, originY + 25);
+            ctx.textAlign = "left";
+            ctx.fillText("dV", originX + 5, graphY);
+
+            const xRange = 1.5;
+            const xScale = (graphW / 2) / xRange;
+            const yScale = graphH * 0.8;
+
+            ctx.beginPath();
+            let startGraphX = -xRange;
+            ctx.moveTo(originX + startGraphX * xScale, originY - integrand(startGraphX, z) * yScale);
+
+            for (let x = -xRange; x <= xRange; x += 0.05) {
+                const screenX = originX + x * xScale;
+                const screenY = originY - integrand(x, z) * yScale;
+                ctx.lineTo(screenX, screenY);
+            }
+            ctx.strokeStyle = "rgba(255,255,255,0.2)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            const xStart = -1.0;
+            const xEnd = currentX;
+
+            ctx.moveTo(originX + xStart * xScale, originY);
+            for (let x = xStart; x <= xEnd; x += 0.02) {
+                const screenX = originX + x * xScale;
+                const screenY = originY - integrand(x, z) * yScale;
+                ctx.lineTo(screenX, screenY);
+            }
+            ctx.lineTo(originX + xEnd * xScale, originY);
+            ctx.closePath();
+            ctx.fillStyle = c_graph_fill;
+            ctx.fill();
+            ctx.strokeStyle = c_highlight;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const currGraphX = originX + currentX * xScale;
+            ctx.beginPath();
+            ctx.moveTo(currGraphX, originY);
+            ctx.lineTo(currGraphX, originY - integrand(currentX, z) * yScale);
+            ctx.strokeStyle = c_hypot;
+            ctx.setLineDash([2, 2]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#fff";
+            ctx.font = "14px Inter";
+            ctx.textAlign = "right";
+            ctx.fillText("Integrand: 1 / r", graphX + graphW, graphY);
+
+            const valCurrent = Math.log(currentX + Math.sqrt(currentX * currentX + z * z));
+            const valStart = Math.log(-1 + Math.sqrt(1 + z * z));
+            const totalV = valCurrent - valStart;
+
+            ctx.fillStyle = c_highlight;
+            ctx.fillText(`Accumulated V: ${totalV.toFixed(2)}`, graphX + graphW, graphY + 20);
+        }
+
+        resize();
+        draw();
+
+    </script>
+</body>
+
+</html>

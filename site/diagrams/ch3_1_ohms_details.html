@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ohm's Law 3D Simulation</title>
+    <!-- Fonts -->
+    
+    
+    <!-- KaTeX for Math Typesetting -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js"></script>
+
+    <!-- Three.js from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js"
+            }
+        }
+    </script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000000; font-family: 'Inter', sans-serif; }
+        canvas { display: block; outline: none; }
+        
+        /* UI Panel Styling */
+        #ui-layer {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            width: 320px;
+            background: rgba(18, 18, 18, 0.95);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            color: #e5e5e5;
+            user-select: none;
+        }
+
+        h2 { 
+            margin: 0 0 4px 0; 
+            font-size: 15px; 
+            font-weight: 600; 
+            color: #3498db; /* Blue accent */
+            letter-spacing: -0.01em;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #a3a3a3;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        /* Control Groups */
+        .control-group { margin-bottom: 16px; }
+        .group-label { font-size: 12px; color: #a1a1aa; margin-bottom: 8px; display: block; }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px 0;
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            color: #d4d4d8;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        button:hover { background: #3f3f46; color: #fff; }
+
+        /* Active States */
+        button.active-blue {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: white;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+        }
+        
+        button.active-yellow {
+            background: #b45309; /* Darker orange/yellow */
+            border-color: #f59e0b;
+            color: white;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            row-gap: 8px;
+            border-top: 1px solid #27272a;
+            padding-top: 16px;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .label { color: #a1a1aa; }
+        .value { 
+            font-family: 'Fira Code', monospace; 
+            font-weight: 400; 
+            text-align: right;
+        }
+        
+        .math-display {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+
+        .katex { font-size: 1.1em; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h2>Ohm's Law Simulation</h2>
+        <div class="subtitle">Adjust Field and Conductivity to observe Current Density.</div>
+
+        <div class="math-display" id="main-eq"></div>
+
+        <div class="control-group">
+            <span class="group-label">Electric Field Strength (\(\vec{E}\))</span>
+            <div class="button-row">
+                <button id="btn-e-low">Weak</button>
+                <button id="btn-e-high" class="active-blue">Strong</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <span class="group-label">Conductivity (\(\sigma\))</span>
+            <div class="button-row">
+                <button id="btn-s-low">Low (Resistive)</button>
+                <button id="btn-s-high" class="active-yellow">High (Conductive)</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="label">Driving Force</div>
+            <div class="value" id="val-e">High</div>
+            
+            <div class="label">Material</div>
+            <div class="value" id="val-s">Conductor</div>
+            
+            <div class="label">Current Density (\(J\))</div>
+            <div class="value" id="val-j" style="color: #facc15">MAX</div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+
+        // === SIMULATION CONFIGURATION ===
+        const CONFIG = {
+            count: 1500,
+            atomCount: 300,
+            radius: 4,
+            length: 30,
+            colorE: 0x3b82f6, // Blue
+            colorJ: 0xfacc15, // Yellow
+            colorAtom: 0x4b5563, // Gray
+        };
+
+        // State
+        let state = {
+            E: 2.0, // Field Strength (1 or 2)
+            sigma: 1.0, // Conductivity (0.2 or 1.0)
+        };
+
+        // === THREE.JS SETUP ===
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(15, 12, 35);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 10, 10);
+        scene.add(dirLight);
+
+        // === SCENE OBJECTS ===
+
+        // 1. Wireframe Cylinder (The Conductor)
+        const geometryCyl = new THREE.CylinderGeometry(CONFIG.radius, CONFIG.radius, CONFIG.length, 32, 1, true);
+        const edges = new THREE.EdgesGeometry(geometryCyl);
+        const materialLine = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
+        const wireframe = new THREE.LineSegments(edges, materialLine);
+        wireframe.rotation.z = Math.PI / 2;
+        scene.add(wireframe);
+
+        // 2. Lattice Atoms (Static InstancedMesh)
+        const atomGeo = new THREE.IcosahedronGeometry(0.3, 0);
+        const atomMat = new THREE.MeshLambertMaterial({ color: CONFIG.colorAtom });
+        const atomsMesh = new THREE.InstancedMesh(atomGeo, atomMat, CONFIG.atomCount);
+        
+        const dummy = new THREE.Object3D();
+        for(let i=0; i<CONFIG.atomCount; i++) {
+            dummy.position.x = (Math.random() - 0.5) * CONFIG.length;
+            const r = CONFIG.radius * Math.sqrt(Math.random()) * 0.8;
+            const theta = Math.random() * 2 * Math.PI;
+            dummy.position.y = r * Math.cos(theta);
+            dummy.position.z = r * Math.sin(theta);
+            // Random slight rotation
+            dummy.rotation.set(Math.random(), Math.random(), Math.random());
+            dummy.updateMatrix();
+            atomsMesh.setMatrixAt(i, dummy.matrix);
+        }
+        scene.add(atomsMesh);
+
+        // 3. Charge Carriers (Moving InstancedMesh)
+        const particleGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Will be tinted
+        const particlesMesh = new THREE.InstancedMesh(particleGeo, particleMat, CONFIG.count);
+        scene.add(particlesMesh);
+
+        // Particle Data
+        const pData = new Float32Array(CONFIG.count * 4); // x, y, z, offset
+        const pColors = new Float32Array(CONFIG.count * 3);
+        
+        const baseColor = new THREE.Color(CONFIG.colorJ);
+        
+        for(let i=0; i<CONFIG.count; i++) {
+            const i4 = i*4;
+            pData[i4] = (Math.random() - 0.5) * CONFIG.length; // x
+            const r = CONFIG.radius * Math.sqrt(Math.random()) * 0.9;
+            const theta = Math.random() * 2 * Math.PI;
+            pData[i4+1] = r * Math.cos(theta); // y
+            pData[i4+2] = r * Math.sin(theta); // z
+            pData[i4+3] = Math.random() * 100; // random offset for animation
+            
+            pColors[i*3] = baseColor.r;
+            pColors[i*3+1] = baseColor.g;
+            pColors[i*3+2] = baseColor.b;
+        }
+        particlesMesh.geometry.setAttribute('color', new THREE.InstancedBufferAttribute(pColors, 3));
+
+        // 4. Vector Arrows (Custom Meshes for thickness)
+        function createArrow(color, yPos, label) {
+            const group = new THREE.Group();
+            
+            // Shaft
+            const shaftGeo = new THREE.CylinderGeometry(0.4, 0.4, 1, 16);
+            const mat = new THREE.MeshLambertMaterial({ color: color });
+            const shaft = new THREE.Mesh(shaftGeo, mat);
+            shaft.rotation.z = -Math.PI / 2; // Point right
+            shaft.position.x = 0; // Center
+            
+            // Head
+            const headGeo = new THREE.ConeGeometry(0.8, 2, 16);
+            const head = new THREE.Mesh(headGeo, mat);
+            head.rotation.z = -Math.PI / 2;
+            head.position.x = 0.5; // Tip
+            
+            group.add(shaft);
+            group.add(head);
+            group.position.y = yPos;
+            group.position.z = CONFIG.radius + 2; // Bring forward
+            
+            scene.add(group);
+            return { group, shaft, head };
+        }
+
+        const arrowE = createArrow(CONFIG.colorE, 3, "E");
+        const arrowJ = createArrow(CONFIG.colorJ, -3, "J");
+
+        // === UPDATE LOOP ===
+        function updateArrows() {
+            // Scale E Arrow based on E state
+            const scaleE = state.E === 2.0 ? 10 : 5;
+            arrowE.shaft.scale.set(1, scaleE, 1);
+            arrowE.shaft.position.x = scaleE / 2 - (scaleE/2); // Center logic
+            arrowE.head.position.x = scaleE / 2;
+            
+            // Scale J Arrow based on J = sigma * E
+            const J_mag = state.E * state.sigma;
+            // Map J magnitude (0.2 to 2.0) to visual scale (2 to 10)
+            const scaleJ = J_mag * 5; 
+            
+            arrowJ.shaft.scale.set(1, scaleJ, 1);
+            arrowJ.head.position.x = scaleJ / 2;
+        }
+
+        function updateParticles() {
+            const speed = 0.1 * state.E * state.sigma;
+            const boundary = CONFIG.length / 2;
+
+            for(let i=0; i<CONFIG.count; i++) {
+                const i4 = i*4;
+                
+                // Move
+                pData[i4] += speed;
+                
+                // Wrap
+                if(pData[i4] > boundary) {
+                    pData[i4] = -boundary;
+                }
+
+                // Jitter (Simulate thermal noise / scattering)
+                // Higher temperature/resistance usually implies more jitter, 
+                // but for this demo, we just add slight noise to look like "gas".
+                const jitter = 0.02;
+                
+                dummy.position.set(
+                    pData[i4], 
+                    pData[i4+1] + (Math.random()-0.5)*jitter, 
+                    pData[i4+2] + (Math.random()-0.5)*jitter
+                );
+                dummy.updateMatrix();
+                particlesMesh.setMatrixAt(i, dummy.matrix);
+            }
+            particlesMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        // === UI LOGIC ===
+        const ui = {
+            eq: document.getElementById('main-eq'),
+            btnELow: document.getElementById('btn-e-low'),
+            btnEHigh: document.getElementById('btn-e-high'),
+            btnSLow: document.getElementById('btn-s-low'),
+            btnSHigh: document.getElementById('btn-s-high'),
+            valE: document.getElementById('val-e'),
+            valS: document.getElementById('val-s'),
+            valJ: document.getElementById('val-j'),
+        };
+
+        // Render Initial Math
+        katex.render("\\vec{J} = \\sigma \\vec{E}", ui.eq);
+
+        function updateUI() {
+            // Update Buttons
+            ui.btnELow.className = state.E < 1.5 ? "active-blue" : "";
+            ui.btnEHigh.className = state.E > 1.5 ? "active-blue" : "";
+            
+            ui.btnSLow.className = state.sigma < 0.5 ? "active-yellow" : "";
+            ui.btnSHigh.className = state.sigma > 0.5 ? "active-yellow" : "";
+
+            // Update Text Values
+            ui.valE.innerText = state.E > 1.5 ? "Strong" : "Weak";
+            ui.valS.innerText = state.sigma > 0.5 ? "Conductor" : "Resistor";
+            
+            const jVal = state.E * state.sigma;
+            let jText = "Medium";
+            if(jVal < 0.5) jText = "Very Low";
+            else if(jVal > 1.5) jText = "Maximum";
+            
+            ui.valJ.innerText = jText;
+            
+            // Visual Update
+            updateArrows();
+        }
+
+        // Event Listeners
+        ui.btnELow.onclick = () => { state.E = 1.0; updateUI(); };
+        ui.btnEHigh.onclick = () => { state.E = 2.0; updateUI(); };
+        ui.btnSLow.onclick = () => { state.sigma = 0.2; updateUI(); };
+        ui.btnSHigh.onclick = () => { state.sigma = 1.0; updateUI(); };
+
+        // Handle Resize
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+
+        // Init
+        updateUI();
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            updateParticles();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="ch3_1_ohms_details.0.offline.js"></script>
+
+
+
+</body>
+</html>

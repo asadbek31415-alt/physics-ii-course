@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundary Conditions Visualizer</title>
+    
+    <style>
+        body {
+            margin: 0;
+            background-color: #121a23;
+            font-family: 'Inter', sans-serif;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .panel {
+            position: relative;
+            border-right: 1px solid #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(18, 26, 35, 0.9);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #2c3e50;
+            font-weight: 600;
+            color: #3498db;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+        }
+
+        /* Legend for the Graph View - Moved to bottom to avoid title overlap */
+        .graph-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(18, 26, 35, 0.85);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #2c3e50;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            z-index: 5;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        #controls {
+            height: 90px;
+            background: #1c2734;
+            border-top: 1px solid #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 0 20px;
+            z-index: 10;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            cursor: pointer;
+            accent-color: #e74c3c;
+        }
+
+        .control-label {
+            font-family: 'Roboto Mono', monospace;
+            color: #e74c3c;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .hint-text {
+            font-size: 0.85rem;
+            color: #b0c4de;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Left Panel: Physical View -->
+        <div class="panel">
+            <div class="panel-label">1. Physical View</div>
+            <canvas id="physCanvas"></canvas>
+        </div>
+
+        <!-- Right Panel: Graphs -->
+        <div class="panel" style="border-right: none;">
+            <div class="panel-label">2. Mathematical View</div>
+
+            <!-- Fixed Legend to avoid overlapping -->
+            <div class="graph-legend">
+                <div class="legend-item">
+                    <div class="dot" style="background: #3498db;"></div>
+                    <span style="color: #3498db;">E-Field (Discontinuous)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot" style="background: #f1c40f;"></div>
+                    <span style="color: #f1c40f;">Potential V (Continuous)</span>
+                </div>
+            </div>
+
+            <canvas id="graphCanvas"></canvas>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="slider-container">
+            <span style="color: #b0c4de;">Charge Density (σ):</span>
+            <input type="range" id="sigmaSlider" min="0" max="100" value="0">
+            <span class="control-label" id="sigmaValue">0</span>
+        </div>
+        <div class="hint-text">
+            Drag slider to see how Charge Density creates the Field Jump and Potential Kink.
+        </div>
+    </div>
+
+    <script>
+        const physCanvas = document.getElementById('physCanvas');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const ctxPhys = physCanvas.getContext('2d');
+        const ctxGraph = graphCanvas.getContext('2d');
+        const slider = document.getElementById('sigmaSlider');
+        const sigmaDisplay = document.getElementById('sigmaValue');
+
+        let width, height;
+
+        // Colors
+        const c_sheet = "#e74c3c";
+        const c_field = "#3498db";
+        const c_potential = "#f1c40f";
+        const c_axis = "#555";
+        const c_text = "#b0c4de";
+
+        function resize() {
+            width = window.innerWidth / 2;
+            height = window.innerHeight - 90;
+
+            const dpr = window.devicePixelRatio || 1;
+
+            physCanvas.width = width * dpr;
+            physCanvas.height = height * dpr;
+            ctxPhys.scale(dpr, dpr);
+
+            graphCanvas.width = width * dpr;
+            graphCanvas.height = height * dpr;
+            ctxGraph.scale(dpr, dpr);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function draw() {
+            ctxPhys.clearRect(0, 0, width, height);
+            ctxGraph.clearRect(0, 0, width, height);
+
+            const sigma = parseInt(slider.value);
+            const intensity = sigma / 100; // 0 to 1
+
+            // --- 1. PHYSICAL VIEW (Left) ---
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // Draw Sheet
+            ctxPhys.beginPath();
+            ctxPhys.moveTo(0, cy);
+            ctxPhys.lineTo(width, cy);
+            ctxPhys.strokeStyle = c_sheet;
+            ctxPhys.lineWidth = 2 + (intensity * 6);
+            ctxPhys.stroke();
+
+            // Draw + Signs
+            if (sigma > 5) {
+                ctxPhys.fillStyle = c_sheet;
+                ctxPhys.font = 'bold 20px Inter';
+                ctxPhys.textAlign = 'center';
+                ctxPhys.textBaseline = 'middle';
+                const spacing = 120 - (intensity * 80);
+                for (let x = (width % spacing) / 2; x < width; x += spacing) {
+                    ctxPhys.fillText('+', x, cy);
+                }
+            }
+
+            // Draw Field Vectors
+            if (sigma > 0) {
+                const arrowLen = 20 + (intensity * 60);
+                const arrowSpacing = width / 4;
+                ctxPhys.lineWidth = 2;
+                ctxPhys.strokeStyle = c_field;
+
+                // Up (z > 0)
+                for (let x = arrowSpacing / 2; x < width; x += arrowSpacing) {
+                    drawArrow(ctxPhys, x, cy - 25, x, cy - 25 - arrowLen);
+                }
+                // Down (z < 0)
+                for (let x = arrowSpacing / 2; x < width; x += arrowSpacing) {
+                    drawArrow(ctxPhys, x, cy + 25, x, cy + 25 + arrowLen);
+                }
+            }
+
+            // Label Sheet
+            ctxPhys.fillStyle = "#fff";
+            ctxPhys.font = "14px Inter";
+            ctxPhys.textAlign = "center";
+            ctxPhys.fillText("Charged Sheet (z=0)", cx, cy - 15);
+
+
+            // --- 2. GRAPH VIEW (Right) ---
+            const gCx = width / 2;
+            const gCy = height / 2;
+
+            drawAxes(ctxGraph, width, height);
+
+            // --- Plot E(z) ---
+            // z < 0 (Left): E negative (below axis)
+            // z > 0 (Right): E positive (above axis)
+            const eHeight = intensity * (height * 0.35);
+
+            ctxGraph.strokeStyle = c_field;
+            ctxGraph.lineWidth = 3;
+
+            // Left
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(0, gCy + eHeight);
+            ctxGraph.lineTo(gCx, gCy + eHeight);
+            ctxGraph.stroke();
+
+            // Right
+            ctxGraph.beginPath();
+            ctxGraph.moveTo(gCx, gCy - eHeight);
+            ctxGraph.lineTo(width, gCy - eHeight);
+            ctxGraph.stroke();
+
+            // Discontinuity Line
+            if (sigma > 0) {
+                ctxGraph.setLineDash([4, 4]);
+                ctxGraph.beginPath();
+                ctxGraph.moveTo(gCx, gCy + eHeight);
+                ctxGraph.lineTo(gCx, gCy - eHeight);
+                ctxGraph.strokeStyle = "rgba(52, 152, 219, 0.4)";
+                ctxGraph.stroke();
+                ctxGraph.setLineDash([]);
+            }
+
+            // --- Plot V(z) ---
+            // V(z) = V0 - slope * |z|
+            // V0 is fixed at a high point.
+            // Slope increases with sigma.
+
+            const vPeak = height * 0.25; // Fixed peak height
+            // Calculate drop based on intensity
+            // At edges (x=0 or x=width), drop = intensity * max_drop
+            const maxDrop = height * 0.6;
+            const currentDrop = intensity * maxDrop;
+
+            ctxGraph.strokeStyle = c_potential;
+            ctxGraph.lineWidth = 4;
+            ctxGraph.lineJoin = "round";
+            ctxGraph.beginPath();
+
+            // Left Point
+            ctxGraph.moveTo(0, vPeak + currentDrop);
+            // Peak
+            ctxGraph.lineTo(gCx, vPeak);
+            // Right Point
+            ctxGraph.lineTo(width, vPeak + currentDrop);
+
+            ctxGraph.stroke();
+
+            // Highlight Kink
+            ctxGraph.beginPath();
+            ctxGraph.arc(gCx, vPeak, 5, 0, Math.PI * 2);
+            ctxGraph.fillStyle = c_potential;
+            ctxGraph.fill();
+            ctxGraph.strokeStyle = "#000";
+            ctxGraph.lineWidth = 2;
+            ctxGraph.stroke();
+
+            // Update Text
+            sigmaDisplay.textContent = sigma;
+
+            requestAnimationFrame(draw);
+        }
+
+        function drawAxes(ctx, w, h) {
+            const cy = h / 2;
+            const cx = w / 2;
+
+            // X Axis
+            ctx.beginPath();
+            ctx.moveTo(0, cy);
+            ctx.lineTo(w, cy);
+            ctx.strokeStyle = c_axis;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Y Axis
+            ctx.beginPath();
+            ctx.moveTo(cx, 0);
+            ctx.lineTo(cx, h);
+            ctx.stroke();
+
+            ctx.fillStyle = c_text;
+            ctx.font = '12px Inter';
+            ctx.textAlign = "right";
+            ctx.fillText("Position (z)", w - 10, cy + 20);
+        }
+
+        function drawArrow(ctx, fromX, fromY, toX, toY) {
+            const headlen = 8;
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+        }
+
+        draw();
+    </script>
+</body>
+
+</html>

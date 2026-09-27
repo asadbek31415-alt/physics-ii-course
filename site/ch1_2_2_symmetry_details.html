@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Applying Gauss's Law</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              hat: "\\mathbf",
+              enc: "\\text{enc}"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --border-color: #2c3e50;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.5rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 3rem; }
+        h3 { color: var(--text-primary); font-weight: 600; margin-top: 1.5rem; font-size: 1.2rem; }
+        p { font-size: 1.1rem; margin-bottom: 1.5rem; }
+
+        /* Concept Box */
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+        .concept-box strong { color: var(--accent-color); font-size: 1.1em; display: block; margin-bottom: 0.5rem; }
+
+        /* Logic Flow Container */
+        .logic-flow {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+            gap: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .logic-step { text-align: center; flex: 1; min-width: 200px; }
+        .logic-arrow { font-size: 2rem; color: var(--text-secondary); }
+        .logic-eq { font-size: 1.4rem; font-family: 'Times New Roman', serif; color: var(--success-color); }
+
+        /* IFRAME */
+        .iframe-container {
+            width: 100%;
+            margin: 2rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        iframe { width: 100%; height: 500px; border: none; display: block; }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="electrostatics_index.html">Electrostatics</a> > 
+                <a href="ch1_2_gauss_law.html">Gauss's Law</a> > 
+                Symmetry Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Applying Gauss's Law</h1>
+        
+        <p>
+            Gauss's Law is always true, but it is not always useful. To use it to calculate the electric field, we need to be clever. We need to find a surface where the integral becomes trivial.
+        </p>
+
+        <div class="concept-box">
+            <strong>The "Cheat Code" of Electrostatics</strong>
+            <p>
+                Usually, we integrate to find the flux. Here, we do the reverse: we use symmetry arguments to determine the <em>shape</em> of the field, which allows us to pull \(E\) out of the integral. Then, we use algebra to solve for \(E\).
+            </p>
+        </div>
+
+        <!-- THE LOGIC FLOW -->
+        <h2>The Algorithm</h2>
+        <p>For any symmetric distribution (Sphere, Cylinder, Plane), the process is identical:</p>
+
+        <div class="logic-flow">
+            <div class="logic-step">
+                <h3>1. Geometry</h3>
+                <p>Argue that \(E\) is constant and \(\perp\) to surface.</p>
+                <div class="logic-eq">\(\oint \vec{E} \cdot d\vec{a} = E \cdot A\)</div>
+            </div>
+            <div class="logic-arrow">=</div>
+            <div class="logic-step">
+                <h3>2. Physics</h3>
+                <p>Count the charge inside.</p>
+                <div class="logic-eq">\(\frac{Q_{\enc}}{\epsilon_0}\)</div>
+            </div>
+            <div class="logic-arrow">&rArr;</div>
+            <div class="logic-step">
+                <h3>3. Solve</h3>
+                <p>Isolate E.</p>
+                <div class="logic-eq">\(E = \frac{Q_{\enc}}{\epsilon_0 A}\)</div>
+            </div>
+        </div>
+
+        <hr style="border-color: var(--border-color); margin: 3rem 0;">
+
+        <!-- 1. SPHERICAL -->
+        <section>
+            <h2>1. Spherical Symmetry</h2>
+            <p>
+                Consider a spherical shell or solid sphere of charge. If you were to rotate the sphere, the charge distribution would look identical. Therefore, the resulting Electric Field must also look identical after rotation.
+            </p>
+            <p>
+                This forces the field to be <strong>Radial</strong> (pointing straight out) and its magnitude to depend <strong>only on the distance \(r\)</strong> from the center.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/gauss_for_sphere.html" title="Gauss for Sphere"></iframe>
+            </div>
+
+            <h3>The Derivation</h3>
+            <p>We draw a Gaussian Sphere of radius \(r\).</p>
+            <ul>
+                <li><strong>LHS (Flux):</strong> Since \(\vec{E}\) is parallel to \(d\vec{a}\) everywhere, \(\vec{E} \cdot d\vec{a} = E da\). Since \(E\) is constant at radius \(r\), we pull it out:
+                \[ \oint E da = E \oint da = E (4\pi r^2) \]
+                </li>
+                <li><strong>RHS (Charge):</strong> \(Q_{\enc} / \epsilon_0\)</li>
+                <li><strong>Result:</strong>
+                \[ E (4\pi r^2) = \frac{Q_{\enc}}{\epsilon_0} \quad \Rightarrow \quad \vec{E} = \frac{1}{4\pi\epsilon_0} \frac{Q_{\enc}}{r^2} \hat{r} \]
+                </li>
+            </ul>
+            <p>
+                <strong>Conclusion:</strong> Outside the sphere, it acts exactly like a point charge. Inside a hollow shell, \(Q_{\enc}=0\), so \(E=0\).
+            </p>
+        </section>
+
+        <hr style="border-color: var(--border-color); margin: 3rem 0;">
+
+        <!-- 2. CYLINDRICAL -->
+        <section>
+            <h2>2. Cylindrical Symmetry</h2>
+            <p>
+                Consider an infinite line of charge or a long pipe. The symmetry dictates that the field must point radially away from the axis (the \(s\) direction). It cannot point along the wire (\(z\)) or around it (\(\phi\)), or a flip/rotation would contradict the setup.
+            </p>
+
+            <div class="iframe-container">
+                <!-- Using diagram_cylinder based on previous file lists -->
+                <iframe src="diagrams/diagram_cylinder.html" title="Gauss for Cylinder"></iframe>
+            </div>
+
+            <h3>The Derivation</h3>
+            <p>We draw a Gaussian Cylinder of radius \(s\) and length \(L\).</p>
+            <ul>
+                <li><strong>LHS (Flux):</strong> Flux through the top and bottom caps is zero (field is parallel to surface). Flux only goes through the curved side (Area \(2\pi s L\)).
+                \[ \oint \vec{E} \cdot d\vec{a} = E (2\pi s L) \]
+                </li>
+                <li><strong>RHS (Charge):</strong> The charge inside is the linear density \(\lambda\) times the length \(L\).
+                \[ Q_{\enc} = \lambda L \]
+                </li>
+                <li><strong>Result:</strong>
+                \[ E (2\pi s L) = \frac{\lambda L}{\epsilon_0} \quad \Rightarrow \quad \vec{E} = \frac{\lambda}{2\pi\epsilon_0 s} \hat{s} \]
+                </li>
+            </ul>
+        </section>
+
+        <hr style="border-color: var(--border-color); margin: 3rem 0;">
+
+        <!-- 3. PLANAR -->
+        <section>
+            <h2>3. Planar Symmetry</h2>
+            <p>
+                Consider an infinite flat sheet of charge. If you move parallel to the sheet, nothing changes. Therefore, \(E\) cannot depend on \(x\) or \(y\). It must point perpendicular to the plane.
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/gauss_for_plane.html" title="Gauss for Plane"></iframe>
+            </div>
+
+            <h3>The Derivation</h3>
+            <p>We draw a "Gaussian Pillbox" that extends through the sheet.</p>
+            <ul>
+                <li><strong>LHS (Flux):</strong> The field points straight up and straight down. No flux passes through the curved sides. Flux only passes through the top and bottom lids (Area \(A\) each).
+                \[ \oint \vec{E} \cdot d\vec{a} = EA_{\text{top}} + EA_{\text{bottom}} = 2EA \]
+                </li>
+                <li><strong>RHS (Charge):</strong> The pillbox cuts out a patch of area \(A\) on the sheet.
+                \[ Q_{\enc} = \sigma A \]
+                </li>
+                <li><strong>Result:</strong>
+                \[ 2EA = \frac{\sigma A}{\epsilon_0} \quad \Rightarrow \quad \vec{E} = \frac{\sigma}{2\epsilon_0} \hat{n} \]
+                </li>
+            </ul>
+            <p>
+                <strong>Conclusion:</strong> Remarkably, the field of an infinite plane is <strong>constant</strong>. It does not get weaker as you move further away.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

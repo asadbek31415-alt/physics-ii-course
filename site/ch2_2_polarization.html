@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polarization</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .reminder-card {
+            background: rgba(28, 39, 52, 0.78);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--warning-color);
+            border-radius: 10px;
+            padding: 1.35rem 1.5rem;
+            margin: 2.25rem 0 1rem;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+        }
+
+        .reminder-card h2 {
+            border-bottom: 0;
+            margin: 0 0 0.65rem;
+            padding: 0;
+            color: var(--warning-color);
+            font-size: 1.25rem;
+        }
+
+        .reminder-card p {
+            margin: 0.7rem 0;
+        }
+
+        .reminder-card .reminder-formula {
+            color: var(--text-primary);
+            font-size: 1.18rem;
+            margin: 0.95rem 0;
+            text-align: center;
+        }
+
+        .reminder-card a {
+            color: var(--accent-color);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .reminder-card a:hover {
+            text-decoration: underline;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> >
+                Polarization
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Polarization</h1>
+
+        <p>
+            Matter falls into two broad classes: <strong>Conductors</strong>, where charges are free to move, and
+            <strong>Dielectrics</strong> (insulators), where all charges are attached to specific atoms or molecules.
+        </p>
+        <p>
+            Even though charges in a dielectric cannot flow freely, they can shift slightly. This microscopic shifting
+            is what we call <strong>Polarization</strong>.
+        </p>
+
+        <aside class="reminder-card" aria-label="Dipole reminder">
+            <h2>Reminder: Electric Dipoles</h2>
+            <p>
+                This is a quick reminder, not a new topic. Dipoles were introduced earlier in
+                <a href="ch1_5_multipole_expansion.html#concept-2-2-the-multipole-hierarchy">Electrostatics:
+                    Multipole Expansion</a>, where we saw that a neutral object can still matter electrically if its
+                positive and negative charge are separated.
+            </p>
+            <p>
+                A simple electric dipole is a pair of equal and opposite charges. Its net charge is zero, but it has a
+                direction and a strength because the charges are separated:
+            </p>
+            <div class="reminder-formula">
+                $$ \vec{p} = q\vec{d} \quad \text{with } \vec{d} \text{ pointing from } -q \text{ to } +q $$
+            </div>
+            <p>
+                So when you see a dipole, think: <strong>not extra total charge, but shifted charge</strong>. In this
+                lesson, dielectric atoms and molecules either create tiny dipoles or rotate existing dipoles, and the
+                average dipole moment per volume becomes the polarization field \(\vec{P}\).
+            </p>
+        </aside>
+
+        <!-- SECTION 1: INDUCED DIPOLES -->
+        <section data-concept-title="1. Induced Dipoles" id="concept-1-1-induced-dipoles">
+            <h2>1. Induced Dipoles</h2>
+            <p>
+                What happens to a neutral atom when placed in an electric field \(\vec{E}\)?
+            </p>
+            <p>
+                The positive nucleus is pushed in the direction of the field, while the electron cloud is pulled in the
+                opposite direction. The atom "stretches" until the internal restoring forces balance the external
+                electric force.
+            </p>
+            <p>
+                This separation of charge creates a tiny <strong>Electric Dipole Moment</strong> \(\vec{p}\), which
+                points in the direction of \(\vec{E}\). For moderate fields, this relationship is linear:
+            </p>
+
+            <div class="math-block">
+                $$ \vec{p} = \alpha \vec{E} $$
+            </div>
+            <p>
+                The constant \(\alpha\) is called the <strong>atomic polarizability</strong>. It depends on the detailed
+                structure of the atom.
+            </p>
+
+            <!-- SIMULATOR: ATOMIC STRETCHING -->
+            <div class="iframe-container">
+                <!-- Placeholder for atomic stretching visualization -->
+                <iframe src="diagrams/atomic_stretching.html" title="Atomic Polarization"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_2_induced_dipoles_details.html?back=ch2_2_polarization.html%23concept-1-1-induced-dipoles"><span aria-hidden="true">+</span> Deep Dive: Atomic Polarizability</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: ALIGNMENT OF POLAR MOLECULES -->
+        <section data-concept-title="2. Alignment of Polar Molecules" id="concept-2-2-alignment-of-polar-molecules">
+            <h2>2. Alignment of Polar Molecules</h2>
+            <p>
+                Some molecules, like water (\(H_2O\)), are built such that the positive and negative charges are already
+                separated. These possess a <strong>permanent dipole moment</strong>.
+            </p>
+            <p>
+                When placed in an electric field, these molecules don't just stretch; they rotate. The field exerts a
+                <strong>torque</strong> (also called the <strong>mechanical moment</strong> \(\mathbf{M}\)) trying to
+                line the dipole up with the field direction:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ \mathbf{M} = \vec{p} \times \vec{E} $$
+            </div>
+
+            <p>
+                In a material, thermal agitation constantly knocks the molecules around, fighting this alignment. The
+                result is a partial alignment along the field.
+            </p>
+
+            <!-- SIMULATOR: MOLECULE ALIGNMENT -->
+            <div class="iframe-container">
+                <iframe src="simulators/polar_molecule_alignment.html" title="Polar Molecule Alignment"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_2_polar_alignment_details.html?back=ch2_2_polarization.html%23concept-2-2-alignment-of-polar-molecules"><span aria-hidden="true">+</span> Deep Dive: Alignment of Polar Molecules</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: POLARIZATION VECTOR -->
+        <section data-concept-title="3. The Polarization Vector (\(\vec{P}\))" id="concept-3-3-the-polarization-vector-p">
+            <h2>3. The Polarization Vector (\(\vec{P}\))</h2>
+            <p>
+                Whether due to stretching atoms (induced) or rotating molecules (alignment), the result is the same: a
+                lot of tiny dipoles pointing along the field.
+            </p>
+            <p>
+                To do physics on a macroscopic scale, we don't want to track billions of individual molecules. Instead,
+                we define a vector field \(\vec{P}\), called the <strong>Polarization</strong>, defined as the dipole
+                moment per unit volume:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \vec{P} \equiv \frac{\text{dipole moment}}{\text{volume}} $$
+            </div>
+
+            <p>
+                If \(\vec{P}\) is uniform, the material is evenly polarized. If \(\vec{P}\) varies (has divergence), it
+                implies a buildup of internal charge, which we will explore next.
+            </p>
+
+            <!-- DIAGRAM: VOLUME AVERAGING -->
+            <div class="iframe-container">
+                <iframe src="diagrams/volume_averaging.html" title="Volume Averaging Simulation"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_2_polarization_math_details.html?back=ch2_2_polarization.html%23concept-3-3-the-polarization-vector-p"><span aria-hidden="true">+</span> Deep Dive: The Definition of \(\vec{P}\)</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+    </body>
+
+</html>

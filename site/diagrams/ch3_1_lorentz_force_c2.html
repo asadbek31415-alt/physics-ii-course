@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Current Visualization</title>
+    <style>
+        :root {
+            --bg-color: #0b1120;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+            --border: #334155;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: clamp(240px, 30vw, 320px) minmax(0, 1fr);
+        }
+
+        /* UI Overlay Container */
+        #ui-container {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 14px;
+            padding: 14px;
+            box-sizing: border-box;
+            border-right: 1px solid var(--border);
+            background: rgba(11, 17, 32, 0.96);
+            overflow-y: auto;
+            z-index: 2;
+        }
+
+        #canvas-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            pointer-events: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: stretch;
+            background: var(--panel-bg);
+            padding: 10px;
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            width: 100%;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #94a3b8;
+            padding: 8px 16px;
+            flex: 1 1 130px;
+            cursor: pointer;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { color: var(--text); }
+        
+        .tab-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        /* Info & Controls Panel */
+        .bottom-panel {
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            gap: 14px;
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+
+        .info-box {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .info-box h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .info-box p {
+            margin: 0 0 15px 0;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        .equation {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.8rem;
+            font-style: italic;
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 0;
+        }
+
+        .controls-box {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            color: #94a3b8;
+        }
+
+        .control-group span {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        /* Canvas */
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            #ui-container {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid var(--border);
+                padding: 10px;
+            }
+
+            .nav-tabs {
+                gap: 6px;
+                padding: 8px;
+            }
+
+            .tab-btn {
+                min-height: 38px;
+                padding: 7px 8px;
+            }
+
+            .info-box,
+            .controls-box {
+                padding: 10px;
+            }
+        }
+    </style>
+    
+    <!-- Import Three.js as a module -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <!-- WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-container">
+        <!-- Top Navigation -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchMode('line', this)">Line Current (I)</button>
+            <button class="tab-btn" onclick="switchMode('surface', this)">Surface Current (K)</button>
+            <button class="tab-btn" onclick="switchMode('volume', this)">Volume Current (J)</button>
+        </div>
+
+        <!-- Bottom Panels -->
+        <div class="bottom-panel">
+            <!-- Left: Description & Formula -->
+            <div class="info-box">
+                <h1 id="title-text">Line Current</h1>
+                <p id="desc-text">Electric charge flowing through a thin, 1-dimensional wire.</p>
+                <div class="equation" id="eq-text">I = &lambda;v</div>
+            </div>
+
+            <!-- Right: Sliders -->
+            <div class="controls-box">
+                <div class="control-group">
+                    <label>Charge Density <span id="val-density">50%</span></label>
+                    <input type="range" min="1" max="100" value="50" id="slider-density">
+                </div>
+                <div class="control-group">
+                    <label>Drift Velocity (v) <span id="val-velocity">2.0</span></label>
+                    <input type="range" min="0.1" max="5.0" step="0.1" value="2.0" id="slider-velocity">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+
+        // --- Configuration ---
+        const CONFIG = {
+            line: {
+                title: "Line Current",
+                desc: "Charge flowing down a 1D thin wire. Visualized as particles constrained to a single axis.",
+                eq: "I = &lambda;v",
+                color: 0x38bdf8,
+                geoRadius: 0.1,
+                spread: 0.15 // Tight spread for line
+            },
+            surface: {
+                title: "Surface Current",
+                desc: "Charge flowing across a 2D sheet. Visualized as a ribbon of moving charge.",
+                eq: "K = &sigma;v",
+                color: 0x818cf8,
+                geoRadius: 0.05,
+                spread: 4.0 // Spread across Z axis
+            },
+            volume: {
+                title: "Volume Current",
+                desc: "Charge flowing through a 3D bulk material (like a thick wire).",
+                eq: "J = &rho;v",
+                color: 0x34d399,
+                geoRadius: 2.0, // Spread across Y and Z
+                spread: 2.0 
+            }
+        };
+
+        let currentMode = 'line';
+        let scene, camera, renderer, particles, particleGeo, particleMaterial;
+        let guideMesh; // The wire/sheet/box visual guide
+        
+        // State
+        let particleCount = 5000; // Max buffer size
+        let activeCount = 2500;
+        let speed = 0.2;
+        
+        // --- Initialization ---
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0b1120);
+            scene.fog = new THREE.Fog(0x0b1120, 10, 50);
+
+            // 2. Camera
+            const { width, height } = getCanvasSize();
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+            camera.position.set(5, 3, 10);
+            camera.lookAt(0, 0, 0);
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 4. Lights (for the guide mesh)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // 5. Grid Helper (Floor)
+            const gridHelper = new THREE.GridHelper(20, 20, 0x1e293b, 0x1e293b);
+            gridHelper.position.y = -2.5;
+            scene.add(gridHelper);
+
+            // 6. Create Particle System (BufferGeometry for performance)
+            createParticleSystem();
+
+            // 7. Create Guide Mesh (The wire/box)
+            createGuideMesh();
+
+            // 8. Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('slider-density').addEventListener('input', updatePhysics);
+            document.getElementById('slider-velocity').addEventListener('input', updatePhysics);
+
+            // Start Loop
+            animate();
+        }
+
+        function createParticleSystem() {
+            particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            
+            // Initial positions are overwritten by distributeParticles() below.
+            for(let i=0; i<particleCount; i++) {
+                positions[i*3] = 0; // X: along flow
+                positions[i*3+1] = 0; // Y
+                positions[i*3+2] = 0; // Z
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            // Create a glowing dot texture programmatically
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16,16,0,16,16,16);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.4, 'rgba(255,255,255,0.5)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,32,32);
+            const texture = new THREE.CanvasTexture(canvas);
+
+            particleMaterial = new THREE.PointsMaterial({
+                color: CONFIG.line.color,
+                size: 0.15,
+                map: texture,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            particles = new THREE.Points(particleGeo, particleMaterial);
+            scene.add(particles);
+            
+            // Initial distribution
+            distributeParticles();
+        }
+
+        function createGuideMesh() {
+            if(guideMesh) scene.remove(guideMesh);
+
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x334155,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide,
+                wireframe: false
+            });
+
+            const wireframeMat = new THREE.MeshBasicMaterial({
+                color: 0x475569,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.3
+            });
+
+            let geometry;
+
+            if(currentMode === 'line') {
+                // Thin Cylinder
+                geometry = new THREE.CylinderGeometry(0.1, 0.1, 20, 8, 1, true);
+                geometry.rotateZ(Math.PI / 2);
+            } else if (currentMode === 'surface') {
+                // Flat Plane
+                geometry = new THREE.PlaneGeometry(20, 4);
+                geometry.rotateX(-Math.PI / 2);
+            } else {
+                // Thick Cylinder (Volume)
+                geometry = new THREE.CylinderGeometry(2, 2, 20, 16, 1, true);
+                geometry.rotateZ(Math.PI / 2);
+            }
+
+            guideMesh = new THREE.Group();
+            const mesh = new THREE.Mesh(geometry, material);
+            const wire = new THREE.Mesh(geometry, wireframeMat);
+            guideMesh.add(mesh);
+            guideMesh.add(wire);
+            
+            scene.add(guideMesh);
+        }
+
+        // --- Logic ---
+
+        function distributeParticles() {
+            const positions = particleGeo.attributes.position.array;
+            const range = 10; // -10 to 10 on X axis
+
+            for(let i=0; i<particleCount; i++) {
+                // Low-discrepancy placement keeps every density setting visually even.
+                positions[i*3] = -range + 2 * range * seededUnit(i, 0);
+
+                if (currentMode === 'line') {
+                    // Y and Z constrained tightly
+                    const angle = seededUnit(i, 1) * Math.PI * 2;
+                    const r = seededUnit(i, 2) * CONFIG.line.spread * 0.5;
+                    positions[i*3+1] = Math.cos(angle) * r;
+                    positions[i*3+2] = Math.sin(angle) * r;
+                } 
+                else if (currentMode === 'surface') {
+                    // Y is 0 (flat), Z is spread out
+                    positions[i*3+1] = (seededUnit(i, 3) - 0.5) * 0.1; // tiny jitter
+                    positions[i*3+2] = (seededUnit(i, 4) - 0.5) * CONFIG.surface.spread;
+                } 
+                else if (currentMode === 'volume') {
+                    // Y and Z spread in a circle (cylinder volume)
+                    const angle = seededUnit(i, 5) * Math.PI * 2;
+                    const r = Math.sqrt(seededUnit(i, 6)) * CONFIG.volume.spread; // sqrt for uniform distribution
+                    positions[i*3+1] = Math.cos(angle) * r;
+                    positions[i*3+2] = Math.sin(angle) * r;
+                }
+            }
+            particleGeo.attributes.position.needsUpdate = true;
+        }
+
+        function seededUnit(index, salt) {
+            const value = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+            return value - Math.floor(value);
+        }
+
+        function updatePhysics() {
+            const dVal = document.getElementById('slider-density').value;
+            const vVal = document.getElementById('slider-velocity').value;
+
+            // Update UI Labels
+            document.getElementById('val-density').innerText = dVal + "%";
+            document.getElementById('val-velocity').innerText = vVal;
+
+            // Update Logic
+            // Map 1-100 slider to 0-5000 particles
+            activeCount = Math.floor((dVal / 100) * particleCount);
+            particleGeo.setDrawRange(0, activeCount);
+
+            // Speed
+            speed = parseFloat(vVal) * 0.1;
+        }
+
+        // Exposed to window for HTML buttons
+        window.switchMode = function(mode, button) {
+            currentMode = mode;
+            
+            // Update UI Buttons
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+
+            // Update Text
+            const data = CONFIG[mode];
+            document.getElementById('title-text').innerText = data.title;
+            document.getElementById('desc-text').innerText = data.desc;
+            document.getElementById('eq-text').innerHTML = data.eq;
+            document.getElementById('title-text').style.color = '#' + data.color.toString(16);
+
+            // Update 3D Scene
+            particleMaterial.color.setHex(data.color);
+            createGuideMesh();
+            distributeParticles();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Move Particles
+            const positions = particleGeo.attributes.position.array;
+            const range = 10;
+
+            for(let i=0; i<activeCount; i++) {
+                // Move X
+                positions[i*3] += speed;
+
+                // Preserve overshoot on wraparound so particles do not pile up at the entry plane.
+                while(positions[i*3] > range) {
+                    positions[i*3] -= 2 * range;
+                }
+            }
+            particleGeo.attributes.position.needsUpdate = true;
+
+            // Gentle Camera Float
+            const time = Date.now() * 0.0005;
+            // camera.position.y = 3 + Math.sin(time) * 0.2;
+            // camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const { width, height } = getCanvasSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function getCanvasSize() {
+            const container = document.getElementById('canvas-container');
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+
+        // Start
+        init();
+        updatePhysics(); // Initialize slider values
+    </script>
+<script defer data-offline-bundle src="ch3_1_lorentz_force_c2.0.offline.js"></script>
+
+
+
+</body>
+</html>

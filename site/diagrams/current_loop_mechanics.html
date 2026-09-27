@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Current Loop Mechanics</title>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --bg-color: #0b1016;
+            --panel-bg: #16212e;
+            --text-color: #e0e0e0;
+            --accent-color: #3498db;
+        }
+
+        body { 
+            margin: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR UI --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--panel-bg);
+            border-right: 1px solid #2c3e50;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        h2 { 
+            margin: 0 0 10px 0; 
+            font-size: 1rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: #fff; 
+            border-bottom: 1px solid #2c3e50; 
+            padding-bottom: 10px; 
+        }
+
+        .control-group { margin-bottom: 10px; }
+        label { font-size: 0.8rem; color: #b0c4de; display: block; margin-bottom: 4px; }
+        .val-display { float: right; font-family: monospace; color: #fff; }
+
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent-color); margin: 5px 0; }
+
+        button {
+            width: 100%; padding: 8px; border: 1px solid var(--accent-color); 
+            background: rgba(52, 152, 219, 0.1); color: var(--accent-color); 
+            border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.8rem;
+            margin-bottom: 8px; transition: all 0.2s;
+        }
+        button:hover { background: var(--accent-color); color: white; }
+        button.active { background: var(--accent-color); color: white; }
+
+        .stats { 
+            background: rgba(0,0,0,0.2); 
+            padding: 10px; 
+            border-radius: 4px; 
+            font-size: 0.8rem; 
+            border: 1px solid #2c3e50;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .alert { color: #e74c3c; font-weight: bold; }
+
+        .legend { font-size: 0.75rem; color: #888; line-height: 1.6; margin-top: auto; }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+        /* --- CANVAS AREA --- */
+        #canvas-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+        }
+
+        /* Labels for RHR View */
+        .vector-label {
+            position: absolute; 
+            font-weight: 600; 
+            font-size: 11px; /* Smaller labels */
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            pointer-events: none; 
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            padding: 2px 5px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 3px;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+<!-- Left Sidebar -->
+<div id="sidebar">
+    <h2>Controls</h2>
+
+    <div class="control-group">
+        <label>Rotation <span id="angleDisplay" class="val-display">30°</span></label>
+        <input type="range" id="angleSlider" min="0" max="360" value="30">
+    </div>
+
+    <div class="control-group">
+        <button id="btn-field" onclick="toggleFieldMode()">Field: Uniform</button>
+        <button id="btn-rhr" onclick="toggleRHR()">Inspect: Right-Hand Rule</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-row">
+            <span>Torque Factor:</span>
+            <span id="val-torque" style="color: #2ecc71;">0.50</span>
+        </div>
+        <div class="stat-row">
+            <span>Net Force:</span>
+            <span id="val-force">0.00</span>
+        </div>
+        <div id="force-msg" style="margin-top: 5px; font-size: 0.7rem; color: #888; font-style: italic;">
+            Forces cancel exactly.
+        </div>
+    </div>
+
+    <div class="legend">
+        <div><span class="dot" style="background:#f1c40f"></span>Current (I)</div>
+        <div><span class="dot" style="background:#3498db"></span>Magnetic Field (B)</div>
+        <div><span class="dot" style="background:#e74c3c"></span>Lorentz Force (F)</div>
+        <div><span class="dot" style="background:#9b59b6"></span>Net Force</div>
+    </div>
+</div>
+
+<!-- 3D Canvas Area -->
+<div id="canvas-wrapper">
+    <!-- Floating Labels -->
+    <div id="lbl-v" class="vector-label" style="color:#f1c40f; display:none">v (Current)</div>
+    <div id="lbl-b" class="vector-label" style="color:#3498db; display:none">B (Field)</div>
+    <div id="lbl-f" class="vector-label" style="color:#e74c3c; display:none">F (Force)</div>
+</div>
+
+<script>
+    // --- CONFIGURATION ---
+    const CONFIG = {
+        isUniform: true,
+        showRHR: false,
+        coilSize: 2.5,
+        colors: {
+            field: 0x3498db,
+            current: 0xf1c40f,
+            force: 0xe74c3c,
+            netForce: 0x9b59b6
+        }
+    };
+
+    const container = document.getElementById('canvas-wrapper');
+
+    // --- THREE.JS SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b1016);
+    scene.fog = new THREE.Fog(0x0b1016, 10, 30);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(6, 5, 8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 10, 5);
+    scene.add(dirLight);
+
+    // --- OBJECTS ---
+    const mainGroup = new THREE.Group();
+    scene.add(mainGroup);
+
+    const coilGroup = new THREE.Group();
+    mainGroup.add(coilGroup);
+
+    // Physical Wire
+    const half = CONFIG.coilSize/2;
+    const wirePathPoints = [
+        new THREE.Vector3(half, half, 0),
+        new THREE.Vector3(-half, half, 0),
+        new THREE.Vector3(-half, -half, 0),
+        new THREE.Vector3(half, -half, 0),
+        new THREE.Vector3(half, half, 0)
+    ];
+    const wirePath = new THREE.CurvePath();
+    wirePath.add(new THREE.LineCurve3(wirePathPoints[0], wirePathPoints[1]));
+    wirePath.add(new THREE.LineCurve3(wirePathPoints[1], wirePathPoints[2]));
+    wirePath.add(new THREE.LineCurve3(wirePathPoints[2], wirePathPoints[3]));
+    wirePath.add(new THREE.LineCurve3(wirePathPoints[3], wirePathPoints[0]));
+
+    const tubeGeo = new THREE.TubeGeometry(wirePath, 64, 0.04, 8, true);
+    const tubeMat = new THREE.MeshPhongMaterial({ color: 0x444444, transparent: true, opacity: 0.9 });
+    const wireMesh = new THREE.Mesh(tubeGeo, tubeMat);
+    coilGroup.add(wireMesh);
+
+    // Flow Particles
+    const flowParticles = [];
+    const particlesGroup = new THREE.Group();
+    coilGroup.add(particlesGroup);
+    for(let i=0; i<24; i++) {
+        const p = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 8, 8),
+            new THREE.MeshBasicMaterial({ color: CONFIG.colors.current })
+        );
+        p.userData = { t: i / 24 };
+        particlesGroup.add(p);
+        flowParticles.push(p);
+    }
+
+    // Field & Forces Groups
+    const fieldGroup = new THREE.Group();
+    mainGroup.add(fieldGroup);
+
+    const forceArrows = [];
+    for(let i=0; i<4; i++) {
+        const arrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 1, CONFIG.colors.force, 0.3, 0.2);
+        mainGroup.add(arrow);
+        forceArrows.push(arrow);
+    }
+
+    const netForceArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 0, CONFIG.colors.netForce, 0.4, 0.3);
+    mainGroup.add(netForceArrow);
+
+    // RHR Inspector Group
+    const rhrGroup = new THREE.Group();
+    mainGroup.add(rhrGroup);
+    
+    // Create arrow helpers for RHR
+    const rhrV = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, CONFIG.colors.current, 0.3, 0.2);
+    const rhrB = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, CONFIG.colors.field, 0.3, 0.2);
+    const rhrF = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, CONFIG.colors.force, 0.3, 0.2);
+    
+    // Thicken lines visually by adding cylinders? No, standard ArrowHelper with scale logic is cleaner for physics acc.
+    rhrGroup.add(rhrV); rhrGroup.add(rhrB); rhrGroup.add(rhrF);
+    rhrGroup.visible = false;
+
+    // --- LOGIC ---
+
+    function buildField() {
+        while(fieldGroup.children.length > 0) fieldGroup.remove(fieldGroup.children[0]);
+        const range = 5; 
+        for(let x = -range; x <= range; x+=1.5) {
+            for(let y = -3; y <= 3; y+=1.5) {
+                for(let z = -3; z <= 3; z+=1.5) {
+                    const pos = new THREE.Vector3(x, y, z);
+                    let dir, len;
+                    if(CONFIG.isUniform) {
+                        dir = new THREE.Vector3(1, 0, 0);
+                        len = 0.8;
+                    } else {
+                        const source = new THREE.Vector3(-10, 0, 0);
+                        const diff = new THREE.Vector3().subVectors(pos, source);
+                        const dist = diff.length();
+                        dir = diff.normalize();
+                        len = 30 / (dist * dist); 
+                        if(len > 1.2) len = 1.2;
+                    }
+                    if(Math.abs(x) < 5) {
+                        const arrow = new THREE.ArrowHelper(dir, pos, len, CONFIG.colors.field, 0.2*len, 0.1*len);
+                        arrow.line.material.opacity = 0.3;
+                        arrow.line.material.transparent = true;
+                        fieldGroup.add(arrow);
+                    }
+                }
+            }
+        }
+    }
+
+    function getBFieldAt(pos) {
+        if(CONFIG.isUniform) return new THREE.Vector3(1, 0, 0);
+        const source = new THREE.Vector3(-10, 0, 0);
+        const r = new THREE.Vector3().subVectors(pos, source);
+        const dist = r.length();
+        const strength = 60 / (dist * dist); // Strength scaling
+        return r.normalize().multiplyScalar(strength);
+    }
+
+    function update() {
+        const thetaDeg = document.getElementById('angleSlider').value;
+        const thetaRad = THREE.MathUtils.degToRad(thetaDeg);
+        document.getElementById('angleDisplay').innerText = thetaDeg + "°";
+        coilGroup.rotation.y = thetaRad;
+
+        // Animate particles
+        const time = Date.now() * 0.001;
+        flowParticles.forEach((p, i) => {
+            let t = (p.userData.t + time * 0.5) % 1; 
+            p.position.copy(wirePath.getPointAt(t));
+        });
+
+        // Calculations
+        const localCenters = [
+            new THREE.Vector3(half, 0, 0), new THREE.Vector3(0, half, 0),
+            new THREE.Vector3(-half, 0, 0), new THREE.Vector3(0, -half, 0)
+        ];
+        // Current Flow (CCW): Right(Up), Top(Left), Left(Down), Bottom(Right)
+        const localCurrents = [
+            new THREE.Vector3(0, 1, 0), new THREE.Vector3(-1, 0, 0),
+            new THREE.Vector3(0, -1, 0), new THREE.Vector3(1, 0, 0)
+        ];
+
+        let netForce = new THREE.Vector3();
+
+        for(let i=0; i<4; i++) {
+            const worldPos = localCenters[i].clone().applyMatrix4(coilGroup.matrixWorld);
+            const worldCurrent = localCurrents[i].clone().transformDirection(coilGroup.matrixWorld).normalize();
+            const B = getBFieldAt(worldPos);
+            const F = new THREE.Vector3().crossVectors(worldCurrent, B);
+            
+            // Global Force Arrows
+            forceArrows[i].position.copy(worldPos);
+            
+            if(!CONFIG.showRHR) {
+                forceArrows[i].visible = true;
+                const mag = F.length();
+                if(mag > 0.01) {
+                    forceArrows[i].setDirection(F.clone().normalize());
+                    forceArrows[i].setLength(mag * 1.5, 0.3, 0.2);
+                } else {
+                    forceArrows[i].visible = false;
+                }
+            } else {
+                forceArrows[i].visible = false;
+            }
+
+            netForce.add(F);
+
+            // RHR Inspector Update (Focus on Index 0 - The Right vertical wire)
+            if(i === 0 && CONFIG.showRHR) {
+                rhrGroup.position.copy(worldPos);
+                
+                // V (Current) - Fixed visual length usually, but direction matters
+                rhrV.setDirection(worldCurrent);
+                rhrV.setLength(1.5, 0.4, 0.3);
+
+                // B (Field) - Dynamic Length based on strength
+                const magB = B.length();
+                const dirB = B.clone().normalize();
+                rhrB.setDirection(dirB);
+                // Scale for visibility: Uniform B has len 1. In non-uniform, it varies.
+                // We clamp min/max for usability
+                let visLenB = magB * 1.5;
+                if(visLenB < 0.5) visLenB = 0.5;
+                rhrB.setLength(visLenB, 0.2*visLenB, 0.1*visLenB);
+
+                // F (Force) - Dynamic Length
+                const magF = F.length();
+                const dirF = F.clone().normalize();
+                if(magF > 0.001) {
+                    rhrF.visible = true;
+                    rhrF.setDirection(dirF);
+                    let visLenF = magF * 2.0; 
+                    rhrF.setLength(visLenF, 0.3, 0.2);
+                    
+                    // Update Labels based on vector tips
+                    const tipV = worldPos.clone().add(worldCurrent.clone().multiplyScalar(1.5));
+                    const tipB = worldPos.clone().add(dirB.clone().multiplyScalar(visLenB));
+                    const tipF = worldPos.clone().add(dirF.clone().multiplyScalar(visLenF));
+
+                    updateLabel(tipV, 'lbl-v', `v`);
+                    updateLabel(tipB, 'lbl-b', `B (${magB.toFixed(2)})`);
+                    updateLabel(tipF, 'lbl-f', `F (${magF.toFixed(2)})`);
+                } else {
+                    rhrF.visible = false;
+                    document.getElementById('lbl-f').style.display = 'none';
+                }
+            }
+        }
+
+        // Net Force UI
+        const netMag = netForce.length();
+        if(netMag > 0.05 && !CONFIG.showRHR) {
+            netForceArrow.visible = true;
+            netForceArrow.position.copy(coilGroup.position);
+            netForceArrow.setDirection(netForce.normalize());
+            netForceArrow.setLength(netMag * 2.5, 0.4, 0.3);
+            
+            document.getElementById('val-force').innerText = netMag.toFixed(2);
+            document.getElementById('val-force').classList.add('alert');
+            document.getElementById('force-msg').innerText = "Non-uniform field pulls loop!";
+            document.getElementById('force-msg').style.color = "#e74c3c";
+        } else {
+            netForceArrow.visible = false;
+            document.getElementById('val-force').innerText = "0.00";
+            document.getElementById('val-force').classList.remove('alert');
+            document.getElementById('force-msg').innerText = "Forces cancel exactly.";
+            document.getElementById('force-msg').style.color = "#888";
+        }
+
+        // Torque UI
+        document.getElementById('val-torque').innerText = Math.abs(Math.sin(thetaRad)).toFixed(2);
+    }
+
+    function updateLabel(pos3D, id, text) {
+        const el = document.getElementById(id);
+        el.style.display = 'block';
+        el.innerText = text;
+        const tempV = pos3D.clone();
+        tempV.project(camera);
+        
+        // Map to canvas container coordinates
+        const x = (tempV.x * .5 + .5) * container.clientWidth;
+        const y = (-(tempV.y * .5) + .5) * container.clientHeight;
+
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+    }
+
+    // --- EVENTS ---
+    function toggleFieldMode() {
+        CONFIG.isUniform = !CONFIG.isUniform;
+        const btn = document.getElementById('btn-field');
+        btn.innerText = CONFIG.isUniform ? "Field: Uniform" : "Field: Non-Uniform";
+        btn.classList.toggle('active', !CONFIG.isUniform);
+        buildField();
+    }
+
+    function toggleRHR() {
+        CONFIG.showRHR = !CONFIG.showRHR;
+        const btn = document.getElementById('btn-rhr');
+        btn.classList.toggle('active', CONFIG.showRHR);
+        
+        rhrGroup.visible = CONFIG.showRHR;
+        fieldGroup.visible = !CONFIG.showRHR;
+        netForceArrow.visible = !CONFIG.showRHR && (new THREE.Vector3().length() > 0.05); // Re-eval in loop
+
+        if(!CONFIG.showRHR) {
+            ['lbl-v','lbl-b','lbl-f'].forEach(id => document.getElementById(id).style.display = 'none');
+            // Reset camera slightly if needed, or leave it
+        }
+    }
+
+    window.addEventListener('resize', () => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        update();
+        renderer.render(scene, camera);
+    }
+
+    buildField();
+    animate();
+
+</script>
+</body>
+</html>

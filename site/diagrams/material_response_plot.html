@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Material Response</title>
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$']] },
+          svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Controls */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            background: rgba(28, 39, 52, 0.9);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #2c3e50;
+            z-index: 10;
+        }
+
+        button {
+            background-color: transparent;
+            color: #b0c4de;
+            border: 1px solid transparent;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        button:hover { background-color: rgba(255,255,255,0.1); color: white; }
+        
+        button.active {
+            background-color: #3498db;
+            color: white;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.4);
+        }
+
+        /* Slider Container */
+        .slider-container {
+            width: 80%;
+            max-width: 600px;
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        input[type=range] {
+            width: 100%;
+            accent-color: #f1c40f;
+            cursor: pointer;
+        }
+
+        /* Canvas Layout */
+        .canvas-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            flex-grow: 1;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        canvas {
+            background: #080c10;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border: 1px solid #2c3e50;
+        }
+
+        .legend {
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #888;
+            display: flex;
+            gap: 20px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="controls">
+        <button onclick="setMaterial('paramagnetic')" id="btn-paramagnetic" class="active">Paramagnetic ($\chi_m > 0$)</button>
+        <button onclick="setMaterial('vacuum')" id="btn-vacuum">Vacuum ($\chi_m = 0$)</button>
+        <button onclick="setMaterial('diamagnetic')" id="btn-diamagnetic">Diamagnetic ($\chi_m < 0$)</button>
+    </div>
+
+    <div class="slider-container">
+        <label for="hInput" style="margin-bottom: 8px; font-size: 0.9rem; color: #f1c40f;">Applied Field strength ($H$)</label>
+        <input type="range" id="hInput" min="-100" max="100" value="50" oninput="updateH(this.value)">
+    </div>
+
+    <div class="canvas-wrapper">
+        <!-- Left: Graph M vs H -->
+        <div style="position: relative;">
+            <div style="text-align: center; margin-bottom: 5px; font-size: 0.9rem; color:#8899a6;">Response Graph</div>
+            <canvas id="graphCanvas" width="400" height="350"></canvas>
+        </div>
+        
+        <!-- Right: Vector Visualizer -->
+        <div style="position: relative;">
+            <div style="text-align: center; margin-bottom: 5px; font-size: 0.9rem; color:#8899a6;">Vector Alignment</div>
+            <canvas id="vectorCanvas" width="300" height="350"></canvas>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background: #f1c40f;"></div> Applied Field $\mathbf{H}$</div>
+        <div class="legend-item"><div class="dot" style="background: #3498db;"></div> Magnetization $\mathbf{M}$</div>
+        <div class="legend-item"><div class="dot" style="background: #e74c3c;"></div> Total Field $\mathbf{B}$</div>
+    </div>
+
+    <script>
+        const graphCanvas = document.getElementById('graphCanvas');
+        const gCtx = graphCanvas.getContext('2d');
+        const vectorCanvas = document.getElementById('vectorCanvas');
+        const vCtx = vectorCanvas.getContext('2d');
+
+        // State
+        let chi = 0.5; // Susceptibility
+        let H_val = 50; // Current applied field (-100 to 100)
+        
+        function setMaterial(type) {
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + type).classList.add('active');
+
+            if(type === 'paramagnetic') chi = 0.5;
+            else if(type === 'vacuum') chi = 0;
+            else if(type === 'diamagnetic') chi = -0.3;
+            
+            draw();
+        }
+
+        function updateH(val) {
+            H_val = parseInt(val);
+            draw();
+        }
+
+        // --- DRAWING FUNCTIONS ---
+
+        function drawArrow(ctx, x, y, len, color, label) {
+            if(Math.abs(len) < 2) return; // Don't draw if too small
+
+            const endX = x + len;
+            const endY = y;
+            const dir = Math.sign(len);
+            const headSize = 8;
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Arrowhead
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - dir * headSize, endY - headSize/2);
+            ctx.lineTo(endX - dir * headSize, endY + headSize/2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        function drawGraph() {
+            const w = graphCanvas.width;
+            const h = graphCanvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            gCtx.clearRect(0, 0, w, h);
+
+            // Axes
+            gCtx.strokeStyle = '#444';
+            gCtx.lineWidth = 1;
+            gCtx.beginPath();
+            gCtx.moveTo(0, cy); gCtx.lineTo(w, cy); // X-axis (H)
+            gCtx.moveTo(cx, 0); gCtx.lineTo(cx, h); // Y-axis (M)
+            gCtx.stroke();
+
+            // Labels
+            gCtx.fillStyle = '#888';
+            gCtx.font = '12px Inter';
+            gCtx.fillText('+H', w - 20, cy + 15);
+            gCtx.fillText('-H', 5, cy + 15);
+            gCtx.fillText('+M', cx + 10, 15);
+            gCtx.fillText('-M', cx + 10, h - 5);
+
+            // Slope Line (M = chi * H)
+            gCtx.strokeStyle = '#3498db'; // M color
+            gCtx.lineWidth = 2;
+            gCtx.setLineDash([5, 5]);
+            
+            gCtx.beginPath();
+            // Calculate two points: H = -100 and H = 100
+            // Mapping: 1 unit H = 1.5 pixels
+            const scale = 1.5;
+            
+            const x1 = -100; 
+            const y1 = x1 * chi;
+            const x2 = 100;
+            const y2 = x2 * chi;
+
+            gCtx.moveTo(cx + x1 * scale, cy - y1 * scale); // Canvas Y is inverted
+            gCtx.lineTo(cx + x2 * scale, cy - y2 * scale);
+            gCtx.stroke();
+            gCtx.setLineDash([]);
+
+            // Current Point
+            const currM = H_val * chi;
+            const px = cx + H_val * scale;
+            const py = cy - currM * scale;
+
+            gCtx.fillStyle = '#f1c40f';
+            gCtx.beginPath();
+            gCtx.arc(px, py, 6, 0, Math.PI*2);
+            gCtx.fill();
+            
+            // Guide lines to axes
+            gCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+            gCtx.lineWidth = 1;
+            gCtx.beginPath();
+            gCtx.moveTo(px, py); gCtx.lineTo(px, cy);
+            gCtx.moveTo(px, py); gCtx.lineTo(cx, py);
+            gCtx.stroke();
+        }
+
+        function drawVectors() {
+            const w = vectorCanvas.width;
+            const h = vectorCanvas.height;
+            const cx = w / 2;
+            
+            vCtx.clearRect(0, 0, w, h);
+
+            // Calculate Vector Lengths
+            // H is input
+            // M = chi * H
+            // B = H + M (ignoring mu0 constant for visual simplicity, proportionality)
+            
+            const scale = 1.2;
+            const lenH = H_val * scale;
+            const lenM = (H_val * chi) * scale;
+            const lenB = (lenH + lenM); // Total
+
+            // Draw H (Applied)
+            const yH = h * 0.25;
+            drawArrow(vCtx, cx - lenH/2, yH, lenH, '#f1c40f', 'H');
+            vCtx.fillStyle = '#f1c40f'; vCtx.textAlign = "center"; vCtx.font = "bold 14px Inter";
+            vCtx.fillText("H (Auxiliary)", cx, yH - 15);
+
+            // Draw M (Response)
+            const yM = h * 0.5;
+            drawArrow(vCtx, cx - lenM/2, yM, lenM, '#3498db', 'M');
+            vCtx.fillStyle = '#3498db';
+            vCtx.fillText("M (Magnetization)", cx, yM - 15);
+            
+            // Draw B (Total)
+            const yB = h * 0.75;
+            drawArrow(vCtx, cx - lenB/2, yB, lenB, '#e74c3c', 'B');
+            vCtx.fillStyle = '#e74c3c';
+            vCtx.fillText("B (Total Field)", cx, yB - 15);
+            
+            // Add equation text helper
+            vCtx.fillStyle = '#888';
+            vCtx.font = "italic 12px Inter";
+            if (chi > 0) vCtx.fillText("M enhances H", cx, yM + 25);
+            else if (chi < 0) vCtx.fillText("M opposes H", cx, yM + 25);
+            else vCtx.fillText("No response", cx, yM + 25);
+        }
+
+        function draw() {
+            drawGraph();
+            drawVectors();
+        }
+
+        // Init
+        draw();
+
+    </script>
+</body>
+</html>

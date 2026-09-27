@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material to Atom Zoom</title>
+    <style>
+        :root {
+            --panel: rgba(20, 24, 31, 0.96);
+            --line: #384252;
+            --text: #eef2f7;
+            --muted: #aeb8c8;
+            --accent: #38bdf8;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            color: var(--text);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 286px minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+            background: #0f172a;
+        }
+
+        #scene-container {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        canvas { display: block; }
+        
+        #ui-container {
+            z-index: 10;
+            padding: 14px;
+            color: var(--text);
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+            overflow-y: auto;
+            user-select: none;
+        }
+
+        h2 {
+            margin: 0 0 9px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+            font-size: 1rem;
+            color: var(--accent);
+            line-height: 1.15;
+        }
+
+        p {
+            margin: 0 0 13px;
+            font-size: 0.8rem;
+            color: var(--muted);
+            line-height: 1.38;
+        }
+
+        .slider-container {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        #caption {
+            position: absolute;
+            left: 20px;
+            right: 20px;
+            bottom: 16px;
+            padding: 9px 12px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.48);
+            color: rgba(238, 242, 247, 0.82);
+            font-size: 0.82rem;
+            line-height: 1.35;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Floating labels in 3D space */
+        .annotation {
+            position: absolute;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000;
+            pointer-events: none;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.2s;
+        }
+        
+        .e-label {
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid #38bdf8;
+            padding: 2px 6px;
+            border-radius: 50%;
+            color: #38bdf8;
+        }
+
+        @media (max-width: 720px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #ui-container {
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            #caption {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                font-size: 0.74rem;
+            }
+        }
+    </style>
+    <!-- Load Three.js -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="app">
+        <aside id="ui-container">
+            <h2>Material Structure</h2>
+            <p>Use the scale slider to move from a macroscopic block to microscopic current loops inside matter.</p>
+            
+            <div class="slider-container">
+                <input type="range" id="zoomSlider" min="0" max="100" value="0">
+                <div class="labels">
+                    <span>Macroscopic</span>
+                    <span>Microscopic</span>
+                </div>
+            </div>
+        </aside>
+
+        <main id="scene-container">
+            <div id="caption">Macroscopic view: the material is treated as one object instead of tracking each atom.</div>
+        </main>
+    </div>
+
+    <!-- Annotations -->
+    <div id="label-m" class="annotation" style="color: #facc15;">m (Dipole)</div>
+    <div id="label-electron" class="annotation e-label">e-</div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const container = document.getElementById('scene-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.Fog(0x0f172a, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        // Initial Camera Position (Macroscopic View)
+        const startZ = 40;
+        const endZ = 6;
+        camera.position.set(0, 0, startZ);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+
+        // --- 1. MACROSCOPIC MATERIAL (The Block) ---
+        const materialGroup = new THREE.Group();
+        scene.add(materialGroup);
+
+        const blockGeo = new THREE.BoxGeometry(16, 10, 8);
+        const blockMat = new THREE.MeshPhongMaterial({ 
+            color: 0x3498db, 
+            transparent: true, 
+            opacity: 0.8, // Starts opaque
+            shininess: 100
+        });
+        const block = new THREE.Mesh(blockGeo, blockMat);
+        materialGroup.add(block);
+
+        const edges = new THREE.EdgesGeometry(blockGeo);
+        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.5 }));
+        materialGroup.add(line);
+
+
+        // --- 2. ATOMIC CLOUD (Background Atoms) ---
+        const atomsGroup = new THREE.Group();
+        scene.add(atomsGroup);
+        atomsGroup.visible = false; // Hidden at start
+
+        // Reusable Geometries for background atoms to save performance
+        const bgNucGeo = new THREE.SphereGeometry(0.25, 8, 8);
+        const bgNucMat = new THREE.MeshBasicMaterial({ color: 0xe74c3c });
+        const bgOrbitGeo = new THREE.TorusGeometry(1.2, 0.02, 8, 32);
+        const bgOrbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true });
+
+        // Create 50 random atoms
+        for(let i=0; i<60; i++) {
+            const atom = new THREE.Group();
+            
+            // Nucleus
+            const nuc = new THREE.Mesh(bgNucGeo, bgNucMat);
+            atom.add(nuc);
+            
+            // Orbit
+            const orb = new THREE.Mesh(bgOrbitGeo, bgOrbitMat);
+            orb.rotation.x = Math.PI/2;
+            atom.add(orb);
+
+            // Dipole Arrow (Vector m)
+            // Arrow pointing DOWN relative to the orbit (assuming current flow)
+            const dir = new THREE.Vector3(0, -1, 0);
+            const origin = new THREE.Vector3(0, 0, 0);
+            const arrow = new THREE.ArrowHelper(dir, origin, 2, 0xfacc15, 0.5, 0.3);
+            atom.add(arrow);
+
+            // Random Position inside the block area
+            atom.position.set(
+                (Math.random() - 0.5) * 14,
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 6 - 5 // Push them slightly back so we don't clip instantly
+            );
+
+            // Random Orientation (Crucial for "Different Directions")
+            atom.rotation.set(
+                Math.random() * Math.PI * 2,
+                Math.random() * Math.PI * 2,
+                Math.random() * Math.PI * 2
+            );
+
+            atomsGroup.add(atom);
+        }
+
+
+        // --- 3. HERO ATOM (Detailed, Foreground) ---
+        const heroAtom = new THREE.Group();
+        // Place it slightly offset so it centers nicely at zoom end
+        heroAtom.position.set(0, -0.5, 0); 
+        scene.add(heroAtom);
+        heroAtom.visible = false;
+
+        // Hero Nucleus
+        const hNucGeo = new THREE.SphereGeometry(0.4, 32, 32);
+        const hNucMat = new THREE.MeshStandardMaterial({ color: 0xe74c3c, emissive: 0x7b241c });
+        const hNuc = new THREE.Mesh(hNucGeo, hNucMat);
+        heroAtom.add(hNuc);
+
+        // Hero Orbit
+        const hOrbitRadius = 2.2;
+        const hOrbitGeo = new THREE.TorusGeometry(hOrbitRadius, 0.03, 16, 100);
+        const hOrbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.4, transparent: true });
+        const hOrbit = new THREE.Mesh(hOrbitGeo, hOrbitMat);
+        hOrbit.rotation.x = Math.PI / 2;
+        heroAtom.add(hOrbit);
+
+        // Hero Dipole Arrow
+        const hArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0,0,0), 3.5, 0xfacc15, 0.6, 0.4);
+        heroAtom.add(hArrow);
+
+        // Hero Electron Pivot
+        const electronPivot = new THREE.Group();
+        heroAtom.add(electronPivot);
+
+        // Hero Electron
+        const electronGeo = new THREE.SphereGeometry(0.2, 16, 16);
+        const electronMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, wireframe: true });
+        const electron = new THREE.Mesh(electronGeo, electronMat);
+        electron.position.set(hOrbitRadius, 0, 0);
+        electronPivot.add(electron);
+
+
+        // --- ANIMATION STATE ---
+        let time = 0;
+        const slider = document.getElementById('zoomSlider');
+        const labelM = document.getElementById('label-m');
+        const labelElec = document.getElementById('label-electron');
+
+        function updateZoom() {
+            const zoomVal = parseInt(slider.value) / 100; // 0 to 1
+
+            // 1. Camera Movement
+            camera.position.z = startZ - (zoomVal * (startZ - endZ));
+
+            // 2. Opacity Logic
+            // Block fades OUT from 0.0 to 0.4
+            // Atoms fade IN from 0.3 to 0.8
+            
+            let blockOp = 1;
+            if (zoomVal > 0) blockOp = 1 - (zoomVal * 2.5); // Fades out quickly
+            if (blockOp < 0) blockOp = 0;
+            
+            block.material.opacity = 0.8 * blockOp;
+            line.material.opacity = 0.5 * blockOp;
+
+            // Atoms visibility
+            let atomOp = 0;
+            if (zoomVal > 0.3) atomOp = (zoomVal - 0.3) * 1.4;
+            if (atomOp > 1) atomOp = 1;
+
+            if (atomOp > 0) {
+                atomsGroup.visible = true;
+                heroAtom.visible = true;
+                // Hacky way to set opacity for group children without traversing every frame
+                // Ideally we'd use a shared material, but for this demo:
+                atomsGroup.children.forEach(a => {
+                    a.children[1].material.opacity = 0.3 * atomOp; // Orbit
+                });
+            } else {
+                atomsGroup.visible = false;
+                heroAtom.visible = false;
+            }
+
+            // 3. Labels visibility
+            const showLabels = zoomVal > 0.85;
+            labelM.style.opacity = showLabels ? 1 : 0;
+            labelElec.style.opacity = showLabels ? 1 : 0;
+            document.getElementById('caption').textContent = zoomVal < 0.35
+                ? 'Macroscopic view: the material is treated as one object instead of tracking each atom.'
+                : zoomVal < 0.8
+                    ? 'Transition: zooming in reveals the atomic current loops inside the material.'
+                    : 'Microscopic view: each atomic current loop behaves like a tiny magnetic dipole.';
+        }
+
+        function updateLabels() {
+            if (parseFloat(labelM.style.opacity) < 0.1) return;
+
+            // Dipole Label (Tip of arrow)
+            const mPos = new THREE.Vector3(0, -3.5, 0);
+            mPos.applyMatrix4(heroAtom.matrixWorld); // In case we rotate hero
+            mPos.project(camera);
+            const rect = container.getBoundingClientRect();
+            const x1 = rect.left + (mPos.x * .5 + .5) * rect.width;
+            const y1 = rect.top + (-(mPos.y * .5) + .5) * rect.height;
+            labelM.style.transform = `translate(-50%, -50%) translate(${x1}px, ${y1}px)`;
+
+            // Electron Label
+            const ePos = new THREE.Vector3();
+            electron.getWorldPosition(ePos);
+            ePos.project(camera);
+            const x2 = rect.left + (ePos.x * .5 + .5) * rect.width;
+            const y2 = rect.top + (-(ePos.y * .5) + .5) * rect.height;
+            labelElec.style.transform = `translate(-50%, -50%) translate(${x2}px, ${y2 - 30}px)`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.02;
+
+            // Hero Animation
+            electronPivot.rotation.y = time; // Orbit
+            electron.rotation.y += 0.1; // Spin
+            electron.rotation.z += 0.05;
+
+            // Idle Block Rotation (Slow)
+            materialGroup.rotation.y = Math.sin(time * 0.05) * 0.05;
+            materialGroup.rotation.x = Math.cos(time * 0.05) * 0.05;
+            
+            // Sync atoms rotation with block so they feel "inside" it
+            atomsGroup.rotation.y = materialGroup.rotation.y;
+            atomsGroup.rotation.x = materialGroup.rotation.x;
+            heroAtom.rotation.y = materialGroup.rotation.y; // Hero rotates slightly too
+            heroAtom.rotation.x = materialGroup.rotation.x;
+
+            updateZoom();
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        function resize() {
+            const width = Math.max(container.clientWidth, 1);
+            const height = Math.max(container.clientHeight, 1);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+    </script>
+</body>
+</html>

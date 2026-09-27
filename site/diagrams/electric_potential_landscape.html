@@ -1,0 +1,521 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Potential Lab</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #121a23; font-family: 'Inter', sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+        
+        /* HUD / Controls */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 260px;
+            background: rgba(28, 39, 52, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2c3e50;
+            color: #e0e0e0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        h2 { margin: 0 0 15px 0; font-size: 1.1rem; color: #3498db; border-bottom: 1px solid #2c3e50; padding-bottom: 10px; }
+        
+        .control-group { margin-bottom: 15px; }
+        .label { font-size: 0.85rem; color: #b0c4de; margin-bottom: 8px; display: block; font-weight: 600; }
+
+        /* Custom Select */
+        select {
+            width: 100%;
+            background: #121a23;
+            color: white;
+            border: 1px solid #3498db;
+            padding: 8px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Toggles */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .toggle-label { font-size: 0.9rem; cursor: pointer; }
+        
+        input[type="checkbox"] { accent-color: #3498db; transform: scale(1.2); cursor: pointer; }
+
+        /* Instructions */
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #b0c4de;
+            background: rgba(28, 39, 52, 0.8);
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid #2c3e50;
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+        .key { color: #3498db; font-weight: bold; }
+
+        /* Loading overlay */
+        #loading {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: #121a23; display: flex; justify-content: center; align-items: center;
+            color: white; z-index: 999; transition: opacity 0.5s;
+        }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="loading">Initializing Physics Engine...</div>
+
+    <div id="ui-container">
+        <h2>Potential Lab</h2>
+        
+        <div class="control-group">
+            <span class="label">Charge Configuration</span>
+            <select id="scenarioSelect">
+                <option value="dipole">Dipole (+ and -)</option>
+                <option value="same">Two Positive (+ and +)</option>
+                <option value="single">Single Positive (+)</option>
+                <option value="quad">Quadrupole</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <span class="label">Visualizations</span>
+            <div class="toggle-row">
+                <label class="toggle-label" for="chkField">Field Vectors (\(\vec{E}\))</label>
+                <input type="checkbox" id="chkField">
+            </div>
+            <div class="toggle-row">
+                <label class="toggle-label" for="chkContours">Contour Lines</label>
+                <input type="checkbox" id="chkContours" checked>
+            </div>
+            <div class="toggle-row">
+                <label class="toggle-label" for="chkWire">Wireframe</label>
+                <input type="checkbox" id="chkWire">
+            </div>
+        </div>
+        
+        <div style="font-size: 0.8rem; color: #888; margin-top: 10px; border-top: 1px solid #2c3e50; padding-top: 10px;">
+            <em>Tip: The arrows point downhill, showing the direction a positive charge would move.</em>
+        </div>
+    </div>
+
+    <div id="instructions">
+        <div><span class="key">Left Click + Drag</span> to Rotate</div>
+        <div><span class="key">Scroll</span> to Zoom</div>
+        <div><span class="key">Shift + Click</span> on terrain to drop a Test Charge</div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- State & Config ---
+        const STATE = {
+            scenario: 'dipole',
+            showField: false,
+            showContours: true,
+            showWireframe: false,
+            charges: []
+        };
+
+        const CONFIG = {
+            gridSize: 14,
+            segments: 100,
+            maxHeight: 5,
+            arrowSpacing: 4 // Draw an arrow every N segments
+        };
+
+        // --- Scenarios ---
+        const SCENARIOS = {
+            dipole: [
+                { x: -3, z: 0, q: 1.5 },
+                { x: 3, z: 0, q: -1.5 }
+            ],
+            same: [
+                { x: -3, z: 0, q: 1.5 },
+                { x: 3, z: 0, q: 1.5 }
+            ],
+            single: [
+                { x: 0, z: 0, q: 2 }
+            ],
+            quad: [
+                { x: -3, z: -3, q: 1.5 }, { x: 3, z: -3, q: -1.5 },
+                { x: -3, z: 3, q: -1.5 }, { x: 3, z: 3, q: 1.5 }
+            ]
+        };
+
+        // --- Scene Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23);
+        scene.fog = new THREE.Fog(0x121a23, 15, 40);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 12, 16);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxPolarAngle = Math.PI / 2 - 0.1;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 5);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // --- Physics / Math Functions ---
+
+        function getPotential(x, z) {
+            let v = 0;
+            for (let c of STATE.charges) {
+                const dist = Math.sqrt((x - c.x)**2 + (z - c.z)**2);
+                // Add smoothing term (0.4) to prevent infinity
+                v += c.q / (dist + 0.4);
+            }
+            return v;
+        }
+
+        // Calculate Gradient (Electric Field direction * -1)
+        function getGradient(x, z) {
+            const delta = 0.05;
+            const v1 = getPotential(x + delta, z);
+            const v2 = getPotential(x - delta, z);
+            const v3 = getPotential(x, z + delta);
+            const v4 = getPotential(x, z - delta);
+            
+            // Slope in X and Z
+            return new THREE.Vector3(
+                (v1 - v2) / (2 * delta),
+                0, // Y component handled by surface mapping
+                (v3 - v4) / (2 * delta)
+            );
+        }
+
+        // --- Objects ---
+        
+        let terrainMesh, wireframeMesh, contourMesh;
+        let chargeMeshes = [];
+        let arrowHelpers = [];
+        let testBalls = [];
+
+        // Texture for contours
+        function createContourTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // Fill transparent
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 128, 128);
+            
+            // Draw stripes
+            ctx.fillStyle = '#000000';
+            for(let i=0; i<128; i+=16) {
+                ctx.fillRect(0, i, 128, 8); // Horizontal stripes
+            }
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+        const contourTexture = createContourTexture();
+
+        // Initialize Geometry
+        const geometry = new THREE.PlaneGeometry(CONFIG.gridSize, CONFIG.gridSize, CONFIG.segments, CONFIG.segments);
+        geometry.rotateX(-Math.PI / 2); // Lay flat
+
+        // Materials
+        const terrainMat = new THREE.MeshStandardMaterial({ 
+            vertexColors: true, 
+            roughness: 0.6, 
+            metalness: 0.1,
+            polygonOffset: true,
+            polygonOffsetFactor: 1, // Push back slightly to let wireframe/contours show
+            side: THREE.DoubleSide
+        });
+
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.1 });
+        
+        // Contour Material: Use texture mapping based on height
+        const contourMat = new THREE.MeshBasicMaterial({
+            map: contourTexture,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+            blending: THREE.MultiplyBlending // Darkens the underlying color
+        });
+
+        terrainMesh = new THREE.Mesh(geometry, terrainMat);
+        terrainMesh.castShadow = true;
+        terrainMesh.receiveShadow = true;
+        scene.add(terrainMesh);
+
+        wireframeMesh = new THREE.Mesh(geometry, wireMat);
+        scene.add(wireframeMesh);
+
+        // --- Core Update Function ---
+
+        function updateSimulation() {
+            // 1. Update Charges
+            STATE.charges = SCENARIOS[STATE.scenario];
+
+            // 2. Update Terrain Geometry
+            const posAttr = geometry.attributes.position;
+            const colors = [];
+            const colorObj = new THREE.Color();
+            const uvs = geometry.attributes.uv;
+
+            for (let i = 0; i < posAttr.count; i++) {
+                const x = posAttr.getX(i);
+                const z = posAttr.getZ(i);
+                
+                let y = getPotential(x, z);
+                
+                // Clamp visual height
+                if (y > CONFIG.maxHeight) y = CONFIG.maxHeight;
+                if (y < -CONFIG.maxHeight) y = -CONFIG.maxHeight;
+
+                posAttr.setY(i, y);
+
+                // Color Logic
+                const t = Math.max(-1, Math.min(1, y / 2.0));
+                if (t > 0) colorObj.setHSL(0.02, 0.9, 0.3 + (0.4 * t)); // Red
+                else colorObj.setHSL(0.6, 0.9, 0.3 + (0.4 * Math.abs(t))); // Blue
+                colors.push(colorObj.r, colorObj.g, colorObj.b);
+
+                // UV Mapping for Contours (Map Y height to V coordinate)
+                // This makes the texture stripes map to elevation
+                uvs.setY(i, y * 2.0); // Scale factor determines density of lines
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color = new THREE.Float32BufferAttribute(colors, 3);
+            geometry.computeVertexNormals();
+
+            // 3. Update Charge Visuals
+            chargeMeshes.forEach(m => scene.remove(m));
+            chargeMeshes = [];
+            
+            const sphereGeo = new THREE.SphereGeometry(0.3, 16, 16);
+            STATE.charges.forEach(c => {
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: c.q > 0 ? 0xff3333 : 0x3388ff,
+                    emissive: c.q > 0 ? 0x550000 : 0x000055
+                });
+                const mesh = new THREE.Mesh(sphereGeo, mat);
+                
+                // Place at actual potential height (clamped)
+                let h = getPotential(c.x, c.z);
+                if (h > CONFIG.maxHeight) h = CONFIG.maxHeight;
+                if (h < -CONFIG.maxHeight) h = -CONFIG.maxHeight;
+                
+                mesh.position.set(c.x, h, c.z);
+                scene.add(mesh);
+                chargeMeshes.push(mesh);
+            });
+
+            // 4. Update Field Vectors (Arrows)
+            updateArrows();
+        }
+
+        function updateArrows() {
+            // Clear old arrows
+            arrowHelpers.forEach(a => scene.remove(a));
+            arrowHelpers = [];
+
+            if (!STATE.showField) return;
+
+            // Create grid of arrows
+            const step = CONFIG.gridSize / 12; // 12x12 grid of arrows
+            const half = CONFIG.gridSize / 2;
+
+            for (let x = -half + 0.5; x < half; x += step) {
+                for (let z = -half + 0.5; z < half; z += step) {
+                    
+                    const y = getPotential(x, z);
+                    // Don't draw arrows inside the infinity spikes
+                    if (Math.abs(y) >= CONFIG.maxHeight - 0.5) continue;
+
+                    const origin = new THREE.Vector3(x, y, z);
+                    
+                    // Calculate Gradient (Slope)
+                    const grad = getGradient(x, z);
+                    
+                    // The Electric field points "Downhill"
+                    // In 3D space, the vector points along the surface tangent
+                    const dir = new THREE.Vector3(grad.x, -1, grad.z).normalize(); // Pointing down
+                    
+                    // Make arrows red for strong field, white for weak? 
+                    // For now, just yellow to stand out
+                    const arrow = new THREE.ArrowHelper(dir, origin, 0.6, 0xffcc00, 0.2, 0.15);
+                    scene.add(arrow);
+                    arrowHelpers.push(arrow);
+                }
+            }
+        }
+
+        // --- Test Charge Logic ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function dropTestCharge(event) {
+            if (!event.shiftKey) return;
+
+            // Calculate mouse position
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(terrainMesh);
+
+            if (intersects.length > 0) {
+                const pt = intersects[0].point;
+                
+                const ballGeo = new THREE.SphereGeometry(0.15, 16, 16);
+                const ballMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0x444400 });
+                const ball = new THREE.Mesh(ballGeo, ballMat);
+                
+                ball.position.copy(pt);
+                ball.position.y += 0.2; // Sit on top
+                
+                // Physics properties
+                ball.userData = {
+                    velocity: new THREE.Vector3(0, 0, 0),
+                    active: true
+                };
+
+                scene.add(ball);
+                testBalls.push(ball);
+            }
+        }
+
+        function updateBalls() {
+            const dt = 0.016; // Fixed time step
+            const damping = 0.96; // Friction
+
+            for (let i = testBalls.length - 1; i >= 0; i--) {
+                const b = testBalls[i];
+                if (!b.userData.active) continue;
+
+                const x = b.position.x;
+                const z = b.position.z;
+
+                // 1. Get Gradient at current position
+                const grad = getGradient(x, z);
+
+                // 2. Force = -Gradient (Roll downhill)
+                // F = ma, assume m=1
+                const fx = -grad.x * 50; // Scale factor for speed
+                const fz = -grad.z * 50;
+
+                // 3. Update Velocity
+                b.userData.velocity.x += fx * dt;
+                b.userData.velocity.z += fz * dt;
+                
+                // Apply damping
+                b.userData.velocity.multiplyScalar(damping);
+
+                // 4. Update Position
+                b.position.x += b.userData.velocity.x * dt;
+                b.position.z += b.userData.velocity.z * dt;
+
+                // 5. Update Height (Snap to surface)
+                let h = getPotential(b.position.x, b.position.z);
+                
+                // Check bounds or holes
+                if (Math.abs(h) > CONFIG.maxHeight || Math.abs(b.position.x) > CONFIG.gridSize/2 || Math.abs(b.position.z) > CONFIG.gridSize/2) {
+                    // Ball fell off world or into infinite hole
+                    scene.remove(b);
+                    testBalls.splice(i, 1);
+                    continue;
+                }
+
+                b.position.y = h + 0.15;
+            }
+        }
+
+        // --- Event Listeners ---
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.addEventListener('click', dropTestCharge);
+
+        // UI Bindings
+        document.getElementById('scenarioSelect').addEventListener('change', (e) => {
+            STATE.scenario = e.target.value;
+            // Clear balls on reset
+            testBalls.forEach(b => scene.remove(b));
+            testBalls = [];
+            updateSimulation();
+        });
+
+        document.getElementById('chkField').addEventListener('change', (e) => {
+            STATE.showField = e.target.checked;
+            updateArrows();
+        });
+
+        document.getElementById('chkContours').addEventListener('change', (e) => {
+            STATE.showContours = e.target.checked;
+            // We toggle contours by swapping material or texture?
+            // Easier: just toggle the texture visibility via material prop
+            terrainMesh.material.map = STATE.showContours ? contourTexture : null;
+            terrainMesh.material.needsUpdate = true;
+        });
+
+        document.getElementById('chkWire').addEventListener('change', (e) => {
+            wireframeMesh.visible = e.target.checked;
+        });
+
+        // --- Init ---
+        // Apply initial texture
+        terrainMesh.material.map = contourTexture;
+        updateSimulation();
+        document.getElementById('loading').style.opacity = 0;
+        setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+
+        // --- Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updateBalls();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="electric_potential_landscape.0.offline.js"></script>
+
+
+</body>
+</html>

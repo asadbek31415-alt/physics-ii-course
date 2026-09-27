@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Insulation Visualizer</title>
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #0f172a;
+            color: white;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        #lab {
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+            background: #0f172a;
+        }
+
+        #controls {
+            box-sizing: border-box;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 16px;
+            background: rgba(18, 22, 28, 0.96);
+            border-right: 1px solid #475569;
+            user-select: none;
+        }
+
+        #stage {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            background: #08111f;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        h1 {
+            font-size: 1.05rem;
+            color: #38bdf8;
+            margin: 0 0 0.8rem;
+        }
+
+        h2 {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #475569;
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .control-row strong {
+            color: #facc15;
+            font-size: 1rem;
+            font-family: "Consolas", monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #facc15;
+        }
+
+        #readout {
+            background: rgba(0, 0, 0, 0.32);
+            border-left: 3px solid #22c55e;
+            padding: 10px 12px;
+            color: #d8e4f2;
+            font-family: "Consolas", "Fira Code", monospace;
+            font-size: 0.84rem;
+            line-height: 1.42;
+            margin-top: 12px;
+        }
+
+        #region {
+            display: block;
+            color: #e5e7eb;
+            font-family: "Segoe UI", Arial, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 10px;
+            align-items: center;
+            color: #d8e4f2;
+            font-size: 0.82rem;
+            line-height: 1.25;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .line {
+            width: 20px;
+            height: 3px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        #guide {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.36;
+            color: #d8e4f2;
+            margin-top: 12px;
+        }
+
+        .highlight {
+            color: #facc15;
+            font-weight: 700;
+        }
+
+        @media (max-width: 760px) {
+            #lab {
+                grid-template-columns: 140px minmax(0, 1fr);
+            }
+
+            #controls {
+                border-right: 1px solid #475569;
+                border-bottom: 0;
+                padding: 10px;
+                overflow-y: auto;
+            }
+
+            .section {
+                margin-top: 9px;
+                padding-top: 9px;
+            }
+
+            h1 {
+                font-size: 0.92rem;
+            }
+
+            h2 {
+                font-size: 0.68rem;
+                margin-bottom: 8px;
+            }
+
+            .control-row {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+
+            #readout {
+                padding: 8px;
+                font-size: 0.68rem;
+            }
+
+            #region {
+                font-size: 0.76rem;
+            }
+
+            .legend {
+                grid-template-columns: auto 1fr;
+                gap: 6px 7px;
+                font-size: 0.68rem;
+            }
+
+            #guide {
+                display: none;
+            }
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div id="lab">
+        <aside id="controls">
+            <h1>Wire With Insulation</h1>
+            <h2>Gaussian Radius</h2>
+            <div class="control-row">
+                <strong>s</strong>
+                <input type="range" id="radiusSlider" min="55" max="245" value="125">
+            </div>
+
+            <div id="readout" aria-live="polite">
+                <span id="region">Outside insulation</span>
+                <div>Radius: <strong id="radiusValue">s = 1.25 a</strong></div>
+                <div>D magnitude: <strong id="magnitudeValue">0.80</strong></div>
+                <div>D = λ / (2πs) in both regions</div>
+            </div>
+
+            <div class="section">
+                <h2>Legend</h2>
+                <div class="legend">
+                    <span class="dot" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
+                    <span>charged wire, free charge λ</span>
+                    <span class="dot" style="background:rgba(52,152,219,0.55); border:1px solid #38bdf8;"></span>
+                    <span>insulation, radius a</span>
+                    <span class="line" style="background:#facc15;"></span>
+                    <span>Gaussian cylinder, radius s</span>
+                    <span class="line" style="background:#22c55e;"></span>
+                    <span>radial displacement D</span>
+                </div>
+            </div>
+
+            <div id="guide">
+                <strong>Read the picture:</strong><br><br>
+                The red object is a <span class="highlight">long charged wire</span>, not a point charge. The blue tube
+                is the insulating material around it. The yellow cylinder is the Gaussian surface used in
+                Gauss's law for D.
+            </div>
+        </aside>
+        <main id="stage" aria-label="3D wire insulation displacement field visualizer"></main>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const stage = document.getElementById('stage');
+        const slider = document.getElementById('radiusSlider');
+        const region = document.getElementById('region');
+        const radiusValue = document.getElementById('radiusValue');
+        const magnitudeValue = document.getElementById('magnitudeValue');
+
+        const WIRE_LENGTH = 7.8;
+        const WIRE_RADIUS = 0.12;
+        const INSULATION_RADIUS = 1.55;
+        const MIN_S = 0.78;
+        const MAX_S = 3.05;
+        const VECTOR_COUNT = 16;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x08111f);
+
+        const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+        camera.position.set(5.7, 3.8, 6.2);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        stage.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 0, 0);
+        controls.minDistance = 5.2;
+        controls.maxDistance = 12;
+        controls.update();
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.45);
+        keyLight.position.set(5, 7, 6);
+        scene.add(keyLight);
+        const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.85);
+        rimLight.position.set(-6, 3, -4);
+        scene.add(rimLight);
+
+        const root = new THREE.Group();
+        scene.add(root);
+
+        function cylinderAlongX(radius, length, radialSegments = 64, heightSegments = 1, openEnded = false) {
+            const geometry = new THREE.CylinderGeometry(radius, radius, length, radialSegments, heightSegments, openEnded);
+            geometry.rotateZ(Math.PI / 2);
+            return geometry;
+        }
+
+        const wire = new THREE.Mesh(
+            cylinderAlongX(WIRE_RADIUS, WIRE_LENGTH, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0xef4444,
+                emissive: 0x7f1d1d,
+                emissiveIntensity: 0.9,
+                metalness: 0.15,
+                roughness: 0.38
+            })
+        );
+        root.add(wire);
+
+        const wireGlow = new THREE.Mesh(
+            cylinderAlongX(WIRE_RADIUS * 1.9, WIRE_LENGTH * 1.012, 32, 1, true),
+            new THREE.MeshBasicMaterial({
+                color: 0xef4444,
+                transparent: true,
+                opacity: 0.18,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            })
+        );
+        root.add(wireGlow);
+
+        const insulation = new THREE.Mesh(
+            cylinderAlongX(INSULATION_RADIUS, WIRE_LENGTH, 96, 1, true),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x256d99,
+                transparent: true,
+                opacity: 0.32,
+                roughness: 0.22,
+                metalness: 0,
+                clearcoat: 0.3,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            })
+        );
+        root.add(insulation);
+
+        const insulationEdges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(cylinderAlongX(INSULATION_RADIUS, WIRE_LENGTH, 96, 1, true), 12),
+            new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55 })
+        );
+        root.add(insulationEdges);
+
+        const gaussianGroup = new THREE.Group();
+        root.add(gaussianGroup);
+
+        const vectorGroup = new THREE.Group();
+        root.add(vectorGroup);
+
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 512;
+        labelCanvas.height = 128;
+        const labelCtx = labelCanvas.getContext('2d');
+        labelCtx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+        labelCtx.font = '700 44px Segoe UI, Arial, sans-serif';
+        labelCtx.fillStyle = '#facc15';
+        labelCtx.textAlign = 'center';
+        labelCtx.fillText('Gaussian cylinder', 256, 72);
+        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+        const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture, transparent: true }));
+        labelSprite.scale.set(2.6, 0.65, 1);
+        labelSprite.position.set(0, 2.95, 0);
+        root.add(labelSprite);
+
+        function makeRing(x, radius) {
+            const points = [];
+            const segments = 160;
+            for (let i = 0; i <= segments; i += 1) {
+                const angle = (i / segments) * Math.PI * 2;
+                points.push(new THREE.Vector3(x, Math.cos(angle) * radius, Math.sin(angle) * radius));
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineDashedMaterial({
+                color: 0xfacc15,
+                dashSize: 0.12,
+                gapSize: 0.075,
+                transparent: true,
+                opacity: 0.95
+            });
+            const line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            return line;
+        }
+
+        function makeLongitudinalLine(angle, radius) {
+            const y = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-WIRE_LENGTH / 2, y, z),
+                new THREE.Vector3(WIRE_LENGTH / 2, y, z)
+            ]);
+            const material = new THREE.LineDashedMaterial({
+                color: 0xfacc15,
+                dashSize: 0.14,
+                gapSize: 0.09,
+                transparent: true,
+                opacity: 0.72
+            });
+            const line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            return line;
+        }
+
+        function clearGroup(group) {
+            while (group.children.length) {
+                const child = group.children.pop();
+                child.traverse?.((node) => {
+                    node.geometry?.dispose?.();
+                    if (Array.isArray(node.material)) node.material.forEach((m) => m.dispose?.());
+                    else node.material?.dispose?.();
+                });
+            }
+        }
+
+        function rebuildGaussian(radius) {
+            clearGroup(gaussianGroup);
+            clearGroup(vectorGroup);
+
+            [-WIRE_LENGTH / 2, 0, WIRE_LENGTH / 2].forEach((x) => gaussianGroup.add(makeRing(x, radius)));
+            for (let i = 0; i < 8; i += 1) {
+                gaussianGroup.add(makeLongitudinalLine((i / 8) * Math.PI * 2, radius));
+            }
+
+            const vectorLength = THREE.MathUtils.clamp(1.16 / radius, 0.38, 1.05);
+            for (let i = 0; i < VECTOR_COUNT; i += 1) {
+                const angle = (i / VECTOR_COUNT) * Math.PI * 2;
+                const x = (i % 4 - 1.5) * (WIRE_LENGTH / 5.4);
+                const radial = new THREE.Vector3(0, Math.cos(angle), Math.sin(angle));
+                const origin = new THREE.Vector3(x, radial.y * radius, radial.z * radius);
+                const arrow = new THREE.ArrowHelper(radial, origin, vectorLength, 0x22c55e, 0.18, 0.1);
+                arrow.line.material.transparent = true;
+                arrow.line.material.opacity = 0.9;
+                arrow.cone.material.transparent = true;
+                arrow.cone.material.opacity = 0.9;
+                vectorGroup.add(arrow);
+            }
+        }
+
+        function sliderToRadius() {
+            const alpha = (Number(slider.value) - Number(slider.min)) / (Number(slider.max) - Number(slider.min));
+            return MIN_S + alpha * (MAX_S - MIN_S);
+        }
+
+        function updateReadout() {
+            const s = sliderToRadius();
+            const relative = s / INSULATION_RADIUS;
+            const inside = s < INSULATION_RADIUS;
+            region.textContent = inside ? 'Inside insulation (s < a)' : 'Outside insulation (s > a)';
+            region.style.color = inside ? '#38bdf8' : '#22c55e';
+            radiusValue.textContent = `s = ${relative.toFixed(2)} a`;
+            magnitudeValue.textContent = (1 / relative).toFixed(2);
+            document.getElementById('readout').style.borderLeftColor = inside ? '#38bdf8' : '#22c55e';
+            rebuildGaussian(s);
+        }
+
+        slider.addEventListener('input', updateReadout);
+        updateReadout();
+
+        function resizeRenderer() {
+            const rect = stage.getBoundingClientRect();
+            const width = Math.max(1, rect.width);
+            const height = Math.max(1, rect.height);
+            const narrow = width < 340;
+            camera.fov = narrow ? 58 : 42;
+            if (narrow) {
+                camera.position.set(7.4, 4.6, 7.8);
+                labelSprite.scale.set(1.65, 0.42, 1);
+                labelSprite.position.set(0, 3.15, 0);
+            } else {
+                camera.position.set(5.7, 3.8, 6.2);
+                labelSprite.scale.set(2.6, 0.65, 1);
+                labelSprite.position.set(0, 2.95, 0);
+            }
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+            controls.update();
+        }
+
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            wire.rotation.x += 0.003;
+            wireGlow.rotation.x += 0.003;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+<script defer data-offline-bundle src="wire_insulation_visualizer.0.offline.js"></script>
+
+</body>
+</html>

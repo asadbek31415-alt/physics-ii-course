@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Boundary Conditions</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="magnetostatics_index.html">Magnetostatics</a> > <a
+                    href="ch3_4_vector_potential.html">Vector Potential</a> > Boundary Conditions
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <div class="header-section">
+            <h1>Deep Dive: Boundary Conditions</h1>
+            <p class="subtitle-text">Discontinuities in $\mathbf{B}$ and the continuity of $\mathbf{A}$</p>
+        </div>
+
+        <p class="intro-text">
+            Just as the electric field suffers a discontinuity at a surface charge, the magnetic field is discontinuous
+            at a surface current. However, while the normal component of $\mathbf{E}$ is discontinuous, for $\mathbf{B}$
+            it is the <strong>tangential</strong> component that changes.
+        </p>
+
+        <!-- SECTION 1: THE TRIANGLE -->
+        <section class="concept-section">
+            <h2>1. The Magnetostatic Triangle</h2>
+            <p>
+                To understand boundary conditions, we first review the connections between current density $\mathbf{J}$,
+                magnetic field $\mathbf{B}$, and vector potential $\mathbf{A}$. Hover over the arrows to see the
+                equations.
+            </p>
+            <div class="iframe-container" style="height: 520px;">
+                <iframe class="diagram-frame" src="diagrams/magnetostatic_triangle.html" title="Magnetostatic Triangle"
+                    scrolling="no"></iframe>
+            </div>
+            <p>
+                This diagram reveals the "missing link" in magnetostatics. While we often calculate $\mathbf{B}$ from
+                $\mathbf{A}$ via curl, calculating $\mathbf{A}$ from $\mathbf{B}$ is rarely required in standard
+                problems.
+            </p>
+        </section>
+
+        <!-- SECTION 2: B BOUNDARY CONDITIONS -->
+        <section class="concept-section">
+            <h2>2. Boundary Conditions for $\mathbf{B}$</h2>
+            <p>
+                Consider a surface carrying a current density $\mathbf{K}$. We apply Maxwell's equations in integral
+                form to a small pillbox and an Amperian loop straddling the surface.
+            </p>
+
+            <h3>Normal Component</h3>
+            <p>
+                Since $\nabla \cdot \mathbf{B} = 0$, the net flux through a wafer-thin pillbox is zero:
+                $$\oint \mathbf{B} \cdot d\mathbf{a} = 0 \implies B_{above}^\perp - B_{below}^\perp = 0$$
+            </p>
+            <div class="highlight-box">
+                $$B_{above}^\perp = B_{below}^\perp$$
+                <p>The <strong>normal component</strong> of the magnetic field is always continuous.</p>
+            </div>
+
+            <h3>Tangential Component</h3>
+            <p>
+                Ampère's law ($\oint \mathbf{B} \cdot d\mathbf{l} = \mu_0 I_{enc}$) applied to a rectangular loop
+                perpendicular to the current yields:
+                $$(B_{above}^\parallel - B_{below}^\parallel)l = \mu_0 K l$$
+            </p>
+            <div class="highlight-box">
+                $$B_{above}^\parallel - B_{below}^\parallel = \mu_0 K$$
+                <p>The <strong>tangential component</strong> is discontinuous by an amount proportional to the surface
+                    current.</p>
+            </div>
+
+            <div class="iframe-container" style="height: 500px;">
+                <iframe class="diagram-frame" src="diagrams/magnetic_boundary_conditions.html"
+                    title="Boundary Conditions Visualization" scrolling="no"></iframe>
+            </div>
+
+            <p>
+                Combined into a single vector formula, the discontinuity is:
+                $$\mathbf{B}_{above} - \mathbf{B}_{below} = \mu_0 (\mathbf{K} \times \mathbf{\hat{n}})$$
+            </p>
+        </section>
+
+        <!-- SECTION 3: A BOUNDARY CONDITIONS -->
+        <section class="concept-section">
+            <h2>3. Boundary Conditions for $\mathbf{A}$</h2>
+            <p>
+                Like the scalar potential $V$ in electrostatics, the vector potential $\mathbf{A}$ is
+                <strong>continuous</strong> across any boundary:
+            </p>
+            <div class="math-block">
+                $$\mathbf{A}_{above} = \mathbf{A}_{below}$$
+            </div>
+            <p>
+                This continuity is guaranteed by $\nabla \cdot \mathbf{A} = 0$. However, the <strong>derivative</strong>
+                of $\mathbf{A}$ inherits the discontinuity of $\mathbf{B}$:
+            </p>
+            <div class="math-block">
+                $$\frac{\partial \mathbf{A}_{above}}{\partial n} - \frac{\partial \mathbf{A}_{below}}{\partial n} =
+                -\mu_0 \mathbf{K}$$
+            </div>
+        </section>
+
+        <div class="nav-links">
+            <a href="ch3_4_vector_potential.html" class="back-btn">← Back to Vector Potential</a>
+        </div>
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

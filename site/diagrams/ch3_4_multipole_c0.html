@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dipole Geometry</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1e1e1e;
+            overflow: hidden;
+            font-family: sans-serif;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: clamp(220px, 26vw, 280px) minmax(0, 1fr);
+        }
+        #scene-container {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .label {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            color: #ccc; background: rgba(0,0,0,0.7);
+            padding: 14px;
+            border-radius: 0;
+            font-size: 14px;
+            pointer-events: auto;
+            user-select: none;
+            border: 1px solid #444;
+            border-left: 0;
+            border-top: 0;
+            border-bottom: 0;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+            #scene-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            .label {
+                grid-column: 1;
+                grid-row: 2;
+                border-right: 0;
+                border-top: 1px solid #444;
+                padding: 10px 12px;
+                max-height: none;
+            }
+        }
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+    <script>window.MathJax = { tex: { inlineMath: [['$', '$']] }, svg: { fontCache: 'global' } };</script>
+    <script type="text/javascript" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div id="scene-container"></div>
+
+    <div class="label">
+        <strong style="color:white">The Dipole Term</strong><br>
+        $\mathbf{A} \propto \frac{\mathbf{m} \times \hat{\mathbf{r}}}{r^2}$<br>
+        <div style="margin-top:5px; font-size: 12px; color: #aaa;">
+            <span style="color:#ff4757">●</span> Dipole Moment ($\mathbf{m}$)<br>
+            <span style="color:#2ed573">●</span> Vector Potential ($\mathbf{A}$)
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene
+        const container = document.getElementById('scene-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e1e1e);
+        function getSceneSize() {
+            return {
+                width: Math.max(1, container.clientWidth),
+                height: Math.max(1, container.clientHeight)
+            };
+        }
+        const initialSize = getSceneSize();
+        const camera = new THREE.PerspectiveCamera(45, initialSize.width / initialSize.height, 0.1, 100);
+        camera.position.set(12, 8, 12);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(initialSize.width, initialSize.height);
+        container.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+
+        // 1. The Source (Current Loop / Dipole Moment)
+        const loopGeo = new THREE.TorusGeometry(1, 0.05, 16, 50);
+        const loopMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+        const loop = new THREE.Mesh(loopGeo, loopMat);
+        loop.rotation.x = Math.PI/2;
+        scene.add(loop);
+
+        // Dipole Moment Vector (m)
+        const mDir = new THREE.Vector3(0, 1, 0);
+        const mArrow = new THREE.ArrowHelper(mDir, new THREE.Vector3(0,0,0), 3, 0xff4757, 0.5, 0.3);
+        scene.add(mArrow);
+
+        // 2. The Vector Potential Field (A)
+        // A ~ m cross r / r^3
+        // m is (0, 1, 0). r is (x, y, z).
+        // m x r = (-z, 0, x)
+        
+        const groupA = new THREE.Group();
+        scene.add(groupA);
+
+        const createArrow = (pos, dir, len) => {
+            return new THREE.ArrowHelper(dir, pos, len, 0x2ed573, len*0.3, len*0.2);
+        };
+
+        // Create spherical layers of arrows
+        const radii = [3, 5, 7];
+        
+        radii.forEach(r => {
+            // Number of points based on radius
+            const count = r * 6;
+            for(let i=0; i<count; i++) {
+                // Spherical distribution
+                const phi = Math.acos( -1 + ( 2 * i ) / count );
+                const theta = Math.sqrt( count * Math.PI ) * phi;
+
+                const x = r * Math.sin(phi) * Math.cos(theta);
+                const y = r * Math.sin(phi) * Math.sin(theta); // Actually ThreeJS Y is up
+                const z = r * Math.cos(phi);
+                
+                // Switch to ThreeJS coords (Y up)
+                const vecR = new THREE.Vector3(x, y, z); // Random sphere point
+                // Actually let's just loop lat/long for cleaner visuals
+            }
+        });
+
+        // Cleaner rings approach
+        radii.forEach(r => {
+            // Rings at different latitudes
+            for(let lat = -Math.PI/3; lat <= Math.PI/3; lat += Math.PI/4) {
+                const y = r * Math.sin(lat);
+                const ringR = r * Math.cos(lat);
+                
+                const steps = 8 + Math.floor(ringR*2);
+                for(let i=0; i<steps; i++) {
+                    const ang = (i/steps) * Math.PI * 2;
+                    const x = ringR * Math.cos(ang);
+                    const z = ringR * Math.sin(ang);
+                    
+                    const pos = new THREE.Vector3(x, y, z);
+                    
+                    // Calculate A = m x r
+                    // m = (0,1,0). r = (x,y,z)
+                    // cross = (z, 0, -x)  <-- Tangential to the ring
+                    const dir = new THREE.Vector3(z, 0, -x).normalize();
+                    
+                    // Magnitude falls off as 1/r^2 (visual scaling)
+                    const len = 10 / (r*r); 
+                    
+                    groupA.add(createArrow(pos, dir, len));
+                }
+            }
+        });
+
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            const { width, height } = getSceneSize();
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+    </script>
+<script defer data-offline-bundle src="ch3_4_multipole_c0.0.offline.js"></script>
+
+
+</body>
+</html>

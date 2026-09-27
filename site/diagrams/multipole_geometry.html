@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multipole Visualizer</title>
+    
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['\\(', '\\)']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #e0e0e0;
+            --mono-color: #3498db; /* Blue */
+            --dip-color: #e74c3c;  /* Red */
+            --grid-color: #1c2734;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #container {
+            position: relative;
+            flex-grow: 1;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(28, 39, 52, 0.9);
+            border: 1px solid #2c3e50;
+            border-radius: 8px;
+            padding: 15px;
+            width: 240px;
+            backdrop-filter: blur(5px);
+            pointer-events: none; /* Let clicks pass through */
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .value-display {
+            font-family: monospace;
+            margin-left: auto;
+            font-weight: bold;
+        }
+
+        #instruction {
+            position: absolute;
+            bottom: 20px;
+            left: 0; 
+            width: 100%;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="container">
+        <canvas id="graphCanvas"></canvas>
+        
+        <div id="overlay">
+            <div style="margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px; font-weight:bold;">
+                At Distance \(r = \) <span id="r-val">1.0</span>:
+            </div>
+            
+            <div class="legend-item" style="color: var(--mono-color);">
+                <div class="dot" style="background: var(--mono-color);"></div>
+                <span>Monopole \( (\frac{1}{r}) \)</span>
+                <span class="value-display" id="mono-val">0.00</span>
+            </div>
+
+            <div class="legend-item" style="color: var(--dip-color);">
+                <div class="dot" style="background: var(--dip-color);"></div>
+                <span>Dipole \( (\frac{1}{r^2}) \)</span>
+                <span class="value-display" id="dip-val">0.00</span>
+            </div>
+
+            <div style="margin-top:10px; font-size: 0.8rem; color: #aaa;">
+                Note how the Dipole term vanishes much faster than the Monopole term.
+            </div>
+        </div>
+
+        <div id="instruction">Hover over the graph to compare values</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('container');
+
+        // UI Elements
+        const rLabel = document.getElementById('r-val');
+        const monoLabel = document.getElementById('mono-val');
+        const dipLabel = document.getElementById('dip-val');
+
+        let width, height;
+        let mouseX = 0;
+
+        // Graph settings
+        const padding = 40;
+        const xStart = 0.5; // Starting r value (to avoid infinity)
+        const xEnd = 5.0;   // Ending r value
+        const scaleY = 200; // Vertical scaling factor
+
+        function resize() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Initialize mouse in middle
+            if(mouseX === 0) mouseX = width / 3;
+            
+            draw();
+        }
+
+        // Map logic coordinates to screen coordinates
+        function mapX(r) {
+            return padding + ((r - xStart) / (xEnd - xStart)) * (width - 2 * padding);
+        }
+
+        function mapY(val) {
+            // val is usually 0 to 2 range (1/0.5 = 2)
+            // We want 0 at bottom (height - padding)
+            return (height - padding) - (val * (height - 2*padding) / 2); // Normalize to max value ~2
+        }
+
+        // Reverse map screen X to r
+        function getR(screenX) {
+            let r = ((screenX - padding) / (width - 2 * padding)) * (xEnd - xStart) + xStart;
+            return Math.max(xStart, Math.min(xEnd, r));
+        }
+
+        function drawCurve(func, color) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+
+            // Draw curve points
+            for (let px = 0; px <= width - 2*padding; px+=2) {
+                let screenX = padding + px;
+                let r = getR(screenX);
+                let val = func(r);
+                let screenY = mapY(val);
+                
+                if (px === 0) ctx.moveTo(screenX, screenY);
+                else ctx.lineTo(screenX, screenY);
+            }
+            ctx.stroke();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Axes
+            ctx.strokeStyle = "#1c2734";
+            ctx.lineWidth = 1;
+            
+            // X Axis
+            ctx.beginPath();
+            ctx.moveTo(padding, height - padding);
+            ctx.lineTo(width - padding, height - padding);
+            ctx.stroke();
+
+            // Y Axis
+            ctx.beginPath();
+            ctx.moveTo(padding, height - padding);
+            ctx.lineTo(padding, padding);
+            ctx.stroke();
+
+            // 2. Draw Curves
+            // Monopole 1/r
+            drawCurve(r => 1/r, '#3498db');
+            
+            // Dipole 1/r^2
+            drawCurve(r => 1/(r*r), '#e74c3c');
+
+            // 3. Interactive Line
+            let currentR = getR(mouseX);
+            let screenX = mouseX;
+            
+            // Constrain line to graph area
+            if(screenX < padding) screenX = padding;
+            if(screenX > width - padding) screenX = width - padding;
+
+            // Draw vertical scanner line
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1;
+            ctx.moveTo(screenX, padding);
+            ctx.lineTo(screenX, height - padding);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 4. Draw Intersection Points
+            let monoY = mapY(1/currentR);
+            let dipY = mapY(1/(currentR*currentR));
+
+            // Monopole Dot
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(screenX, monoY, 6, 0, Math.PI*2);
+            ctx.fill();
+
+            // Dipole Dot
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(screenX, dipY, 6, 0, Math.PI*2);
+            ctx.fill();
+
+            // 5. Update HTML Labels
+            rLabel.textContent = currentR.toFixed(2);
+            monoLabel.textContent = (1/currentR).toFixed(2);
+            dipLabel.textContent = (1/(currentR*currentR)).toFixed(2);
+            
+            // Visual tweak: fade Dipole text if it's super small
+            dipLabel.style.opacity = (1/(currentR*currentR)) < 0.1 ? 0.5 : 1;
+        }
+
+        // Interaction
+        container.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            requestAnimationFrame(draw);
+        });
+
+        container.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = container.getBoundingClientRect();
+            mouseX = e.touches[0].clientX - rect.left;
+            requestAnimationFrame(draw);
+        }, {passive: false});
+
+        window.addEventListener('resize', resize);
+        
+        // Initial load
+        setTimeout(resize, 50);
+
+    </script>
+</body>
+</html>

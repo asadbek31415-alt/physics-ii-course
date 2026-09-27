@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Mathematics of Waves</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ]
+            });
+        });
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Mathematics of Waves</h1>
+
+        <section class="topic-section">
+            <h2>The 1-D Wave Equation</h2>
+            <p>
+                A wave is any disturbance \(f(x,t)\) that preserves its shape as it moves. The most general form of such
+                a
+                wave is governed by the 1D partial differential equation:
+            </p>
+            <div class="equation-box">
+                $$ \frac{\partial^2 f}{\partial x^2} = \frac{1}{v^2} \frac{\partial^2 f}{\partial t^2} $$
+            </div>
+            <p>
+                <strong>The General Solution:</strong> d'Alembert proved that any function of the form \(f(x,t) = g(x -
+                vt) + h(x + vt)\)
+                satisfies this equation. This means any shape—square pulses, pulses shaped like Gaussian bells, or
+                complex signals—can
+                be a wave if its time-evolution is coupled to its spatial position in this specific way.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>Extending to 3D</h2>
+            <p>
+                In three dimensions, the disturbance may depend on \(\vec{r} = (x, y, z)\). The scalar wave equation
+                then
+                uses
+                the <strong>Laplacian operator</strong> (\(\nabla^2\)):
+            </p>
+            <div class="equation-box">
+                $$ \nabla^2 f = \frac{1}{v^2} \frac{\partial^2 f}{\partial t^2} $$
+            </div>
+            <p>
+                Where \(\nabla^2 f = \frac{\partial^2 f}{\partial x^2} + \frac{\partial^2 f}{\partial y^2} +
+                \frac{\partial^2 f}{\partial z^2}\).
+                Solutions to this equation include <strong>Plane Waves</strong> (spanning all space in two directions)
+                and
+                <strong>Spherical Waves</strong> (which decay as \(1/r\) from a point source).
+            </p>
+        </section>
+
+        <section class="interactive-diagram">
+            <h3 class="diagram-title">Interactive: The 1D Wave Equation</h3>
+            <div class="iframe-container">
+                <iframe src="diagrams/wave_mechanics_sim2.html" title="Wave Equation Simulation" class="diagram-frame"
+                    scrolling="no"></iframe>
+            </div>
+            <div class="caption"
+                style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; margin-top: -1.5rem; margin-bottom: 2rem;">
+                Visualization of a sinusoidal traveling wave. Adjust parameters to see how frequency and wavelength
+                relate to speed.
+            </div>
+        </section>
+
+        <section class="topic-section">
+            <h2>Sinusoidal Waves</h2>
+            <p>
+                While the wave equation allows for any function \(f(x,t) = g(x-vt)\), the most practical and
+                mathematically significant solutions are <strong>Sinusoidal Waves</strong>. They serve as the
+                fundamental building blocks for all other waves via Fourier Analysis.
+            </p>
+            <div class="equation-box">
+                $$ f(x, t) = A \cos(kx - \omega t + \delta) = \text{Re}\{ \tilde{A} e^{i(kx - \omega t)} \} $$
+            </div>
+            <p>
+                Here, \(\tilde{A} = Ae^{i\delta}\) is the <strong>complex amplitude</strong>, which simplifies
+                calculations by packing both the physical amplitude \(A\) and the phase shift \(\delta\)
+                into a single complex number.
+            </p>
+            <div class="highlight-box"
+                style="background: rgba(var(--accent-rgb), 0.05); border-radius: 8px; padding: 1rem; border: 1px dashed var(--accent-color); margin-bottom: 2rem;">
+                <strong>The Exponential Advantage:</strong> Using complex notation, spatial and temporal derivatives
+                become simple algebraic multiplications:
+                $$ \frac{\partial}{\partial t} \to -i\omega, \quad \frac{\partial}{\partial x} \to ik $$
+                This transforms partial differential equations into linear algebraic ones. We only take the
+                <strong>Real Part</strong> at the final step of any physical calculation.
+            </div>
+
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">$\lambda$</span>
+                    <span class="def-text"><strong>Wavelength</strong>. The distance over which the wave repeats
+                        ($2\pi/k$).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$T$</span>
+                    <span class="def-text"><strong>Period</strong>. The time for one full oscillation
+                        ($2\pi/\omega$).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$v$</span>
+                    <span class="def-text"><strong>Phase Velocity</strong>. The speed at which a wave crest moves ($v =
+                        \lambda/T = \omega/k$).</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="topic-section"
+            style="background: rgba(var(--accent-rgb), 0.05); border-left: 4px solid var(--accent-color); padding: 1.5rem;">
+            <h2>The Principle of Superposition</h2>
+            <p>
+                Since the wave equation is <strong>linear</strong>, if $f_1$ and $f_2$ are solutions, then any linear
+                combination $a f_1 + b f_2$ is also a solution. This allows us to build complex wave packets from simple
+                sinusoidal waves using Fourier Analysis.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

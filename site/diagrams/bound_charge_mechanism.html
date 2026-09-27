@@ -1,0 +1,134 @@
+<!-- Save this as diagrams/bound_charge_mechanism.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bound Charge Mechanism</title>
+    <style>
+        body { margin: 0; background: #0f151b; overflow: hidden; display: flex; flex-direction: column; align-items: center; color: #ccc; font-family: sans-serif; }
+        canvas { border: 1px solid #333; margin-top: 10px; }
+        .controls { margin-top: 10px; display: flex; gap: 10px; }
+        button { background: #1c2734; color: #ccc; border: 1px solid #4a6fa5; padding: 5px 15px; cursor: pointer; }
+        button:hover { background: #4a6fa5; color: white; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="toggleAlign()">Toggle Polarization</button>
+        <button onclick="toggleView()">Toggle Micro/Macro View</button>
+    </div>
+    <canvas id="simCanvas" width="600" height="400"></canvas>
+    <div id="caption" style="margin-top: 10px; font-size: 14px;">Click 'Toggle Polarization' to see dipoles align.</div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let isPolarized = false;
+        let showMacro = false;
+        let animationProgress = 0; // 0 to 1
+
+        const rows = 6;
+        const cols = 10;
+        const spacing = 50;
+        const offsetX = 75;
+        const offsetY = 75;
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Material Box
+            ctx.strokeStyle = "#555";
+            ctx.strokeRect(offsetX - 30, offsetY - 30, (cols-1)*spacing + 60, (rows-1)*spacing + 60);
+
+            // Update Animation
+            if(isPolarized && animationProgress < 1) animationProgress += 0.05;
+            if(!isPolarized && animationProgress > 0) animationProgress -= 0.05;
+
+            // Draw Dipoles
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<cols; c++) {
+                    let x = offsetX + c * spacing;
+                    let y = offsetY + r * spacing;
+                    
+                    // Random angle if unpolarized, 0 if polarized
+                    // We use a deterministic random based on position so it doesn't jitter
+                    let randomAngle = (Math.sin(r*c + r) * Math.PI * 2); 
+                    let currentAngle = randomAngle * (1 - animationProgress);
+                    
+                    // Separation distance
+                    let sep = 15;
+                    let dx = (sep/2) * Math.cos(currentAngle);
+                    let dy = (sep/2) * Math.sin(currentAngle);
+
+                    if(!showMacro) {
+                        // Draw Negative
+                        ctx.beginPath();
+                        ctx.arc(x - dx, y - dy, 6, 0, Math.PI*2);
+                        ctx.fillStyle = "#3498db";
+                        ctx.fill();
+                        ctx.fillStyle = "white";
+                        ctx.font = "10px Arial";
+                        ctx.fillText("-", x - dx - 3, y - dy + 3);
+
+                        // Draw Positive
+                        ctx.beginPath();
+                        ctx.arc(x + dx, y + dy, 6, 0, Math.PI*2);
+                        ctx.fillStyle = "#e74c3c";
+                        ctx.fill();
+                        ctx.fillText("+", x + dx - 3, y + dy + 3);
+
+                        // Connector
+                        ctx.beginPath();
+                        ctx.moveTo(x - dx, y - dy);
+                        ctx.lineTo(x + dx, y + dy);
+                        ctx.strokeStyle = "#777";
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw Macro View Overlay
+            if(showMacro && animationProgress > 0.8) {
+                // Draw Cancellation Box
+                ctx.fillStyle = "rgba(0,0,0,0.8)";
+                ctx.fillRect(offsetX + 20, offsetY - 20, (cols-2)*spacing + 10, (rows-1)*spacing + 40);
+                
+                ctx.fillStyle = "#aaa";
+                ctx.font = "16px Arial";
+                ctx.fillText("Internal charges cancel!", canvas.width/2 - 80, canvas.height/2);
+
+                // Draw Surface Charges
+                // Left Surface (Negative)
+                for(let r=0; r<rows; r++) {
+                    let x = offsetX - 20; 
+                    let y = offsetY + r * spacing;
+                    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2);
+                    ctx.fillStyle = "#3498db"; ctx.fill();
+                    ctx.fillStyle = "white"; ctx.fillText("-", x-3, y+3);
+                }
+                // Right Surface (Positive)
+                for(let r=0; r<rows; r++) {
+                    let x = offsetX + (cols-1)*spacing + 20; 
+                    let y = offsetY + r * spacing;
+                    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2);
+                    ctx.fillStyle = "#e74c3c"; ctx.fill();
+                    ctx.fillStyle = "white"; ctx.fillText("+", x-3, y+3);
+                }
+                
+                // Labels
+                ctx.fillStyle = "#e74c3c";
+                ctx.fillText("σ_b (Bound Surface Charge)", offsetX + (cols-1)*spacing + 40, offsetY + rows*spacing/2);
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        function toggleAlign() { isPolarized = !isPolarized; }
+        function toggleView() { showMacro = !showMacro; }
+
+        draw();
+    </script>
+</body>
+</html>

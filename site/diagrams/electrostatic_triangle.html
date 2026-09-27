@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electrostatic Triangle</title>
+    <!-- Fonts -->
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\vec{l}",
+              dtau: "d\\tau",
+              rcurs: "\\mathcal{r}"
+              /* 'hat' macro removed to prevent recursion error */
+            }
+          },
+          svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23; 
+            --line-color: #4a6fa5;
+            --text-color: #e0e0e0;
+            --node-fill: #1c2734;
+            --node-stroke: #e0e0e0;
+            --highlight: #3498db;
+            --dim: #2c3e50;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .diagram-container {
+            position: relative;
+            width: 650px; /* Widened slightly */
+            height: 450px;
+        }
+
+        /* SVG Layer */
+        svg {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .arrow-line {
+            stroke: var(--line-color);
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+            transition: stroke 0.3s, opacity 0.3s;
+        }
+
+        .node-circle {
+            fill: var(--node-fill);
+            stroke: var(--node-stroke);
+            stroke-width: 2;
+            cursor: pointer;
+            transition: fill 0.3s, stroke 0.3s;
+        }
+        
+        .node-circle:hover {
+            fill: var(--highlight);
+            stroke: white;
+        }
+
+        /* HTML Text Layer (Above SVG) */
+        .text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Node Labels (Rho, E, V) */
+        .node-label {
+            position: absolute;
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            transform: translate(-50%, -50%);
+            pointer-events: auto; /* Allow hovering over the text to trigger the circle */
+            cursor: pointer;
+        }
+
+        /* Math Formula Labels */
+        .math-label {
+            position: absolute;
+            font-size: 14px;
+            color: #b0c4de;
+            background-color: var(--bg-color); /* Mask lines behind text */
+            padding: 4px 6px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        /* Interactive States */
+        body.hover-active .arrow-line,
+        body.hover-active .math-label,
+        body.hover-active .node-circle,
+        body.hover-active .node-label {
+            opacity: 0.15;
+            filter: grayscale(100%);
+        }
+
+        /* Keep active elements bright */
+        body.hover-active .arrow-line.active,
+        body.hover-active .math-label.active,
+        body.hover-active .node-circle.active,
+        body.hover-active .node-label.active {
+            opacity: 1;
+            filter: none;
+            z-index: 10;
+        }
+
+        body.hover-active .arrow-line.active {
+            stroke: var(--highlight);
+            stroke-width: 3;
+        }
+        
+        body.hover-active .math-label.active {
+            color: white;
+            border-color: var(--highlight);
+            background-color: var(--node-fill);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        /* --- POSITIONS --- */
+
+        /* Nodes */
+        #node-rho { left: 50%; top: 15%; }
+        #node-v   { left: 25%; top: 75%; }
+        #node-e   { left: 75%; top: 75%; }
+
+        /* Left Side (Rho <-> V) */
+        #label-v-rho { /* Poisson (Inside) */
+            left: 39%; top: 42%;
+            transform: translate(-50%, -50%) rotate(67deg);
+        }
+        #label-rho-v { /* Integral (Outside) */
+            left: 28%; top: 40%;
+            transform: translate(-50%, -50%) rotate(67deg);
+        }
+
+        /* Right Side (Rho <-> E) */
+        #label-e-rho { /* Div (Inside) */
+            left: 61%; top: 42%;
+            transform: translate(-50%, -50%) rotate(-67deg);
+        }
+        #label-rho-e { /* Coulomb (Outside) */
+            left: 72%; top: 40%;
+            transform: translate(-50%, -50%) rotate(-67deg);
+        }
+
+        /* Bottom Side (V <-> E) */
+        #label-v-e { /* Grad (Top/Inside) */
+            left: 50%; top: 70%;
+        }
+        #label-e-v { /* Line Integral (Bottom/Outside) */
+            left: 50%; top: 82%;
+        }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="diagram-container" id="container">
+        
+        <!-- HTML Text Layer -->
+        <div class="text-layer">
+            
+            <!-- Node Labels -->
+            <!-- Note: The ID matches the circle for hover logic logic via JS -->
+            <div class="node-label group-rho group-v group-e" id="node-rho" data-target="circle-rho">\(\rho\)</div>
+            <div class="node-label group-v group-rho group-e" id="node-v" data-target="circle-v">\(V\)</div>
+            <div class="node-label group-e group-rho group-v" id="node-e" data-target="circle-e">\(\vec{E}\)</div>
+
+            <!-- Formulas -->
+            
+            <!-- 1. Rho -> V (Integral) [OUTSIDE LEFT] -->
+            <div class="math-label group-rho group-v" id="label-rho-v">
+                \( V = \frac{1}{4\pi\epsilon_0} \int \frac{\rho}{\rcurs} d\tau \)
+            </div>
+            <!-- 2. V -> Rho (Poisson) [INSIDE LEFT] -->
+            <div class="math-label group-rho group-v" id="label-v-rho">
+                \( \nabla^2 V = -\rho/\epsilon_0 \)
+            </div>
+
+            <!-- 3. Rho -> E (Coulomb) [OUTSIDE RIGHT] -->
+            <div class="math-label group-rho group-e" id="label-rho-e">
+                \( \vec{E} = \frac{1}{4\pi\epsilon_0} \int \frac{\hat{\rcurs}\rho}{\rcurs^2} d\tau \)
+            </div>
+            <!-- 4. E -> Rho (Divergence) [INSIDE RIGHT] -->
+            <div class="math-label group-rho group-e" id="label-e-rho">
+                \( \nabla \cdot \vec{E} = \rho/\epsilon_0 \)
+            </div>
+
+            <!-- 5. V -> E (Gradient) [TOP BOTTOM] -->
+            <div class="math-label group-v group-e" id="label-v-e">
+                \( \vec{E} = -\nabla V \)
+            </div>
+            <!-- 6. E -> V (Line Integral) [BOTTOM BOTTOM] -->
+            <div class="math-label group-v group-e" id="label-e-v">
+                \( V = - \int \vec{E} \cdot d\vec{l} \)
+            </div>
+
+        </div>
+
+        <!-- SVG Graphics -->
+        <svg viewBox="0 0 650 450">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#3498db" />
+                </marker>
+            </defs>
+
+            <!-- Paths -->
+            
+            <!-- RHO <-> V (Left Diagonal) -->
+            <!-- Down arrow (Integration - Outside) -->
+            <line x1="305" y1="75" x2="142" y2="310" class="arrow-line group-rho group-v active" transform="translate(-25, 0)"/>
+            <!-- Up arrow (Poisson - Inside) -->
+            <line x1="183" y1="310" x2="345" y2="75" class="arrow-line group-rho group-v active" transform="translate(-15, 0)"/>
+
+            <!-- RHO <-> E (Right Diagonal) -->
+            <!-- Down arrow (Coulomb - Outside) -->
+            <line x1="345" y1="75" x2="508" y2="310" class="arrow-line group-rho group-e active" transform="translate(25, 0)"/>
+            <!-- Up arrow (Divergence - Inside) -->
+            <line x1="467" y1="310" x2="305" y2="75" class="arrow-line group-rho group-e active" transform="translate(15, 0)"/>
+
+            <!-- V <-> E (Bottom) -->
+            <!-- Right arrow (Gradient - Top) -->
+            <line x1="195" y1="337" x2="455" y2="337" class="arrow-line group-v group-e active" transform="translate(0, -15)"/>
+            <!-- Left arrow (Line Integral - Bottom) -->
+            <line x1="455" y1="337" x2="195" y2="337" class="arrow-line group-v group-e active" transform="translate(0, 25)"/>
+
+            <!-- Node Circles (Invisible fill for click targets, stroked) -->
+            <!-- Top: Rho -->
+            <circle cx="325" cy="67.5" r="40" class="node-circle group-rho" id="circle-rho" data-group="rho" />
+
+            <!-- Left: V -->
+            <circle cx="162.5" cy="337.5" r="40" class="node-circle group-v" id="circle-v" data-group="v" />
+
+            <!-- Right: E -->
+            <circle cx="487.5" cy="337.5" r="40" class="node-circle group-e" id="circle-e" data-group="e" />
+
+        </svg>
+    </div>
+
+    <script>
+        const circles = document.querySelectorAll('.node-circle');
+        const labels = document.querySelectorAll('.node-label');
+
+        // Function to handle hover
+        function handleHover(group) {
+            document.body.classList.add('hover-active');
+            
+            // Activate all elements that share this group class
+            const relatedElements = document.querySelectorAll(`.group-${group}`);
+            relatedElements.forEach(el => el.classList.add('active'));
+            
+            // Specifically ensure the circle itself remains fully opaque
+            document.querySelector(`.node-circle[data-group="${group}"]`).classList.add('active');
+        }
+
+        function handleLeave() {
+            document.body.classList.remove('hover-active');
+            document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+        }
+
+        // Add listeners to Circles
+        circles.forEach(circle => {
+            circle.addEventListener('mouseenter', (e) => handleHover(e.target.getAttribute('data-group')));
+            circle.addEventListener('mouseleave', handleLeave);
+        });
+
+        // Add listeners to Text Labels (so hovering the text V works like hovering the circle)
+        labels.forEach(label => {
+            label.addEventListener('mouseenter', (e) => {
+                // Find the group from the class list (e.g., "node-label group-rho ...")
+                // We know the ID is e.g., "node-rho", so we can extract "rho"
+                const id = e.target.id; 
+                const group = id.replace('node-', '');
+                handleHover(group);
+            });
+            label.addEventListener('mouseleave', handleLeave);
+        });
+    </script>
+</body>
+</html>

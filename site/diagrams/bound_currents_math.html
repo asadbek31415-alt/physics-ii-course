@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Magnetization & Bound Currents</title>
+    
+    <!-- MathJax for LaTeX -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+          svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; color: white; }
+        
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(20, 30, 40, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #34495e;
+            max-width: 320px;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.1rem; color: #3498db; }
+        
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #b0c4de; }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        button {
+            flex: 1;
+            background: #2c3e50;
+            border: 1px solid #4a6fa5;
+            color: #ecf0f1;
+            padding: 6px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        button:hover { background: #3498db; }
+        button.active { background: #3498db; font-weight: bold; box-shadow: 0 0 8px rgba(52, 152, 219, 0.6); }
+
+        /* Toggles */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        input[type="checkbox"] { accent-color: #3498db; transform: scale(1.2); cursor: pointer; }
+
+        /* Legend */
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-top: 4px; }
+        .color-box { width: 12px; height: 12px; border-radius: 2px; }
+        
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #3498db; font-size: 1.5rem; pointer-events: none;
+        }
+    </style>
+    
+    <!-- Import Three.js as ES Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>Field Controls</h2>
+        
+        <div class="control-group">
+            <label>Magnetization Field ($\mathbf{M}$)</label>
+            <div class="btn-group">
+                <button onclick="setMode('uniform')" id="btn-uniform" class="active">Uniform</button>
+                <button onclick="setMode('shear')" id="btn-shear">Gradient</button>
+                <button onclick="setMode('vortex')" id="btn-vortex">Vortex</button>
+            </div>
+            <div id="math-desc" style="font-size: 0.85rem; color: #888; min-height: 40px; margin-bottom: 10px;">
+                $\mathbf{M} = M_0 \mathbf{\hat{z}}$
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Visibility</label>
+            <div class="toggle-row">
+                <div class="legend-item"><div class="color-box" style="background:#00bfff"></div> $\mathbf{M}$ (Magnetization)</div>
+                <input type="checkbox" id="showM" checked onchange="updateVisibility()">
+            </div>
+            <div class="toggle-row">
+                <div class="legend-item"><div class="color-box" style="background:#e74c3c"></div> $\mathbf{J}_b = \nabla \times \mathbf{M}$</div>
+                <input type="checkbox" id="showJ" checked onchange="updateVisibility()">
+            </div>
+            <div class="toggle-row">
+                <div class="legend-item"><div class="color-box" style="background:#f1c40f"></div> $\mathbf{K}_b = \mathbf{M} \times \mathbf{\hat{n}}$</div>
+                <input type="checkbox" id="showK" checked onchange="updateVisibility()">
+            </div>
+            <div class="toggle-row">
+                <span>Show Material Bounds</span>
+                <input type="checkbox" id="showBox" checked onchange="updateVisibility()">
+            </div>
+        </div>
+    </div>
+
+    <div id="loading">Initializing 3D Engine...</div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- GLOBAL VARIABLES ---
+        let scene, camera, renderer, controls;
+        let arrowGroupM, arrowGroupJ, arrowGroupK;
+        let boundsBox;
+        
+        // Simulation Parameters
+        const GRID_SIZE = 8; // Density of the vector field (8x8x8)
+        const CUBE_SIZE = 4;
+        let currentMode = 'uniform';
+
+        // --- INIT ---
+        function init() {
+            const container = document.body;
+            document.getElementById('loading').style.display = 'none';
+
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(8, 6, 10);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // Helpers
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+
+            // Groups for vectors
+            arrowGroupM = new THREE.Group();
+            arrowGroupJ = new THREE.Group();
+            arrowGroupK = new THREE.Group();
+            scene.add(arrowGroupM);
+            scene.add(arrowGroupJ);
+            scene.add(arrowGroupK);
+
+            // Material Boundary Box
+            const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+            const edges = new THREE.EdgesGeometry(geometry);
+            boundsBox = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x444444 }));
+            scene.add(boundsBox);
+
+            // Initial Generation
+            generateFields();
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        // --- MATH ENGINE ---
+
+        // 1. Define M(x,y,z) based on mode
+        function getMVector(x, y, z) {
+            // Inputs are normalized -1 to 1 based on cube center
+            const vec = new THREE.Vector3(0, 0, 0);
+            
+            if (currentMode === 'uniform') {
+                // Uniform Z direction
+                vec.set(0, 0, 1);
+            } 
+            else if (currentMode === 'shear') {
+                // M increases with Y, points in Z. 
+                // M = (y + offset) z_hat. 
+                // Adding 1.2 to y so arrows don't disappear at y=0 for visual clarity
+                vec.set(0, 0, (y + 1.2) * 0.8);
+            } 
+            else if (currentMode === 'vortex') {
+                // Swirl around Z axis: M = -y x_hat + x y_hat
+                vec.set(-y, x, 0); 
+            }
+            return vec;
+        }
+
+        // 2. Numerical Curl Calculation
+        function getCurlM(x, y, z) {
+            const h = 0.05; // Step size for finite difference
+
+            // We need partial derivatives.
+            // Curl F = (dFz/dy - dFy/dz) i + (dFx/dz - dFz/dx) j + (dFy/dx - dFx/dy) k
+
+            const M_pos_x = getMVector(x + h, y, z);
+            const M_neg_x = getMVector(x - h, y, z);
+            
+            const M_pos_y = getMVector(x, y + h, z);
+            const M_neg_y = getMVector(x, y - h, z);
+            
+            const M_pos_z = getMVector(x, y, z + h);
+            const M_neg_z = getMVector(x, y, z - h);
+
+            // Partial derivatives (Central Difference)
+            const dMz_dy = (M_pos_y.z - M_neg_y.z) / (2 * h);
+            const dFy_dz = (M_pos_z.y - M_neg_z.y) / (2 * h);
+            
+            const dFx_dz = (M_pos_z.x - M_neg_z.x) / (2 * h);
+            const dFz_dx = (M_pos_x.z - M_neg_x.z) / (2 * h);
+            
+            const dFy_dx = (M_pos_x.y - M_neg_x.y) / (2 * h);
+            const dFx_dy = (M_pos_y.x - M_neg_y.x) / (2 * h);
+
+            return new THREE.Vector3(
+                dMz_dy - dFy_dz,
+                dFx_dz - dFz_dx,
+                dFy_dx - dFx_dy
+            );
+        }
+
+        // --- VISUALIZATION GENERATOR ---
+
+        function createArrow(dir, origin, color, length, group) {
+            if (dir.lengthSq() < 0.01) return; // Don't draw tiny vectors
+            
+            // normalize dir for direction, use length for magnitude
+            const direction = dir.clone().normalize();
+            
+            // Standardize visual scale
+            const arrowLength = length * 0.6; 
+            const headLength = arrowLength * 0.25;
+            const headWidth = headLength * 0.5;
+
+            const arrow = new THREE.ArrowHelper(direction, origin, arrowLength, color, headLength, headWidth);
+            group.add(arrow);
+        }
+
+        function generateFields() {
+            // Clear old arrows
+            arrowGroupM.clear();
+            arrowGroupJ.clear();
+            arrowGroupK.clear();
+
+            const step = CUBE_SIZE / GRID_SIZE;
+            const offset = CUBE_SIZE / 2;
+
+            // Loop through volume
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    for (let k = 0; k < GRID_SIZE; k++) {
+                        
+                        // Calculate position in world space
+                        const x = (i + 0.5) * step - offset;
+                        const y = (j + 0.5) * step - offset;
+                        const z = (k + 0.5) * step - offset;
+                        const origin = new THREE.Vector3(x, y, z);
+
+                        // Normalized coordinates for math functions (-1 to 1 approx)
+                        const nx = x / (CUBE_SIZE/2);
+                        const ny = y / (CUBE_SIZE/2);
+                        const nz = z / (CUBE_SIZE/2);
+
+                        // 1. MAGNETIZATION (M)
+                        const M = getMVector(nx, ny, nz);
+                        createArrow(M, origin, 0x00bfff, M.length(), arrowGroupM);
+
+                        // 2. VOLUME BOUND CURRENT (Jb = Curl M)
+                        // Only calculate Jb strictly inside, or allow it everywhere for visual clarity
+                        const Jb = getCurlM(nx, ny, nz);
+                        // Scale up Jb for visibility as derivatives can be small
+                        createArrow(Jb, origin, 0xe74c3c, Jb.length(), arrowGroupJ);
+                    }
+                }
+            }
+
+            // 3. SURFACE BOUND CURRENT (Kb = M x n)
+            // We iterate over the 6 faces of the cube
+            generateSurfaceCurrents(step, offset);
+        }
+
+        function generateSurfaceCurrents(step, offset) {
+            // We need to sample M just "inside" the surface
+            // For visual simplicity, we place the vectors exactly on the face
+            
+            const samples = GRID_SIZE; 
+            
+            const processFace = (uIndex, vIndex, constIndex, constVal, normalVec) => {
+                for(let u = 0; u < samples; u++) {
+                    for(let v = 0; v < samples; v++) {
+                        // Position
+                        const coords = [0,0,0];
+                        coords[uIndex] = (u + 0.5) * step - offset;
+                        coords[vIndex] = (v + 0.5) * step - offset;
+                        coords[constIndex] = constVal; // The face plane
+
+                        const pos = new THREE.Vector3(...coords);
+                        
+                        // Normalized Coords
+                        const nx = pos.x / (CUBE_SIZE/2);
+                        const ny = pos.y / (CUBE_SIZE/2);
+                        const nz = pos.z / (CUBE_SIZE/2);
+
+                        // Get M at surface
+                        const M = getMVector(nx, ny, nz);
+                        
+                        // Kb = M x n
+                        const Kb = new THREE.Vector3().crossVectors(M, normalVec);
+
+                        createArrow(Kb, pos, 0xf1c40f, Kb.length(), arrowGroupK);
+                    }
+                }
+            };
+
+            // Right (+x)
+            processFace(1, 2, 0, offset, new THREE.Vector3(1,0,0));
+            // Left (-x)
+            processFace(1, 2, 0, -offset, new THREE.Vector3(-1,0,0));
+            // Top (+y)
+            processFace(0, 2, 1, offset, new THREE.Vector3(0,1,0));
+            // Bottom (-y)
+            processFace(0, 2, 1, -offset, new THREE.Vector3(0,-1,0));
+            // Front (+z)
+            processFace(0, 1, 2, offset, new THREE.Vector3(0,0,1));
+            // Back (-z)
+            processFace(0, 1, 2, -offset, new THREE.Vector3(0,0,-1));
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- GLOBAL INTERFACE HANDLERS ---
+        
+        window.setMode = function(mode) {
+            currentMode = mode;
+            
+            // Update Buttons
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + mode).classList.add('active');
+
+            // Update Math Description
+            const mathDesc = document.getElementById('math-desc');
+            if(mode === 'uniform') {
+                mathDesc.innerHTML = '$\\mathbf{M} = M_0 \\mathbf{\\hat{z}}$ <br> $\\mathbf{J}_b = 0$';
+            } else if(mode === 'shear') {
+                mathDesc.innerHTML = '$\\mathbf{M} \\propto y \\mathbf{\\hat{z}}$ <br> $\\mathbf{J}_b = \\nabla \\times \\mathbf{M} \\propto \\mathbf{\\hat{x}}$';
+            } else if(mode === 'vortex') {
+                mathDesc.innerHTML = '$\\mathbf{M} = -y\\mathbf{\\hat{x}} + x\\mathbf{\\hat{y}}$ <br> $\\mathbf{J}_b = 2\\mathbf{\\hat{z}}$';
+            }
+            // Retypeset Latex
+            if(window.MathJax) MathJax.typesetPromise();
+
+            // Regenerate
+            generateFields();
+        };
+
+        window.updateVisibility = function() {
+            arrowGroupM.visible = document.getElementById('showM').checked;
+            arrowGroupJ.visible = document.getElementById('showJ').checked;
+            arrowGroupK.visible = document.getElementById('showK').checked;
+            boundsBox.visible = document.getElementById('showBox').checked;
+        };
+
+        // Start
+        init();
+    </script>
+<script defer data-offline-bundle src="bound_currents_math.0.offline.js"></script>
+
+
+
+</body>
+</html>

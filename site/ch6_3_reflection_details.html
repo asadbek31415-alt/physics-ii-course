@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Boundary Conditions & Reflection</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false },
+                    { left: "\\(", right: "\\)", display: false },
+                    { left: "\\[", right: "\\]", display: true }
+                ]
+            });
+        });
+    </script>
+    <style>
+        .def-item {
+            grid-template-columns: 110px 1fr !important;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt;
+                <a href="ch6_4_matter_waves.html">Waves in Matter</a> &gt; Reflection
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Boundary Conditions & Reflection</h1>
+
+        <section class="topic-section">
+            <h2>The Four Boundary Conditions</h2>
+            <p>
+                To determine what happens at a boundary between two media, we apply Maxwell's equations in integral form
+                to a tiny "pillbox" or a thin loop at the interface. This gives us the general boundary conditions:
+            </p>
+            <div class="equation-box">
+                $$
+                \begin{align}
+                1. \quad & \epsilon_1 E_{1\perp} - \epsilon_2 E_{2\perp} = \sigma_f \\
+                2. \quad & B_{1\perp} - B_{2\perp} = 0 \\
+                3. \quad & \vec{E}_{1\parallel} - \vec{E}_{2\parallel} = 0 \\
+                4. \quad & \frac{1}{\mu_1} \vec{B}_{1\parallel} - \frac{1}{\mu_2} \vec{B}_{2\parallel} = \vec{K}_f
+                \times \hat{n}
+                \end{align}
+                $$
+            </div>
+            <p>
+                For linear, non-conducting media ($\sigma_f=0, K_f=0$), the tangential components of $\vec{E}$ and
+                $\vec{H}$ must be continuous.
+            </p>
+        </section>
+
+        <section class="topic-section">
+            <h2>Derivation for Normal Incidence</h2>
+            <p>
+                Suppose a wave polarized in the $x$-direction strikes a boundary (the $xy$-plane at $z=0$).
+                The incident, reflected, and transmitted waves are:
+                $$ \tilde{\vec{E}}_I = \tilde{E}_{0I} e^{i(k_1 z - \omega t)}\hat{x}, \quad \tilde{\vec{E}}_R =
+                \tilde{E}_{0R} e^{i(-k_1 z - \omega t)}\hat{x}, \quad \tilde{\vec{E}}_T = \tilde{E}_{0T} e^{i(k_2 z -
+                \omega t)}\hat{x} $$
+                From the continuity of $\vec{E}_{\parallel}$ at $z=0$:
+                $$ \tilde{E}_{0I} + \tilde{E}_{0R} = \tilde{E}_{0T} $$
+                From the continuity of $\vec{H}_{\parallel}$ (assuming $\mu_1 \approx \mu_2 \approx \mu_0$):
+                $$ \frac{1}{v_1} \tilde{E}_{0I} - \frac{1}{v_1} \tilde{E}_{0R} = \frac{1}{v_2} \tilde{E}_{0T} \implies
+                n_1 (\tilde{E}_{0I} - \tilde{E}_{0R}) = n_2 \tilde{E}_{0T} $$
+            </p>
+            <p>
+                Solving this system of two equations yields the <strong>Fresnel Equations</strong> for normal incidence:
+            </p>
+            <div class="equation-box" style="border: 2px solid var(--accent-color);">
+                $$ \tilde{E}_{0R} = \left( \frac{n_1 - n_2}{n_1 + n_2} \right) \tilde{E}_{0I}, \quad \tilde{E}_{0T} =
+                \left( \frac{2n_1}{n_1 + n_2} \right) \tilde{E}_{0I} $$
+            </div>
+        </section>
+
+        <section class="topic-section">
+            <h2>The Phase Shift Mystery</h2>
+            <p>
+                Looking at the reflection coefficient $r = \frac{n_1 - n_2}{n_1 + n_2}$, we see something interesting:
+            </p>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">$n_1 > n_2$</span>
+                    <span class="def-text"><strong>In Phase</strong>. Dense to rare transition. $r$ is positive.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$n_2 > n_1$</span>
+                    <span class="def-text"><strong>Phase Shift</strong>. Rare to dense transition. Reflected wave
+                        undergoes a $180^\circ$ phase shift.</span>
+                </div>
+            </div>
+            <p>
+                This is analogous to a transverse wave on a string hitting a fixed end (phase shift) vs. a free end (no
+                shift).
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

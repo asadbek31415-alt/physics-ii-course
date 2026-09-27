@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Field on Axis</title>
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="ch3_2_biot_savart.html">Magnetostatics</a> > 
+                Derivation: Field on Axis
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>Deep Dive: Field on Axis</h1>
+        <div class="iframe-container"><iframe src="diagrams/dd_derivation_field_on_axis.html"></iframe></div>
+<section>
+    <h2>Example: Magnetic Field of a Circular Loop</h2>
+    <p>
+        Consider a circular loop of wire of radius \( R \), lying in the \( xy \)-plane and centered at the origin, carrying a steady current \( I \). We wish to calculate the magnetic field \( \mathbf{B} \) at a point \( P \) a distance \( z \) straight above the center.
+    </p>
+
+    <div class="math-block">
+        $$ \mathbf{B}(\mathbf{r}) = \frac{\mu_0 I}{4\pi} \int \frac{d\mathbf{l}' \times \hat{\mathbf{r}}}{\scriptr^2} $$
+    </div>
+
+    <p>
+        Here, \( d\mathbf{l}' \) is the vector line element along the current loop, and \( \mathbf{r} \) is the separation vector from the source element to the point \( P \). The magnitude of the separation vector is simply \( \scriptr = \sqrt{R^2 + z^2} \).
+    </p>
+</section>
+
+<section>
+    <h3>Symmetry Arguments</h3>
+    <p>
+        Before we compute the integral, let us exploit the symmetry of the configuration. The vector \( d\mathbf{l}' \) is tangent to the circle, while \( \mathbf{r} \) points up toward the axis. Consequently, \( d\mathbf{l}' \) and \( \mathbf{r} \) are perpendicular, so the magnitude of their cross product is simply \( dl' \).
+    </p>
+    <p>
+        Furthermore, the direction of the differential field \( d\mathbf{B} \) is perpendicular to the plane defined by \( \mathbf{r} \) and \( d\mathbf{l}' \). This means \( d\mathbf{B} \) has a vertical component pointing along the \( z \)-axis and a horizontal component pointing radially outward (or inward). When we integrate around the entire loop, the horizontal components cancel: for every element \( d\mathbf{l}' \), there is a diametrically opposite element whose horizontal contribution exactly neutralizes the first. Thus, we only need to worry about the \( z \)-component.
+    </p>
+</section>
+
+<section>
+    <h3>Calculating the Field</h3>
+    <p>
+        Let \( \theta \) be the angle between the separation vector \( \mathbf{r} \) and the \( z \)-axis. The vertical component of the field is obtained by projecting \( d\mathbf{B} \) onto the axis. From the geometry, the projection factor is \( \sin(\theta) = R / \scriptr \).
+    </p>
+
+    <div class="math-block">
+        $$ dB_z = \frac{\mu_0 I}{4\pi} \frac{dl'}{\scriptr^2} \sin(\theta) = \frac{\mu_0 I}{4\pi} \frac{dl'}{R^2 + z^2} \left( \frac{R}{\sqrt{R^2 + z^2}} \right) $$
+    </div>
+
+    <p>
+        Since \( I \), \( R \), and \( z \) are all constant as we move around the loop, the terms can be pulled out of the integral. The integration of \( \int dl' \) simply yields the circumference of the circle, \( 2\pi R \).
+    </p>
+
+    <div class="math-block">
+        $$ B(z) = \frac{\mu_0 I R}{4\pi (R^2 + z^2)^{3/2}} \int dl' = \frac{\mu_0 I R}{4\pi (R^2 + z^2)^{3/2}} (2\pi R) $$
+    </div>
+</section>
+
+<section>
+    <h3>The Result</h3>
+    <p>
+        Simplifying the expression and restoring the vector direction, we arrive at the standard formula for the field on the axis of a circular loop:
+    </p>
+
+    <div class="math-block">
+        $$ \mathbf{B}(z) = \frac{\mu_0 I R^2}{2(R^2 + z^2)^{3/2}} \hat{\mathbf{z}} $$
+    </div>
+
+    <p>
+        <strong>Check your result:</strong> At the center of the loop (\( z = 0 \)), this reduces to \( \mu_0 I / 2R \), which matches the result for the center of a circle. Far from the loop (\( z \gg R \)), the field drops off as \( 1/z^3 \), characteristic of a magnetic dipole.
+    </p>
+</section>
+    </main>
+    <footer></footer>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divergence, Curl & Comparison</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- KaTeX Configuration -->
+    <link rel="stylesheet" href="vendor/katex/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script defer src="vendor/katex/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof renderMathInElement !== "function") return;
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });
+        });
+    </script>
+
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetostatics_index.html">Magnetostatics</a> > 
+                Divergence, Curl & Ampère's Law
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>Divergence, Curl, and Ampère's Law</h1>
+
+        <section data-concept-title="The Magnetostatic Bridge" id="concept-0-the-magnetostatic-bridge">
+            <h2>The Magnetostatic Bridge</h2>
+            <p>
+                This chapter works in the <strong>magnetostatic</strong> limit: currents are steady, charge density is
+                time-independent, and the electric field is not changing with time
+                ($\partial \mathbf{E}/\partial t=0$). Under these assumptions the displacement-current term is absent,
+                so the magnetic laws take their magnetostatic forms.
+            </p>
+            <p>
+                The <strong>Biot-Savart law</strong> is a field-construction formula: given a known steady current
+                distribution, it adds the contributions of its current elements to calculate $\mathbf{B}$ directly.
+                That is general, but the integral can be laborious. For highly symmetric currents, <strong>Ampère's
+                    law</strong> can find the same field more efficiently by using its circulation instead.
+            </p>
+            <p>
+                The circulation $\oint \mathbf{B}\cdot d\mathbf{l}$ is the total tangential component of
+                $\mathbf{B}$ around an oriented closed loop. A current through the loop's surface makes the magnetic
+                field tend to circle that current. In magnetostatics, Ampère's integral law is
+            </p>
+            <div class="math-block">
+                $$ \oint_{\partial S} \mathbf{B}\cdot d\mathbf{l} = \mu_0 I_{\text{enc}}
+                = \mu_0\int_S \mathbf{J}\cdot d\mathbf{a}. $$
+            </div>
+            <p>
+                Stokes' theorem says that this loop circulation equals the surface integral of
+                $\nabla\times\mathbf{B}$. Because the relation holds for every suitable surface $S$, its local form is
+                $\nabla\times\mathbf{B}=\mu_0\mathbf{J}$: curl measures the local tendency of $\mathbf{B}$ to
+                circulate around the current density.
+            </p>
+            <p>
+                A separate magnetic field law is the absence of magnetic sources or sinks. Classical electromagnetism
+                has no isolated magnetic charges, so magnetic field lines do not begin or end at a point. The divergence
+                theorem connects its two forms:
+            </p>
+            <div class="math-block">
+                $$ \oint_{\partial V}\mathbf{B}\cdot d\mathbf{a}
+                = \int_V (\nabla\cdot\mathbf{B})\,d\tau = 0
+                \quad\Longleftrightarrow\quad \nabla\cdot\mathbf{B}=0. $$
+            </div>
+            <p>
+                Thus Biot-Savart constructs $\mathbf{B}$ from steady currents; Ampère's law constrains its circulation,
+                especially when symmetry helps; $\nabla\times\mathbf{B}=\mu_0\mathbf{J}$ is the local circulation law;
+                and $\nabla\cdot\mathbf{B}=0$ is the local no-sources-or-sinks law. These are consistent descriptions
+                of magnetostatics, not four statements that all follow trivially from Biot-Savart.
+            </p>
+            <p>
+                Later, when electric fields vary with time, $\nabla\times\mathbf{B}=\mu_0\mathbf{J}$ is incomplete and
+                becomes the Ampère-Maxwell law.
+            </p>
+        </section>
+
+        <!-- SECTION 1: DIVERGENCE -->
+        <section data-concept-title="1. The Divergence of B" id="concept-1-1-the-divergence-of-b">
+            <h2>1. The Divergence of B</h2>
+            <p>
+                The behavior of magnetic fields regarding "sources" and "sinks" is described by the divergence. Unlike electric fields, which diverge from positive charges, magnetic fields are <strong>solenoidal</strong>.
+            </p>
+
+            <div class="math-block">
+                $$ \underbrace{\nabla \cdot \mathbf{B} = 0}_{\text{Differential Form}} \quad \longleftrightarrow \quad \underbrace{\oint_{\mathcal{S}} \mathbf{B} \cdot d\mathbf{a} = 0}_{\text{Integral Form}} $$
+            </div>
+
+            <p>
+                <strong>Physical Interpretation:</strong>
+                <ul>
+                    <li><strong>No Magnetic Monopoles:</strong> There is no magnetic equivalent to electric charge ($q$). You cannot isolate a "North" pole.</li>
+                    <li><strong>Closed Loops:</strong> Magnetic field lines have no beginning or end; they form continuous closed loops.</li>
+                    <li><strong>Flux Conservation:</strong> The net magnetic flux entering any closed volume must exactly equal the flux leaving it.</li>
+                </ul>
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_3_div_curl.html" title="Divergence Visualization"></iframe>
+            </div>
+            
+        </section>
+        
+        
+        <!-- SECTION 2: CURL AND AMPERE'S LAW -->
+        <section data-concept-title="2. The Curl of B (Ampère's Law)" id="concept-2-2-the-curl-of-b-amp-re-s-law">
+            <h2>2. The Curl of B (Ampère's Law)</h2>
+            <p>
+                While the divergence of $\mathbf{B}$ is zero, the curl is non-zero wherever current flows. This describes the rotational or "circulating" nature of the magnetic field.
+            </p>
+
+            <div class="math-block">
+                $$ \underbrace{\nabla \times \mathbf{B} = \mu_0 \mathbf{J}}_{\text{Differential Form}} \quad \longleftrightarrow \quad \underbrace{\oint_{\mathcal{P}} \mathbf{B} \cdot d\mathbf{l} = \mu_0 I_{\text{enc}}}_{\text{Integral Form}} $$
+            </div>
+
+            <p>
+                <strong>Physical Interpretation:</strong>
+                <ul>
+                    <li><strong>Circulation:</strong> Electric currents ($\mathbf{J}$ or $I$) act as vortices that cause the magnetic field to curl around them.</li>
+                    <li><strong>Calculation Tool:</strong> The integral form (Ampère's Law) allows us to calculate $\mathbf{B}$ easily when the system possesses high symmetry (cylindrical, planar, or solenoidal), allowing us to pull $|\mathbf{B}|$ out of the integral.</li>
+                </ul>
+            </p>
+
+            <div class="iframe-container">
+                <!-- 3D Ampere's Law Simulation -->
+                <iframe src="diagrams/ampere_law_wires.html" title="Ampere's Law 3D Studio"></iframe>
+            </div>
+            
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="amperes_law_applications.html?back=ch3_3_div_curl_B.html%23concept-2-2-the-curl-of-b-amp-re-s-law"><span aria-hidden="true">+</span> Deep Dive: Applications of Ampere's Law</a>
+            </div>
+        </section>
+        
+        <hr style="border-color: #2c3e50; margin: 2rem 0;">
+
+        <!-- SECTION 3: COMPARISON -->
+        <section data-concept-title="3. Comparison: Magnetostatics vs. Electrostatics" id="concept-3-3-comparison-magnetostatics-vs-electrostatics">
+            <h2>3. Comparison: Magnetostatics vs. Electrostatics</h2>
+            <p>
+                The theories of static electric and magnetic fields run parallel to each other, yet they describe distinct physical phenomena.
+            </p>
+
+            <h3>Similarities</h3>
+            <ul>
+                <li><strong>Superposition Principle:</strong> Both fields satisfy the superposition principle. The total field is the vector sum of fields produced by individual source elements.</li>
+                <li><strong>Inverse Square Laws:</strong> Both Coulomb's Law and the Biot-Savart Law involve a $1/r^2$ dependence for the field contribution from a point source (or current element).</li>
+                <li><strong>Long Range:</strong> Both forces can act over infinite distances.</li>
+            </ul>
+
+            <h3>Differences and Parallels</h3>
+            
+            <div class="math-block">
+                $$ 
+                \begin{aligned}
+                &\textbf{Electrostatics} & &\textbf{Magnetostatics} \\
+                \hline
+                \text{Source} \quad & \rho \text{ (Scalar Charge)} & & \mathbf{J} \text{ (Vector Current)} \\
+                \text{Field Law} \quad & \nabla \cdot \mathbf{E} = \rho/\epsilon_0 \text{ (Gauss)} & & \nabla \times \mathbf{B} = \mu_0 \mathbf{J} \text{ (Ampère)} \\
+                \text{Null Property} \quad & \nabla \times \mathbf{E} = 0 \text{ (Conservative)} & & \nabla \cdot \mathbf{B} = 0 \text{ (Solenoidal)} \\
+                \text{Potentials} \quad & \mathbf{E} = -\nabla V \text{ (Scalar } V) & & \mathbf{B} = \nabla \times \mathbf{A} \text{ (Vector } \mathbf{A}) \\
+                \text{Constants} \quad & \epsilon_0 \approx 8.85 \times 10^{-12} \text{ F/m} & & \mu_0 = 4\pi \times 10^{-7} \text{ N/A}^2 \\
+                \end{aligned}
+                $$
+            </div>
+
+            <h3>Constants: $\epsilon_0$ vs $\mu_0$</h3>
+            <p>
+                $\epsilon_0$ (Permittivity of free space) describes how easy it is to establish an electric field in a vacuum. $\mu_0$ (Permeability of free space) describes the ability of a material to support the formation of a magnetic field. They are linked by the speed of light: $c = 1/\sqrt{\epsilon_0 \mu_0}$.
+            </p>
+
+            <h3>Potentials: $V$ vs $\mathbf{A}$</h3>
+            <p>
+                Because $\nabla \times \mathbf{E} = 0$, we can define a <strong>Scalar Potential</strong> $V$ such that $\mathbf{E} = -\nabla V$. This relates to potential energy.<br>
+                Because $\nabla \cdot \mathbf{B} = 0$, we cannot use a scalar potential. Instead, we define a <strong>Vector Potential</strong> $\mathbf{A}$ such that $\mathbf{B} = \nabla \times \mathbf{A}$. $\mathbf{A}$ does not have a simple potential energy interpretation but simplifies calculations in quantum mechanics and electrodynamics.
+            </p>
+
+            <h3>Behavior in Matter</h3>
+            <p>
+                <strong>Electrostatics:</strong> Matter responds via <strong>Polarization ($\mathbf{P}$)</strong>. Electric dipoles align with the field, creating a bound charge $\sigma_b$ that typically <em>reduces</em> the total field inside the material (Dielectrics).
+            </p>
+            <p>
+                <strong>Magnetostatics:</strong> Matter responds via <strong>Magnetization ($\mathbf{M}$)</strong>. Magnetic dipoles align, creating a bound current $\mathbf{K}_b$. Depending on the material, this can slightly reduce the field (Diamagnetic), slightly increase it (Paramagnetic), or massively increase it (Ferromagnetic).
+            </p>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/ch3_3_comparison.html" title="E vs B Field Comparison"></iframe>
+            </div>
+            
+            
+        </section>
+            
+    </main>
+    <footer></footer>
+</body>
+</html>

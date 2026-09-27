@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biot-Savart Geometric Visualization</title>
+
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+
+    <!-- KaTeX JS -->
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            macros: {
+                '\\rsep': '{\\text{𝓇}}',
+                '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+            },
+            throwOnError: false
+        });"></script>
+
+    <!-- Three.js & Controls -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(250px, 28vw, 320px) minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        #ui-panel {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.95);
+            border: 0;
+            border-right: 1px solid #333;
+            border-radius: 0;
+            padding: 16px;
+            color: #e5e5e5;
+            user-select: none;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            z-index: 10;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            color: #fbbf24;
+            font-weight: 600;
+        }
+
+        .math-block {
+            text-align: center;
+            margin: 12px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            font-size: 1.1em;
+        }
+
+        .description {
+            font-size: 13px;
+            color: #a1a1aa;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #d4d4d8;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #27272a;
+            border-radius: 2px;
+            appearance: none;
+            -webkit-appearance: none;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #18181b;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #27272a;
+            color: #d4d4d8;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-panel {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid #333;
+                padding: 12px;
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 1;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="ui-panel">
+        <h2>Biot-Savart Geometry</h2>
+
+        <div class="math-block">
+            $$ d\vec{B} = \frac{\mu_0}{4\pi} \frac{I d\vec{l}' \times \hatrsep}{\rsep^2} $$
+        </div>
+
+        <p class="description">
+            The magnetic field $\vec{B}$ (in Tesla, T) is perpendicular to both the current element $I d\vec{l}'$
+            and the separation vector $\vecrsep = \vec{r} - \vec{r}'$.
+        </p>
+
+        <div class="control-group">
+            <div class="control-header">
+                <span>Element Position ($s$)</span>
+                <span id="slider-val">50%</span>
+            </div>
+            <input type="range" id="element-slider" min="0" max="1" step="0.005" value="0.5">
+        </div>
+
+        <div class="legend">
+            <div class="dot" style="background:#3b82f6; color: #3b82f6;"></div>
+            <div>Current Element ($I d\vec{l}'$)</div>
+
+            <div class="dot" style="background:#fbbf24; color: #fbbf24;"></div>
+            <div>Unit Sep. Vector ($\hatrsep$)</div>
+
+            <div class="dot" style="background:#22d3ee; color: #22d3ee;"></div>
+            <div>Field Contribution ($d\vec{B}$)</div>
+
+            <div class="dot" style="background:#4ade80; color: #4ade80;"></div>
+            <div>Observer ($\vec{P}$) - <strong>Drag Me!</strong></div>
+
+            <div class="dot" style="background:#ef4444; color: #ef4444; box-shadow: 0 0 8px #ef4444;"></div>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="chk-sep" style="width: auto; margin: 0;"> Separation Vector ($\vecrsep$)
+            </label>
+
+            <div style="display: flex; gap: 4px;">
+                <div class="dot" style="background:#ef4444; color: #ef4444;"></div>
+                <div class="dot" style="background:#3b82f6; color: #3b82f6;"></div>
+            </div>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="chk-coords" style="width: auto; margin: 0;"> Coord. Vectors ($\vec{r},
+                \vec{r}'$)
+            </label>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { DragControls } from 'three/addons/controls/DragControls.js';
+
+        // --- THREE.JS SCENE ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        camera.position.set(8, 14, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        function resizeRenderer() {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        const orbitControls = new OrbitControls(camera, renderer.domElement);
+        orbitControls.enableDamping = true;
+        orbitControls.dampingFactor = 0.05;
+        orbitControls.target.set(-2, 0, 0);
+
+        // --- SCENE OBJECTS ---
+        const gridHelper = new THREE.GridHelper(30, 30, 0x333333, 0x111111);
+        gridHelper.position.y = -2;
+        scene.add(gridHelper);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 15, 10);
+        scene.add(dirLight);
+
+        class CustomSinCurve extends THREE.Curve {
+            getPoint(t) {
+                const x = (t - 0.5) * 12;
+                const z = Math.sin(t * Math.PI * 2) * 2.5;
+                const y = Math.cos(t * Math.PI) * 1.5;
+                return new THREE.Vector3(x, y, z);
+            }
+        }
+        const path = new CustomSinCurve();
+
+        const tubeGeo = new THREE.TubeGeometry(path, 100, 0.1, 8, false);
+        const tubeMat = new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.3 });
+        const wireMesh = new THREE.Mesh(tubeGeo, tubeMat);
+        scene.add(wireMesh);
+
+        const pointGeo = new THREE.SphereGeometry(0.35, 32, 32);
+        const pointMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, toneMapped: false });
+        const pNode = new THREE.Mesh(pointGeo, pointMat);
+        pNode.position.set(0, 5, 4);
+        scene.add(pNode);
+
+        const elementNode = new THREE.Mesh(new THREE.SphereGeometry(0.25, 32, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+        scene.add(elementNode);
+
+        // --- ARROWS & LABELS ---
+        function makeTextSprite(message, colorStr) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const fontsize = 60;
+            context.font = "Bold " + fontsize + "px Inter, sans-serif";
+            const metrics = context.measureText(message);
+            context.fillStyle = colorStr;
+            context.fillText(message, 0, fontsize);
+            const texture = new THREE.CanvasTexture(canvas);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
+            sprite.scale.set(2, 1, 1);
+            return sprite;
+        }
+
+        function createArrow(color, length = 1) {
+            return new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), length, color, 0.5, 0.3);
+        }
+
+        const arrowDl = createArrow(0x3b82f6, 2.0);
+        const arrowRScale = createArrow(0xfbbf24, 2.0);
+        const arrowRSep = createArrow(0xef4444, 1.0);
+        const arrowDB = createArrow(0x22d3ee, 2.5);
+        scene.add(arrowDl, arrowRScale, arrowRSep, arrowDB);
+
+        // Standardized labels to match the new notation
+        const labelDl = makeTextSprite("Idl'", "#3b82f6");
+        const labelRScale = makeTextSprite("𝓇̂", "#fbbf24");
+        const labelRSep = makeTextSprite("𝓇", "#ef4444");
+        const labelDB = makeTextSprite("dB", "#22d3ee");
+        const labelP = makeTextSprite("P", "#4ade80");
+        scene.add(labelDl, labelRScale, labelRSep, labelDB, labelP);
+        arrowRSep.visible = labelRSep.visible = false;
+
+        // --- COORDINATE VECTORS ---
+        const originNode = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        const arrowRAbs = createArrow(0xef4444, 1);
+        const arrowRPrimeAbs = createArrow(0x3b82f6, 1);
+        const labelRAbs = makeTextSprite("r", "#ef4444");
+        const labelRPrimeAbs = makeTextSprite("r'", "#3b82f6");
+        const labelOrigin = makeTextSprite("Origin", "#ffffff");
+        const coordGroup = new THREE.Group();
+        coordGroup.add(arrowRAbs, arrowRPrimeAbs, labelRAbs, labelRPrimeAbs, labelOrigin, originNode);
+        scene.add(coordGroup);
+        coordGroup.visible = false;
+
+        const dragControls = new DragControls([pNode], camera, renderer.domElement);
+        dragControls.addEventListener('dragstart', () => orbitControls.enabled = false);
+        dragControls.addEventListener('dragend', () => { orbitControls.enabled = true; updateGeometry(uiState.t); });
+
+        const uiState = { t: 0.5 };
+        const slider = document.getElementById('element-slider');
+        const sliderLabel = document.getElementById('slider-val');
+
+        function updateGeometry(t) {
+            uiState.t = t;
+            const pos = path.getPointAt(t);
+            const tangent = path.getTangentAt(t).normalize();
+            elementNode.position.copy(pos);
+
+            arrowDl.position.copy(pos);
+            arrowDl.setDirection(tangent);
+            labelDl.position.copy(pos).add(tangent.clone().multiplyScalar(1.2)).add(new THREE.Vector3(0, 0.5, 0));
+
+            const rVec = new THREE.Vector3().subVectors(pNode.position, pos);
+            const rDist = rVec.length();
+
+            arrowRScale.position.copy(pos);
+            arrowRScale.setDirection(rVec.clone().normalize());
+            labelRScale.position.copy(pos).add(rVec.clone().normalize().multiplyScalar(2.2)).add(new THREE.Vector3(0, 0.2, 0));
+
+            arrowRSep.position.copy(pos);
+            arrowRSep.setDirection(rVec.clone().normalize());
+            arrowRSep.setLength(rDist);
+            labelRSep.position.copy(pos).add(rVec.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.3, 0));
+
+            const crossVec = new THREE.Vector3().crossVectors(tangent, rVec.normalize());
+            let visMag = 10.0 / (rDist + 1.0);
+            visMag = Math.min(Math.max(visMag, 0.5), 4.0);
+            arrowDB.position.copy(pNode.position);
+            arrowDB.setDirection(crossVec.normalize());
+            arrowDB.setLength(visMag);
+            labelDB.position.copy(crossVec.normalize().multiplyScalar(visMag).add(pNode.position)).add(new THREE.Vector3(0, 0.5, 0));
+            labelP.position.copy(pNode.position).add(new THREE.Vector3(0, 0.6, 0));
+
+            if (coordGroup.visible) {
+                const origin = new THREE.Vector3(0, -2, 0);
+                originNode.position.copy(origin);
+                labelOrigin.position.copy(origin).add(new THREE.Vector3(0, -0.6, 0));
+                const rAbs = new THREE.Vector3().subVectors(pNode.position, origin);
+                arrowRAbs.position.copy(origin); arrowRAbs.setDirection(rAbs.clone().normalize()); arrowRAbs.setLength(rAbs.length());
+                labelRAbs.position.copy(origin).add(rAbs.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.4, 0));
+                const rpAbs = new THREE.Vector3().subVectors(pos, origin);
+                arrowRPrimeAbs.position.copy(origin); arrowRPrimeAbs.setDirection(rpAbs.clone().normalize()); arrowRPrimeAbs.setLength(rpAbs.length());
+                labelRPrimeAbs.position.copy(origin).add(rpAbs.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.4, 0));
+            }
+        }
+
+        slider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            sliderLabel.innerText = Math.round(val * 100) + '%';
+            updateGeometry(val);
+        });
+
+        document.getElementById('chk-sep').addEventListener('change', (e) => {
+            arrowRSep.visible = labelRSep.visible = e.target.checked;
+            updateGeometry(uiState.t);
+        });
+
+        document.getElementById('chk-coords').addEventListener('change', (e) => {
+            coordGroup.visible = e.target.checked;
+            updateGeometry(uiState.t);
+        });
+
+        updateGeometry(0.5);
+        function animate() {
+            requestAnimationFrame(animate);
+            orbitControls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+    </script>
+<script defer data-offline-bundle src="ch3_2_biot_savart_c1.0.offline.js"></script>
+
+
+</body>
+
+</html>

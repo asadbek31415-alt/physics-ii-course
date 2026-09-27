@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Potential Simulator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', sans-serif;
+            color: #eee;
+        }
+
+        body {
+            display: grid;
+            grid-template-columns: clamp(250px, 28vw, 300px) minmax(0, 1fr);
+        }
+
+        #canvas-wrapper {
+            display: contents;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            grid-column: 2;
+            grid-row: 1;
+            touch-action: none;
+        }
+
+        #ui-left {
+            position: relative;
+            background: rgba(20, 20, 25, 0.95);
+            padding: 12px;
+            border-right: 1px solid #333;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            grid-column: 1;
+            grid-row: 1;
+            z-index: 10;
+            scrollbar-color: #555 #15151d;
+            scrollbar-width: thin;
+        }
+
+        #ui-left::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #ui-left::-webkit-scrollbar-track {
+            background: #15151d;
+        }
+
+        #ui-left::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 10px;
+        }
+
+        h3 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            color: #3498db;
+            text-transform: uppercase;
+        }
+
+        p {
+            margin: 0 0 8px 0;
+            font-size: 10px;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        button {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        #btn-pos {
+            background: #ef4444;
+            color: white;
+        }
+
+        #btn-neg {
+            background: #3b82f6;
+            color: white;
+        }
+
+        #btn-clear {
+            background: #333;
+            color: #aaa;
+        }
+
+        button.active {
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+        }
+
+        button:hover {
+            filter: brightness(1.2);
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: #aaa;
+            margin-bottom: 6px;
+            cursor: pointer;
+        }
+
+        input[type=checkbox] {
+            accent-color: #3498db;
+        }
+
+        #v-display {
+            background: #111;
+            border: 1px solid #333;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            color: #4ade80;
+            margin-top: 8px;
+        }
+
+        #ui-left #ui-right {
+            display: block;
+            width: auto;
+            background: transparent;
+            border-left: 0;
+            padding: 0;
+            overflow: visible;
+        }
+
+        body > #ui-right {
+            display: none;
+        }
+
+        .panel-divider {
+            height: 1px;
+            background: #333;
+            margin: 9px 0;
+        }
+
+        .experiment {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 8px 9px;
+            margin: 0;
+            color: #ddd;
+            text-align: left;
+            min-height: 58px;
+            width: 100%;
+        }
+
+        .experiment.active {
+            border-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.12);
+            box-shadow: inset 3px 0 0 #fbbf24;
+        }
+
+        .experiment h4,
+        .experiment strong {
+            display: block;
+            margin: 0 0 6px 0;
+            font-size: 11px;
+            color: #fbbf24;
+        }
+
+        .experiment p,
+        .experiment span {
+            display: block;
+            margin: 0;
+            font-size: 10px;
+            color: #888;
+            line-height: 1.35;
+        }
+
+        .experiment-grid {
+            display: grid;
+            gap: 7px;
+        }
+
+        .experiment-note {
+            margin-top: 8px;
+            padding: 7px 8px;
+            border-radius: 6px;
+            background: rgba(52, 152, 219, 0.08);
+            border: 1px solid rgba(52, 152, 219, 0.35);
+            color: #b8d9ff;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+
+        .conclusion {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid #4ade80;
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 10px;
+        }
+
+        .conclusion h4 {
+            margin: 0 0 6px 0;
+            font-size: 11px;
+            color: #4ade80;
+        }
+
+        .conclusion p {
+            margin: 0 0 6px 0;
+            font-size: 10px;
+            color: #aaa;
+        }
+
+        @media (max-width: 900px) {
+            html,
+            body {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+
+            #ui-left {
+                height: auto;
+                max-height: none;
+                border-right: none;
+                border-top: 1px solid #333;
+                border-bottom: 0;
+                grid-column: 1;
+                grid-row: 2;
+                overflow: hidden;
+                padding: 8px 10px;
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 1;
+                min-height: 0;
+            }
+
+            #ui-left #ui-right {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 5px;
+                margin-top: 6px;
+            }
+
+            #ui-right h3,
+            .experiment-grid,
+            .experiment-note,
+            .conclusion {
+                grid-column: 1 / -1;
+            }
+
+            .btn-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            button {
+                min-height: 44px;
+                font-size: 12px;
+                padding: 5px 6px;
+            }
+
+            label,
+            p,
+            .experiment span,
+            .conclusion p {
+                font-size: 11px;
+            }
+
+            h3 {
+                font-size: 11px;
+                margin-bottom: 5px;
+            }
+
+            #ui-left > p {
+                display: none;
+            }
+
+            .experiment {
+                min-height: 42px;
+                padding: 7px 8px;
+                text-align: center;
+            }
+
+            .experiment-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .conclusion {
+                margin: 0;
+                padding: 6px;
+            }
+
+            .experiment strong,
+            .conclusion h4 {
+                font-size: 10.5px;
+                margin-bottom: 0;
+            }
+
+            .experiment span,
+            .conclusion p {
+                display: none;
+            }
+
+            .experiment-note {
+                margin: 0;
+                padding: 5px 7px;
+                font-size: 10.5px;
+                text-align: center;
+            }
+
+            .conclusion {
+                display: none;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div id="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+
+        <div id="ui-left">
+            <h3>V Simulator</h3>
+            <p>Click the canvas to place charges. Move the pointer to read V at that point.</p>
+
+            <div class="btn-row">
+                <button id="btn-pos" class="active">+q</button>
+                <button id="btn-neg">−q</button>
+            </div>
+            <button id="btn-clear" style="width:100%;">Clear All</button>
+
+            <div style="margin-top: 10px;">
+                <label><input type="checkbox" id="chk-equi" checked> Show equipotentials</label>
+            </div>
+
+            <div id="v-display">V = 0.00</div>
+        </div>
+    </div>
+
+    <div id="ui-right">
+        <h3>Experiment presets</h3>
+
+        <div class="experiment-grid">
+            <button type="button" class="experiment active" data-preset="single">
+                <strong>Single +q</strong>
+                <span>One source shows positive V fading toward zero.</span>
+            </button>
+
+            <button type="button" class="experiment" data-preset="dipole">
+                <strong>Dipole</strong>
+                <span>Opposite charges reveal the V = 0 divider.</span>
+            </button>
+
+            <button type="button" class="experiment" data-preset="multi">
+                <strong>Multiple</strong>
+                <span>Several charges add their scalar potentials.</span>
+            </button>
+        </div>
+
+        <div id="experiment-note" class="experiment-note">Single +q loaded on the canvas. Move the pointer to sample V.</div>
+
+        <div class="conclusion">
+            <h4>Key Conclusions</h4>
+            <p>• Equipotentials are ⊥ to E field lines.</p>
+            <p>• V → 0 as r → ∞ (edges are darker).</p>
+            <p>• No work to move along an equipotential.</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        document.getElementById('ui-left').appendChild(document.getElementById('ui-right'));
+        document.getElementById('btn-neg').innerHTML = '&minus;q';
+        const dipoleExperiment = document.querySelectorAll('.experiment p')[1];
+        if (dipoleExperiment) dipoleExperiment.innerHTML = 'Place +q and &minus;q close together. Find the V = 0 line.';
+        const conclusionLines = document.querySelectorAll('.conclusion p');
+        const cleanConclusions = [
+            'Equipotentials are perpendicular to field lines.',
+            'V approaches 0 far from localized charges.',
+            'Moving along an equipotential does not change V.'
+        ];
+        conclusionLines.forEach((line, index) => {
+            line.innerHTML = `&bull; ${cleanConclusions[index]}`;
+        });
+
+        let width, height;
+        const charges = [];
+        let placePositive = true;
+        let mouseX = 0, mouseY = 0;
+        let showAllEquipotentials = true;
+        let mouseV = 0;
+        let activePreset = 'single';
+
+        const k = 80;
+        const chargeStrength = 1;
+        const presets = {
+            single: {
+                title: 'Single +q',
+                note: 'Single +q: red means positive potential. Brighter color means larger |V|.',
+                charges: [{ nx: 0.34, ny: 0.48, q: 1 }],
+                probe: { nx: 0.62, ny: 0.48 }
+            },
+            dipole: {
+                title: 'Dipole',
+                note: 'Dipole: red and blue contributions cancel along the V = 0 boundary.',
+                charges: [{ nx: 0.36, ny: 0.50, q: 1 }, { nx: 0.58, ny: 0.50, q: -1 }],
+                probe: { nx: 0.47, ny: 0.50 }
+            },
+            multi: {
+                title: 'Multiple charges',
+                note: 'Multiple charges: V is a scalar sum, so positive and negative regions blend.',
+                charges: [
+                    { nx: 0.30, ny: 0.40, q: 1 },
+                    { nx: 0.43, ny: 0.55, q: -1 },
+                    { nx: 0.57, ny: 0.38, q: 1 },
+                    { nx: 0.68, ny: 0.58, q: -1 },
+                    { nx: 0.48, ny: 0.30, q: 1 }
+                ],
+                probe: { nx: 0.52, ny: 0.45 }
+            }
+        };
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            width = Math.floor(rect.width);
+            height = Math.floor(rect.height);
+            canvas.width = width;
+            canvas.height = height;
+            syncChargePixels();
+            mouseX = Math.max(0, Math.min(width, mouseX || width * 0.62));
+            mouseY = Math.max(0, Math.min(height, mouseY || height * 0.48));
+            mouseV = calcV(mouseX, mouseY);
+            draw();
+        }
+
+        function makeCharge(nx, ny, q) {
+            return { nx, ny, q, x: nx * width, y: ny * height };
+        }
+
+        function syncChargePixels() {
+            for (const c of charges) {
+                if (typeof c.nx === 'number' && typeof c.ny === 'number') {
+                    c.x = c.nx * width;
+                    c.y = c.ny * height;
+                }
+            }
+        }
+
+        function calcV(x, y) {
+            let V = 0;
+            for (const c of charges) {
+                const dx = x - c.x;
+                const dy = y - c.y;
+                const r = Math.sqrt(dx * dx + dy * dy);
+                if (r < 5) continue;
+                V += k * c.q / r;
+            }
+            return V;
+        }
+
+        function drawHeatmap() {
+            if (charges.length === 0) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, width, height);
+                return;
+            }
+
+            const resolution = 4;
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+
+            let maxV = 1;
+            for (let y = 0; y < height; y += resolution * 4) {
+                for (let x = 0; x < width; x += resolution * 4) {
+                    maxV = Math.max(maxV, Math.abs(calcV(x, y)));
+                }
+            }
+            maxV = Math.min(maxV, 400);
+
+            for (let y = 0; y < height; y += resolution) {
+                for (let x = 0; x < width; x += resolution) {
+                    const V = calcV(x, y);
+
+                    let brightness, r, g, b;
+                    if (V >= 0) {
+                        brightness = Math.tanh(V / maxV);
+                        r = Math.floor(brightness * 255);
+                        g = Math.floor(brightness * 200);
+                        b = Math.floor(brightness * 150);
+                    } else {
+                        brightness = Math.tanh(-V / maxV);
+                        r = Math.floor(brightness * 100);
+                        g = Math.floor(brightness * 150);
+                        b = Math.floor(brightness * 255);
+                    }
+
+                    for (let dy = 0; dy < resolution && y + dy < height; dy++) {
+                        for (let dx = 0; dx < resolution && x + dx < width; dx++) {
+                            const i = ((y + dy) * width + (x + dx)) * 4;
+                            data[i] = r;
+                            data[i + 1] = g;
+                            data[i + 2] = b;
+                            data[i + 3] = 255;
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function drawEquipotentialAtLevel(level, color, lineWidth) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+
+            const step = 6;
+            for (let y = 0; y < height; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    const v1 = calcV(x, y);
+                    const v2 = calcV(x + step, y);
+                    const v3 = calcV(x, y + step);
+
+                    if ((v1 - level) * (v2 - level) < 0) {
+                        const t = (level - v1) / (v2 - v1);
+                        ctx.moveTo(x + t * step, y);
+                        ctx.lineTo(x + t * step, y + 1);
+                    }
+                    if ((v1 - level) * (v3 - level) < 0) {
+                        const t = (level - v1) / (v3 - v1);
+                        ctx.moveTo(x, y + t * step);
+                        ctx.lineTo(x + 1, y + t * step);
+                    }
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawEquipotentials() {
+            if (charges.length === 0) return;
+            if (!showAllEquipotentials) return; // Don't draw any equipotentials if toggle is off
+
+            // Draw all levels faintly
+            const levels = [-200, -100, -50, -20, 0, 20, 50, 100, 200];
+            for (const level of levels) {
+                drawEquipotentialAtLevel(level, level === 0 ? 'rgba(74, 222, 128, 0.5)' : 'rgba(255, 255, 255, 0.15)', 1);
+            }
+
+            // Highlight equipotential at mouse position (brighter, thicker)
+            drawEquipotentialAtLevel(mouseV, '#fbbf24', 2.5);
+        }
+
+        function drawCharges() {
+            for (const c of charges) {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 14, 0, Math.PI * 2);
+                ctx.fillStyle = c.q > 0 ? '#ef4444' : '#3b82f6';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(c.q > 0 ? '+' : '−', c.x, c.y);
+            }
+        }
+
+        function drawProbe() {
+            if (!Number.isFinite(mouseX) || !Number.isFinite(mouseY)) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#4ade80';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawPresetOverlay() {
+            if (!activePreset || !presets[activePreset]) return;
+            const preset = presets[activePreset];
+            const text = preset.title;
+            ctx.save();
+            ctx.font = 'bold 13px sans-serif';
+            const textWidth = Math.min(ctx.measureText(text).width + 24, width - 24);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+            ctx.lineWidth = 1;
+            roundRect(12, 12, textWidth, 34, 9);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#fbbf24';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 24, 29);
+            ctx.restore();
+        }
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function updateDisplays() {
+            document.getElementById('v-display').textContent = `V = ${mouseV.toFixed(2)}`;
+        }
+
+        function draw() {
+            drawHeatmap();
+            drawEquipotentials();
+            drawCharges();
+            drawProbe();
+            drawPresetOverlay();
+            updateDisplays();
+        }
+
+        function canvasPoint(event) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: Math.max(0, Math.min(width, event.clientX - rect.left)),
+                y: Math.max(0, Math.min(height, event.clientY - rect.top))
+            };
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            const point = canvasPoint(e);
+            mouseX = point.x;
+            mouseY = point.y;
+            mouseV = calcV(mouseX, mouseY);
+            activePreset = 'custom';
+            charges.push({ x: mouseX, y: mouseY, nx: mouseX / width, ny: mouseY / height, q: placePositive ? chargeStrength : -chargeStrength });
+            updatePresetButtons();
+            draw();
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            const point = canvasPoint(e);
+            mouseX = point.x;
+            mouseY = point.y;
+            mouseV = calcV(mouseX, mouseY);
+            draw();
+        });
+
+        document.getElementById('btn-pos').addEventListener('click', () => {
+            placePositive = true;
+            document.getElementById('btn-pos').classList.add('active');
+            document.getElementById('btn-neg').classList.remove('active');
+        });
+
+        document.getElementById('btn-neg').addEventListener('click', () => {
+            placePositive = false;
+            document.getElementById('btn-neg').classList.add('active');
+            document.getElementById('btn-pos').classList.remove('active');
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            charges.length = 0;
+            activePreset = 'custom';
+            updatePresetButtons();
+            draw();
+        });
+
+        document.getElementById('chk-equi').addEventListener('change', (e) => {
+            showAllEquipotentials = e.target.checked;
+            draw();
+        });
+
+        function updatePresetButtons() {
+            document.querySelectorAll('.experiment[data-preset]').forEach((button) => {
+                button.classList.toggle('active', button.dataset.preset === activePreset);
+            });
+            const note = document.getElementById('experiment-note');
+            if (note) {
+                note.textContent = presets[activePreset]?.note || 'Custom setup: click the canvas to add charges, then move the pointer to sample V.';
+            }
+        }
+
+        function setPreset(name) {
+            const preset = presets[name];
+            if (!preset) return;
+            activePreset = name;
+            charges.length = 0;
+            preset.charges.forEach((c) => charges.push(makeCharge(c.nx, c.ny, c.q)));
+            mouseX = preset.probe.nx * width;
+            mouseY = preset.probe.ny * height;
+            mouseV = calcV(mouseX, mouseY);
+            updatePresetButtons();
+            draw();
+        }
+
+        document.querySelectorAll('.experiment[data-preset]').forEach((button) => {
+            button.addEventListener('click', () => setPreset(button.dataset.preset));
+        });
+
+        window.addEventListener('resize', resize);
+        resize();
+        setPreset('single');
+    </script>
+</body>
+
+</html>

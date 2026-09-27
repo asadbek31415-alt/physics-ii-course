@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Continuity Equation</title>
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js"></script>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="ch3_1_lorentz_force.html">Magnetostatics</a> > 
+                The Continuity Equation
+            </div>
+        </div>
+    </div>
+    <main class="container">
+        <h1>The Continuity Equation</h1>
+        <div class="iframe-container"><iframe src="diagrams/dd_the_continuity_equation.html"></iframe></div>
+<section>
+    <h2>The Continuity Equation</h2>
+    <p>
+        The principle of local conservation of charge is a fundamental cornerstone of electrodynamics. Global conservation is not enough; charge cannot simply disappear from New York and instantly reappear in London. If the total charge within a specific region decreases, it must be because charge has physically flowed across the boundary of that region.
+    </p>
+    <p>
+        Let us quantify this. Consider an arbitrary volume $V$ bounded by a closed surface $S$. The total charge $Q(t)$ contained within this volume at any given time is the integral of the charge density $\rho$:
+    </p>
+    <div class="math-block">
+        \[ Q(t) = \int_{\mathcal{V}} \rho(\mathbf{r}, t) \, d\tau \]
+    </div>
+    <p>
+        Now, consider the current flowing out of this region. The current density $\mathbf{J}$ represents the flow of charge per unit area, per unit time. Therefore, the total current $I$ passing outward through the surface $S$ is the flux of $\mathbf{J}$:
+    </p>
+    <div class="math-block">
+        \[ I = \oint_{\mathcal{S}} \mathbf{J} \cdot d\mathbf{a} \]
+    </div>
+</section>
+
+<section>
+    <p>
+        Here lies the physical constraint: the current flowing <em>out</em> must equal the rate at which the charge inside is <em>decreasing</em>. We express this conservation law mathematically as:
+    </p>
+    <div class="math-block">
+        \[ I = -\frac{dQ}{dt} \]
+    </div>
+    <p>
+        The negative sign is crucial; if positive current flows out, the internal charge $Q$ must be dropping. Substituting our integral definitions into this expression, we obtain:
+    </p>
+    <div class="math-block">
+        \[ \oint_{\mathcal{S}} \mathbf{J} \cdot d\mathbf{a} = - \frac{d}{dt} \int_{\mathcal{V}} \rho \, d\tau \]
+    </div>
+    <p>
+        Assuming the volume $V$ is fixed in space (it does not expand or contract with time), we can move the time derivative inside the integral. Since $\rho$ depends on both position and time, the total derivative becomes a partial derivative:
+    </p>
+    <div class="math-block">
+        \[ \oint_{\mathcal{S}} \mathbf{J} \cdot d\mathbf{a} = - \int_{\mathcal{V}} \frac{\partial \rho}{\partial t} \, d\tau \]
+    </div>
+</section>
+
+<section>
+    <p>
+        We now have a surface integral on the left and a volume integral on the right. To compare them directly, we invoke the <strong>Divergence Theorem</strong> (Gauss's Theorem) to convert the surface integral into a volume integral:
+    </p>
+    <div class="math-block">
+        \[ \int_{\mathcal{V}} (\nabla \cdot \mathbf{J}) \, d\tau = - \int_{\mathcal{V}} \frac{\partial \rho}{\partial t} \, d\tau \]
+    </div>
+    <p>
+        Grouping the terms under a single integral sign, we find:
+    </p>
+    <div class="math-block">
+        \[ \int_{\mathcal{V}} \left( \nabla \cdot \mathbf{J} + \frac{\partial \rho}{\partial t} \right) d\tau = 0 \]
+    </div>
+    <p>
+        Now, recall that the volume $V$ we chose was entirely arbitrary. We could have chosen a sphere, a cube, or a microscopic bubble anywhere in space. The only way the integral can vanish for <em>any</em> choice of volume is if the integrand itself is zero everywhere. Thus, we arrive at the continuity equation:
+    </p>
+    <div class="math-block">
+        \[ \nabla \cdot \mathbf{J} = -\frac{\partial \rho}{\partial t} \]
+    </div>
+    <p>
+        This is the precise mathematical statement of local charge conservation: the divergence of the current density is equal to the rate of depletion of charge density at that point.
+    </p>
+</section>
+    </main>
+    <footer></footer>
+</body>
+</html>

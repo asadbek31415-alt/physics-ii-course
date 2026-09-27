@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faraday Cage: Charge Separation</title>
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --text-color: #e0e0e0;
+            --metal-color: #444;
+            --safe-green: #51cf66;
+            --danger-red: #ff6b6b;
+            --electron-blue: #4dabf7;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #sim-shell {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        #info-panel {
+            box-sizing: border-box;
+            height: 100%;
+            padding: 18px;
+            background: rgba(20, 24, 31, 0.96);
+            border-right: 1px solid rgba(255,255,255,0.14);
+            color: var(--text-color);
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 0;
+            scrollbar-gutter: stable;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .instruction {
+            background: rgba(0, 0, 0, 0.85);
+            color: var(--text-color);
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            border: 1px solid rgba(255,255,255,0.15);
+            line-height: 1.5;
+        }
+
+        .state-indicator {
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: block;
+            font-size: 18px;
+        }
+
+        .legend {
+            margin-top: 14px;
+            color: #b7c0ce;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 900px) {
+            body,
+            html {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+            #sim-shell {
+                height: 100%;
+                min-height: 0;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+            }
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            #info-panel {
+                grid-column: 1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                overflow: hidden;
+                border-right: 0;
+                border-top: 1px solid rgba(255,255,255,0.14);
+                border-bottom: 0;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="sim-shell">
+        <aside id="info-panel">
+            <div class="instruction">
+                <span id="stateText" class="state-indicator" style="color:#aaa">State: Neutral</span>
+                Drag <strong>+Q</strong> closer to polarize the metal wall.<br><br>
+                Red positive lattice sites stay fixed in the metal. Blue electrons move along the conductor until the field in the cavity is zero.
+            </div>
+            <div class="legend">
+                Red +: fixed positive lattice<br>
+                Blue -: mobile electrons<br>
+                Black center: shielded cavity, E = 0
+            </div>
+        </aside>
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const stateText = document.getElementById('stateText');
+
+        // --- Configuration ---
+        const OUTER_RADIUS = 130;
+        const INNER_RADIUS = 90;
+        const PAIR_COUNT = 36; // Number of +/- pairs in the metal
+        
+        // --- State ---
+        let width, height, centerX, centerY;
+        
+        const cage = { x: 0, y: 0 };
+        
+        const externalCharge = {
+            x: 0, y: 0,
+            radius: 25,
+            dragging: false
+        };
+
+        // We simulate "Bound Pairs" representing the metal lattice
+        // Each object contains a positive core and a mobile electron
+        let chargePairs = [];
+
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+
+            placeExternalCharge();
+
+            // Initialize Charge Pairs distributed inside the metal wall
+            for(let i=0; i<PAIR_COUNT; i++) {
+                const angle = (i / PAIR_COUNT) * Math.PI * 2;
+                // Place them in the middle of the wall thickness
+                const r = (OUTER_RADIUS + INNER_RADIUS) / 2; 
+                
+                chargePairs.push({
+                    baseAngle: angle,
+                    baseR: r,
+                    // Current positions of the + and - parts
+                    posX: 0, posY: 0,
+                    negX: 0, negY: 0,
+                    // Visual offset from base
+                    separation: 0,
+                    electronJitterX: (Math.random() - 0.5) * 4,
+                    electronJitterY: (Math.random() - 0.5) * 4
+                });
+            }
+
+            update(true);
+            draw();
+            loop();
+        }
+
+        function resize() {
+            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2;
+            cage.x = centerX;
+            cage.y = centerY;
+            if (!externalCharge.dragging) placeExternalCharge();
+            if (chargePairs.length) {
+                update(true);
+                draw();
+            }
+        }
+
+        function placeExternalCharge() {
+            const minVisibleX = externalCharge.radius + 14;
+            const maxVisibleX = Math.max(minVisibleX, width - externalCharge.radius - 14);
+            const outsideX = cage.x + OUTER_RADIUS + externalCharge.radius + 10;
+            const preferredX = cage.x + Math.min(400, Math.max(OUTER_RADIUS + 90, width * 0.34));
+            externalCharge.x = Math.min(maxVisibleX, Math.max(outsideX, preferredX));
+            externalCharge.y = cage.y;
+        }
+
+        // --- Physics Logic ---
+
+        function update(immediate = false) {
+            const dx = externalCharge.x - cage.x;
+            const dy = externalCharge.y - cage.y;
+            const distToCharge = Math.sqrt(dx*dx + dy*dy);
+            const angleToCharge = Math.atan2(dy, dx);
+
+            // 1. Calculate Field Strength based on distance
+            // If far (>400), strength is 0. If close (<160), strength is 1.
+            let fieldStrength = 1 - ((distToCharge - 160) / 300);
+            fieldStrength = Math.max(0, Math.min(1, fieldStrength));
+
+            // Update UI Text
+            if(fieldStrength < 0.1) {
+                stateText.innerText = "State: Neutral (Mixed)";
+                stateText.style.color = "#aaa";
+            } else {
+                stateText.innerText = "State: Polarized (Separated)";
+                stateText.style.color = "#4dabf7";
+            }
+
+            // 2. Update Charge Pairs
+            chargePairs.forEach(pair => {
+                // Calculate base position in the wall
+                const baseX = cage.x + Math.cos(pair.baseAngle) * pair.baseR;
+                const baseY = cage.y + Math.sin(pair.baseAngle) * pair.baseR;
+
+                // Determine direction of separation
+                // Electrons want to move TOWARDS the external charge
+                // But they are constrained to the metal ring.
+                
+                // Vector from center of cage to this particle pair
+                const anglePair = pair.baseAngle;
+                
+                // Dot product to see if this part of the ring faces the charge
+                // cos(angleToCharge - anglePair)
+                // If 1, it's facing. If -1, it's opposite.
+                const alignment = Math.cos(angleToCharge - anglePair);
+
+                // SEPARATION LOGIC:
+                // We want electrons to move to the OUTER edge if facing, 
+                // and Positives to "appear" on the OUTER edge if opposite.
+                // Actually, in a conductor, electrons move.
+                // If facing +Q: Electrons move OUT to the surface.
+                // If opposite +Q: Electrons move IN (towards +Q, which is through the center), 
+                // BUT they can't cross the cavity. So they bunch up on the "inner" side? 
+                // NO. For a Faraday cage in an external field:
+                // - Electrons gather on the outer surface facing +Q.
+                // - Electrons leave the outer surface opposite +Q (leaving it positive).
+                // - The INNER surface remains neutral.
+                
+                // Let's visualize this by shifting the pair along the radius.
+                
+                let radialShift = 0;
+                let angularShift = 0;
+
+                if (fieldStrength > 0.01) {
+                    // Calculate vector to external charge
+                    const dEx = externalCharge.x - baseX;
+                    const dEy = externalCharge.y - baseY;
+                    const dE = Math.sqrt(dEx*dEx + dEy*dEy);
+                    
+                    // Force direction
+                    const fx = dEx/dE;
+                    const fy = dEy/dE;
+
+                    // We project this force onto the radial and tangential vectors of the ring
+                    const rx = Math.cos(pair.baseAngle);
+                    const ry = Math.sin(pair.baseAngle);
+                    
+                    const radialComp = fx*rx + fy*ry; // How much it pulls out/in
+                    
+                    // Separation magnitude
+                    const sep = 18 * fieldStrength; 
+
+                    // If radialComp is positive (facing charge), electron pulled OUT
+                    // If radialComp is negative (away from charge), electron pulled IN (towards center)
+                    // BUT, physics constraint: Net field inside cavity is zero.
+                    // Electrons flow from the far side to the near side.
+                    
+                    // Simplified Visual Model:
+                    // 1. Electrons move towards the side facing +Q.
+                    // 2. This creates an excess of electrons on the near outer wall.
+                    // 3. This creates a deficit of electrons (positive) on the far outer wall.
+                    
+                    // We simulate this by moving the electron relative to the fixed lattice site.
+                    // The electron moves towards +Q.
+                    pair.negX = baseX + fx * sep;
+                    pair.negY = baseY + fy * sep;
+                    
+                    // The positive lattice stays fixed at the base position.
+                    pair.posX = baseX;
+                    pair.posY = baseY;
+
+                    // CLAMPING: Keep inside the metal wall
+                    // We clamp the electron so it doesn't leave the metal
+                    const dNeg = Math.sqrt((pair.negX - cage.x)**2 + (pair.negY - cage.y)**2);
+                    if (dNeg > OUTER_RADIUS - 5) {
+                        const ang = Math.atan2(pair.negY - cage.y, pair.negX - cage.x);
+                        pair.negX = cage.x + Math.cos(ang) * (OUTER_RADIUS - 5);
+                        pair.negY = cage.y + Math.sin(ang) * (OUTER_RADIUS - 5);
+                    }
+                    if (dNeg < INNER_RADIUS + 5) {
+                        const ang = Math.atan2(pair.negY - cage.y, pair.negX - cage.x);
+                        pair.negX = cage.x + Math.cos(ang) * (INNER_RADIUS + 5);
+                        pair.negY = cage.y + Math.sin(ang) * (INNER_RADIUS + 5);
+                    }
+
+                } else {
+                    // Neutral state: electrons return to their local lattice sites.
+                    pair.posX = baseX;
+                    pair.posY = baseY;
+                    const targetNegX = baseX + pair.electronJitterX;
+                    const targetNegY = baseY + pair.electronJitterY;
+                    if (immediate) {
+                        pair.negX = targetNegX;
+                        pair.negY = targetNegY;
+                    } else {
+                        pair.negX += (targetNegX - pair.negX) * 0.1;
+                        pair.negY += (targetNegY - pair.negY) * 0.1;
+                    }
+                }
+            });
+        }
+
+        // --- Drawing ---
+
+        function drawWall(ctx) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cage.x, cage.y, OUTER_RADIUS, 0, Math.PI*2);
+            ctx.arc(cage.x, cage.y, INNER_RADIUS, 0, Math.PI*2, true);
+            ctx.clip();
+
+            // Metal Background
+            const grad = ctx.createRadialGradient(cage.x, cage.y, INNER_RADIUS, cage.x, cage.y, OUTER_RADIUS);
+            grad.addColorStop(0, '#444');
+            grad.addColorStop(1, '#555');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Hatching
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i = -OUTER_RADIUS; i < OUTER_RADIUS; i+=15) {
+                ctx.moveTo(cage.x + i, cage.y - OUTER_RADIUS);
+                ctx.lineTo(cage.x + i - 30, cage.y + OUTER_RADIUS);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Outlines
+            ctx.strokeStyle = '#777';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cage.x, cage.y, OUTER_RADIUS, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cage.x, cage.y, INNER_RADIUS, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        function drawCharges(ctx) {
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            chargePairs.forEach(pair => {
+                // Draw connection line (optional, shows they are pairs)
+                // ctx.beginPath();
+                // ctx.moveTo(pair.posX, pair.posY);
+                // ctx.lineTo(pair.negX, pair.negY);
+                // ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                // ctx.stroke();
+
+                // Draw Positive (Red)
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillText("+", pair.posX, pair.posY);
+
+                // Draw Negative (Blue)
+                ctx.fillStyle = '#4dabf7';
+                ctx.fillText("-", pair.negX, pair.negY);
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Cavity (Empty Space)
+            ctx.beginPath();
+            ctx.arc(cage.x, cage.y, INNER_RADIUS-1, 0, Math.PI*2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            
+            // Safe Text
+            ctx.fillStyle = '#51cf66';
+            ctx.font = "bold 16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("E = 0", cage.x, cage.y);
+
+            // 2. Draw Metal Wall
+            drawWall(ctx);
+
+            // 3. Draw Charges inside the wall
+            drawCharges(ctx);
+
+            // 4. Draw External Charge
+            ctx.beginPath();
+            ctx.arc(externalCharge.x, externalCharge.y, externalCharge.radius, 0, Math.PI*2);
+            const grad = ctx.createRadialGradient(externalCharge.x, externalCharge.y, 5, externalCharge.x, externalCharge.y, externalCharge.radius);
+            grad.addColorStop(0, '#ff8787');
+            grad.addColorStop(1, '#c92a2a');
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = "bold 16px Arial";
+            ctx.fillText("+Q", externalCharge.x, externalCharge.y);
+
+            // 5. Labels
+            ctx.fillStyle = '#888';
+            ctx.font = "12px sans-serif";
+            ctx.fillText("Metal Wall", cage.x, cage.y - OUTER_RADIUS - 10);
+        }
+
+        // --- Interaction ---
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
+
+        function onDown(e) {
+            const pos = getMousePos(e.touches ? e.touches[0] : e);
+            const dx = pos.x - externalCharge.x;
+            const dy = pos.y - externalCharge.y;
+            if (Math.sqrt(dx*dx + dy*dy) < 40) externalCharge.dragging = true;
+        }
+
+        function onMove(e) {
+            if (!externalCharge.dragging) return;
+            const pos = getMousePos(e.touches ? e.touches[0] : e);
+            
+            // Keep outside
+            const dx = pos.x - cage.x;
+            const dy = pos.y - cage.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const minDist = OUTER_RADIUS + 30;
+
+            if (dist < minDist) {
+                const angle = Math.atan2(dy, dx);
+                externalCharge.x = cage.x + Math.cos(angle) * minDist;
+                externalCharge.y = cage.y + Math.sin(angle) * minDist;
+            } else {
+                externalCharge.x = pos.x;
+                externalCharge.y = pos.y;
+            }
+        }
+
+        function onUp() { externalCharge.dragging = false; }
+
+        canvas.addEventListener('mousedown', onDown);
+        canvas.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        canvas.addEventListener('touchstart', onDown);
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); });
+        window.addEventListener('touchend', onUp);
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

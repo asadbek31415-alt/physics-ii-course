@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss's Law for Magnetism - 3D Diagrams</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation Tabs */
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            pointer-events: auto;
+            background: linear-gradient(to bottom, rgba(15,23,42,0.9), rgba(15,23,42,0));
+        }
+
+        .nav-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid #475569;
+            color: #94a3b8;
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover { background: #334155; color: white; }
+        .nav-btn.active {
+            background: #0ea5e9;
+            color: white;
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #334155;
+            padding: 20px 30px;
+            border-radius: 16px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            max-width: 600px;
+            pointer-events: auto;
+        }
+
+        h2 { margin: 0 0 8px 0; color: #f8fafc; font-size: 18px; }
+        p { margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.5; }
+
+        .legend {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    </style>
+    
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "vendor/three/build/three.module.js",
+                "three/addons/": "vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="switchScene(0)">1. Dipole Field</button>
+            <button class="nav-btn" onclick="switchScene(1)">2. Circular Field</button>
+            <button class="nav-btn" onclick="switchScene(2)">3. Uniform Field</button>
+        </div>
+
+        <div class="info-panel">
+            <h2 id="scene-title">Dipole Field (Current Loop)</h2>
+            <p id="scene-desc">
+                Notice how every field line that enters the box (Green) eventually leaves it (Red). 
+                There are no "ends" to the lines inside the box.
+            </p>
+            <div class="legend">
+                <span style="color:#4ade80"><span class="dot" style="background:#4ade80"></span>Entering Flux</span>
+                <span style="color:#f87171"><span class="dot" style="background:#f87171"></span>Leaving Flux</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let currentSceneIdx = 0;
+        const sceneObjects = []; // To clean up
+
+        // Config
+        const BOX_SIZE = 4;
+        const FIELD_POINTS = 300; // Number of field arrows
+
+        function init() {
+            // Setup Three.js
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.02);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(10, 8, 12);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.0;
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            // Initial Load
+            loadScene(0);
+
+            window.addEventListener('resize', onResize);
+            
+            // Expose switcher
+            window.switchScene = (idx) => {
+                loadScene(idx);
+                // Update UI
+                const btns = document.querySelectorAll('.nav-btn');
+                btns.forEach(b => b.classList.remove('active'));
+                btns[idx].classList.add('active');
+                
+                const titles = [
+                    "Dipole Field (Current Loop)",
+                    "Circular Field (Straight Wire)",
+                    "Uniform Field (Solenoid)"
+                ];
+                const descs = [
+                    "Field lines curve around the loop. The box captures a slice of these loops. Flux In = Flux Out.",
+                    "Field lines form perfect circles around the wire. Even here, any line entering the box must exit it.",
+                    "In a uniform field, lines go straight through. The amount entering one face equals the amount leaving the opposite face."
+                ];
+                document.getElementById('scene-title').innerText = titles[idx];
+                document.getElementById('scene-desc').innerText = descs[idx];
+            };
+
+            animate();
+        }
+
+        function clearScene() {
+            sceneObjects.forEach(obj => scene.remove(obj));
+            sceneObjects.length = 0;
+        }
+
+        function loadScene(idx) {
+            clearScene();
+            currentSceneIdx = idx;
+
+            // 1. Create Gaussian Surface (The Box)
+            // Transparent cube
+            const boxGeo = new THREE.BoxGeometry(BOX_SIZE, BOX_SIZE, BOX_SIZE);
+            const boxMat = new THREE.MeshPhongMaterial({
+                color: 0xfbbf24,
+                opacity: 0.1,
+                transparent: true,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const box = new THREE.Mesh(boxGeo, boxMat);
+            // Wireframe edges
+            const edges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(boxGeo),
+                new THREE.LineBasicMaterial({ color: 0xfbbf24, opacity: 0.5, transparent: true })
+            );
+            box.add(edges);
+            
+            // Position box slightly offset to make it interesting
+            if(idx === 0) box.position.set(2, 2, 0);
+            if(idx === 1) box.position.set(3, 0, 0);
+            if(idx === 2) box.position.set(0, 0, 0);
+
+            scene.add(box);
+            sceneObjects.push(box);
+
+            // 2. Create Source & Field
+            if (idx === 0) createDipoleScene(box);
+            else if (idx === 1) createWireScene(box);
+            else if (idx === 2) createUniformScene(box);
+        }
+
+        // --- Scene Generators ---
+
+        function createDipoleScene(box) {
+            // Source: Current Loop
+            const torusGeo = new THREE.TorusGeometry(2, 0.1, 16, 100);
+            const loop = new THREE.Mesh(torusGeo, new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+            loop.rotation.x = Math.PI / 2;
+            scene.add(loop);
+            sceneObjects.push(loop);
+
+            // Field Function: Dipole approximation
+            // B(r) = (3(m.r)r - m)/r^5 (ignoring constants)
+            // m = (0, 1, 0)
+            const getB = (pos) => {
+                const r = pos.length();
+                if (r < 0.5) return new THREE.Vector3(0,1,0); // Inside core
+                const m = new THREE.Vector3(0, 50, 0); // Moment up
+                const rHat = pos.clone().normalize();
+                
+                // 3(m.r)r
+                const term1 = rHat.clone().multiplyScalar(3 * m.dot(rHat));
+                // (term1 - m) / r^3
+                return term1.sub(m).divideScalar(Math.pow(r, 3));
+            };
+
+            visualizeField(getB, box);
+        }
+
+        function createWireScene(box) {
+            // Source: Infinite Wire
+            const wireGeo = new THREE.CylinderGeometry(0.1, 0.1, 20, 16);
+            const wire = new THREE.Mesh(wireGeo, new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+            scene.add(wire);
+            sceneObjects.push(wire);
+
+            // Field: Circular B = (-z, 0, x) / r^2
+            const getB = (pos) => {
+                const r2 = pos.x*pos.x + pos.z*pos.z;
+                if(r2 < 0.2) return new THREE.Vector3(0,0,0);
+                // Tangent vector (-z, 0, x)
+                return new THREE.Vector3(-pos.z, 0, pos.x).normalize().multiplyScalar(5/Math.sqrt(r2));
+            };
+
+            visualizeField(getB, box);
+        }
+
+        function createUniformScene(box) {
+            // Source: Solenoid hints (rings)
+            for(let y=-4; y<=4; y+=1) {
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(4, 0.05, 8, 64),
+                    new THREE.MeshBasicMaterial({ color: 0x334155 })
+                );
+                ring.rotation.x = Math.PI/2;
+                ring.position.y = y;
+                scene.add(ring);
+                sceneObjects.push(ring);
+            }
+
+            // Field: Uniform Up
+            const getB = (pos) => {
+                return new THREE.Vector3(0, 1, 0);
+            };
+
+            visualizeField(getB, box);
+        }
+
+
+        // --- Field Visualization Core ---
+
+        function visualizeField(bFunc, box) {
+            // 1. Generate Streamlines / Arrows
+            // We sample points inside and around the box to show the flow
+            
+            const boxPos = box.position;
+            const range = 2.5; // Sampling range around box center
+
+            for (let i = 0; i < 150; i++) {
+                // Random point near box
+                const p = new THREE.Vector3(
+                    boxPos.x + (Math.random()-0.5)*range*2,
+                    boxPos.y + (Math.random()-0.5)*range*2,
+                    boxPos.z + (Math.random()-0.5)*range*2
+                );
+
+                const B = bFunc(p);
+                if(B.lengthSq() < 0.01) continue;
+
+                // Draw Arrow
+                const dir = B.clone().normalize();
+                const len = Math.min(B.length() * 0.5, 1.5); // Cap length
+                // const arrow = new THREE.ArrowHelper(dir, p, len, 0x38bdf8, 0.2, 0.1);
+                // scene.add(arrow);
+                // sceneObjects.push(arrow);
+
+                // Instead of simple arrows, let's draw "Field Lines" passing through the box
+                // Trace a line forward and backward from p
+                traceLine(p, bFunc, box);
+            }
+        }
+
+        function traceLine(startP, bFunc, box) {
+            const points = [];
+            let curr = startP.clone();
+            
+            // Trace forward
+            for(let i=0; i<20; i++) {
+                points.push(curr.clone());
+                const B = bFunc(curr);
+                if(B.lengthSq() < 0.001) break;
+                curr.add(B.normalize().multiplyScalar(0.2));
+            }
+            
+            // Trace backward
+            curr = startP.clone();
+            const backPoints = [];
+            for(let i=0; i<20; i++) {
+                const B = bFunc(curr);
+                if(B.lengthSq() < 0.001) break;
+                curr.sub(B.normalize().multiplyScalar(0.2));
+                backPoints.push(curr.clone());
+            }
+            
+            // Combine: reverse backPoints + points
+            const fullPath = [...backPoints.reverse(), ...points];
+            
+            // Create Curve
+            const curve = new THREE.CatmullRomCurve3(fullPath);
+            const tube = new THREE.Mesh(
+                new THREE.TubeGeometry(curve, 64, 0.02, 8, false),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+            );
+            scene.add(tube);
+            sceneObjects.push(tube);
+
+            // --- Intersection Logic ---
+            // Check if this line enters/exits the box
+            // Simple check: check segments crossing box bounds
+            checkIntersections(fullPath, box);
+        }
+
+        function checkIntersections(points, box) {
+            // Box bounds
+            const min = new THREE.Vector3().copy(box.position).subScalar(BOX_SIZE/2);
+            const max = new THREE.Vector3().copy(box.position).addScalar(BOX_SIZE/2);
+
+            let wasInside = isInside(points[0], min, max);
+
+            for(let i=1; i<points.length; i++) {
+                const isNowInside = isInside(points[i], min, max);
+                
+                if (wasInside !== isNowInside) {
+                    // Crossed boundary
+                    const type = isNowInside ? 'enter' : 'exit'; // Entering or Leaving
+                    const color = isNowInside ? 0x4ade80 : 0xf87171;
+                    
+                    // Place marker
+                    const markerGeo = new THREE.ConeGeometry(0.15, 0.4, 16);
+                    const markerMat = new THREE.MeshBasicMaterial({ color: color });
+                    const marker = new THREE.Mesh(markerGeo, markerMat);
+                    
+                    // Position roughly at midpoint
+                    marker.position.copy(points[i-1]).lerp(points[i], 0.5);
+                    
+                    // Orient along line
+                    marker.lookAt(points[i]);
+                    marker.rotateX(Math.PI/2); // Cones point up by default
+                    
+                    scene.add(marker);
+                    sceneObjects.push(marker);
+                }
+                wasInside = isNowInside;
+            }
+        }
+
+        function isInside(p, min, max) {
+            return p.x >= min.x && p.x <= max.x &&
+                   p.y >= min.y && p.y <= max.y &&
+                   p.z >= min.z && p.z <= max.z;
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+<script defer data-offline-bundle src="ch3_3_div_curl_B_c0.0.offline.js"></script>
+
+
+
+</body>
+</html>

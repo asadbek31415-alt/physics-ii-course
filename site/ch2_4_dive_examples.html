@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Wire with Insulation</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\vec{l}",
+              da: "d\\vec{a}",
+              dtau: "d\\tau"
+              /* Removed 'hat' macro to fix recursion error */
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --purple-color: #9b59b6;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header & Nav */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Content Layout */
+        .container {
+            max-width: 800px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.2rem; margin-top: 0.5rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 3rem; }
+        h3 { color: var(--text-primary); margin-top: 2rem; font-size: 1.3rem; }
+        p { color: var(--text-secondary); margin-bottom: 1.5rem; }
+
+        /* Math Blocks */
+        /* For intermediate steps */
+        .math-step {
+            text-align: center;
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin: 1rem 0;
+            opacity: 0.9;
+        }
+
+        /* For IMPORTANT results */
+        .math-result {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--success-color);
+            border-left: 6px solid var(--success-color);
+            overflow-x: auto;
+        }
+
+        /* Iframe Container */
+        .iframe-container {
+            width: 100%;
+            height: clamp(500px, 62vh, 660px);
+            background-color: #08111f;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin: 2rem 0;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .iframe-container.course-responsive-embed,
+        .iframe-container.course-fullscreenable-embed,
+        .iframe-container.course-fullscreen-active {
+            height: clamp(500px, 62vh, 660px) !important;
+            min-height: 500px !important;
+            background-color: #08111f !important;
+        }
+
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Discussion Box */
+        .discussion-box {
+            background-color: rgba(155, 89, 182, 0.05);
+            border-left: 4px solid var(--purple-color);
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-top: 3rem;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); margin-top: 4rem;}
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="electric_field_in_matter_index.html">Fields in Matter</a> > 
+                <a href="ch2_4_electric_displacement.html">The Electric Displacement</a> >
+                Example: Wire with Insulation
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Wire with Insulation</h1>
+        
+        <p>
+            <strong>Problem:</strong> A long straight wire, carrying a uniform line charge \(\lambda\), is surrounded by rubber insulation out to a radius \(a\). Find the electric displacement \(\vec{D}\).
+        </p>
+
+        <!-- IFRAME PLACEHOLDER -->
+        <div class="iframe-container">
+            <iframe src="diagrams/wire_insulation_visualizer.html" title="Wire Insulation Diagram"></iframe>
+        </div>
+
+        <section>
+            <h2>1. Applying Gauss's Law for D</h2>
+            <p>
+                The beauty of the Electric Displacement is that it depends only on <strong>free charge</strong>. The rubber insulation will become polarized and create bound charges, but we can ignore them for now.
+            </p>
+            <p>
+                We draw a cylindrical Gaussian surface of radius \(s\) and length \(L\). Because of the cylindrical symmetry, \(\vec{D}\) must point radially outward: \(\vec{D} = D(s) \hat{s}\).
+            </p>
+
+            <p>Using Gauss's Law for Displacement:</p>
+            <div class="math-step">
+                $$ \oint \vec{D} \cdot d\vec{a} = Q_{f,enc} $$
+            </div>
+
+            <p>
+                The total <em>free</em> charge enclosed by the cylinder is simply the charge on the wire (\(\lambda L\)). The surface integral gives the area of the cylinder wall (\(2\pi s L\)):
+            </p>
+            <div class="math-step">
+                $$ D(2\pi s L) = \lambda L $$
+            </div>
+        </section>
+
+        <section>
+            <h2>2. The Result</h2>
+            <p>Solving for \(\vec{D}\):</p>
+            
+            <div class="math-result">
+                $$ \vec{D} = \frac{\lambda}{2\pi s} \hat{s} $$
+            </div>
+            
+            <p>
+                <strong>Crucially:</strong> This formula holds <em>everywhere</em>—both inside the insulation (\(s < a\)) and outside it (\(s > a\)). The symmetry of the free charge dictates \(\vec{D}\) regardless of the material.
+            </p>
+        </section>
+
+        <section>
+            <h2>3. Finding the Electric Field</h2>
+            <p>
+                While we know \(\vec{D}\) everywhere, finding \(\vec{E}\) requires knowing the relationship between \(\vec{D}\) and \(\vec{E}\) (which depends on polarization).
+            </p>
+
+            <h3>Outside the Insulation (\(s > a\))</h3>
+            <p>
+                Outside, there is no material, so \(\vec{P} = 0\). Since \(\vec{D} = \epsilon_0 \vec{E} + \vec{P}\), we simply have \(\vec{D} = \epsilon_0 \vec{E}\).
+            </p>
+            
+            <div class="math-result" style="border-color: var(--accent-color); border-left-color: var(--accent-color);">
+                $$ \vec{E} = \frac{\lambda}{2\pi \epsilon_0 s} \hat{s} \quad (\text{for } s > a) $$
+            </div>
+
+            <h3>Inside the Insulation (\(s < a\))</h3>
+            <p>
+                Inside the rubber, \(\vec{E}\) cannot be determined yet because we do not know \(\vec{P}\).
+                <br>
+                $$ \vec{E} = \frac{1}{\epsilon_0}(\vec{D} - \vec{P}) $$
+                Without knowing the specific properties of the rubber (like its susceptibility), we stop here.
+            </p>
+        </section>
+
+        <section class="discussion-box">
+            <h3 style="margin-top: 0; color: #d2b4de;">A Subtle Point: Surface Bound Charge</h3>
+            <p>
+                You might wonder: <em>"Doesn't the polarization create a bound surface charge \(\sigma_b\) at the edge of the rubber? Why didn't we include that in our Gaussian surface?"</em>
+            </p>
+            <p>
+                We <strong>did not</strong> need to include it because Gauss's Law for \(\vec{D}\) reads \(\oint \vec{D} \cdot d\vec{a} = Q_{f,enc}\). It <strong>only</strong> cares about Free Charge. The bound charge \(\sigma_b\) affects \(\vec{E}\), but it does not affect \(\vec{D}\) in this symmetry.
+            </p>
+            <p>
+                Furthermore, if we imagine the edge of the dielectric not as a sharp cutoff but as a thin layer where polarization tapers to zero, \(\rho_b\) varies smoothly. In this "realistic" model, there is no infinite discontinuity, and Gauss's law applies safely everywhere. The integral form protects us from these "defects" of the mathematical model.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

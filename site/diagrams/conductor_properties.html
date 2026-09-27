@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microscopic Conductor Simulation</title>
+    
+    
+    <!-- MathJax -->
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0f151b;
+            --panel-bg: rgba(30, 41, 59, 0.8);
+            --accent: #3498db;
+            --text: #e2e8f0;
+            --ion-color: #e74c3c;
+            --electron-color: #3498db;
+            --field-color: rgba(241, 196, 15, 0.6);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Canvas Container */
+        .sim-container {
+            position: relative;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            background: #121820;
+            display: block;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .label {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+
+        /* Controls */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            background: var(--panel-bg);
+            padding: 15px 25px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        button {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid #475569;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--text);
+        }
+
+        button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .status-bar {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="sim-container">
+        <canvas id="simCanvas" width="800" height="450"></canvas>
+        <div class="ui-layer">
+            <div id="field-label" class="label" style="top: 20px; left: 20px; display: none;">
+                $ \vec{E}_{ext} $
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-field" onclick="toggleField()">
+            <span>⚡</span> Apply External Field
+        </button>
+        <button onclick="resetSim()">
+            <span>↺</span> Reset
+        </button>
+        <button id="btn-vectors" class="active" onclick="toggleVectors()">
+            <span>👁️</span> Show Net Field Vectors
+        </button>
+    </div>
+
+    <div class="status-bar">
+        <span id="status-text">State: Equilibrium (No Field)</span>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background: #e74c3c;"></div> Fixed Ions (+)</div>
+        <div class="legend-item"><div class="dot" style="background: #3498db;"></div> Free Electrons (-)</div>
+        <div class="legend-item"><div class="dot" style="background: #f1c40f;"></div> Net E-Field</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status-text');
+
+        // --- CONFIGURATION ---
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+        const MARGIN = 50; // Margin around the conductor material
+        
+        // Material Boundaries
+        const MAT_X = MARGIN;
+        const MAT_Y = MARGIN;
+        const MAT_W = WIDTH - 2 * MARGIN;
+        const MAT_H = HEIGHT - 2 * MARGIN;
+
+        // Physics Parameters
+        const NUM_ELECTRONS = 250;
+        const ION_SPACING = 40;
+        const E_STRENGTH = 0.15; // Strength of external field force
+        const DAMPING = 0.96;    // Simulates resistance/collisions
+        const REPULSION = 150;   // Electron-Electron repulsion strength
+        const WALL_BOUNCE = 0.5;
+        
+        // State
+        let isFieldOn = false;
+        let showVectors = true;
+        let electrons = [];
+        let ions = [];
+        let gridVectors = [];
+
+        class Particle {
+            constructor(x, y, charge) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.charge = charge; // -1 for electron, +1 for ion
+            }
+        }
+
+        function init() {
+            electrons = [];
+            ions = [];
+            gridVectors = [];
+
+            // 1. Create Fixed Lattice (Ions)
+            const rows = Math.floor(MAT_H / ION_SPACING);
+            const cols = Math.floor(MAT_W / ION_SPACING);
+            
+            for(let r=1; r<rows; r++) {
+                for(let c=1; c<cols; c++) {
+                    ions.push({
+                        x: MAT_X + c * ION_SPACING,
+                        y: MAT_Y + r * ION_SPACING
+                    });
+                }
+            }
+
+            // 2. Create Free Electrons (Randomly distributed initially)
+            for(let i=0; i<NUM_ELECTRONS; i++) {
+                electrons.push(new Particle(
+                    MAT_X + Math.random() * MAT_W,
+                    MAT_Y + Math.random() * MAT_H,
+                    -1
+                ));
+            }
+
+            // 3. Initialize Vector Grid (for visualizing field)
+            const gridStep = 40;
+            for(let x = MAT_X + 20; x < MAT_X + MAT_W; x += gridStep) {
+                for(let y = MAT_Y + 20; y < MAT_Y + MAT_H; y += gridStep) {
+                    gridVectors.push({x, y, ex:0, ey:0});
+                }
+            }
+        }
+
+        function updatePhysics() {
+            // 1. Calculate Forces
+            for (let i = 0; i < electrons.length; i++) {
+                let p = electrons[i];
+                let fx = 0;
+                let fy = 0;
+
+                // A. External Field Force (F = qE)
+                // Electron has negative charge, so F is opposite to E
+                // Let's say E points RIGHT. Force points LEFT.
+                if (isFieldOn) {
+                    fx -= E_STRENGTH; 
+                }
+
+                // B. Repulsion from other electrons (Simplified N-body)
+                // We only check neighbors to save CPU, or just do full N^2 for 200 particles (it's fine)
+                for (let j = 0; j < electrons.length; j++) {
+                    if (i === j) continue;
+                    let other = electrons[j];
+                    let dx = p.x - other.x;
+                    let dy = p.y - other.y;
+                    let distSq = dx*dx + dy*dy;
+                    
+                    // Soft-sphere repulsion
+                    if (distSq < 900 && distSq > 0.1) {
+                        let force = REPULSION / distSq;
+                        let dist = Math.sqrt(distSq);
+                        fx += (dx / dist) * force;
+                        fy += (dy / dist) * force;
+                    }
+                }
+
+                // C. Attraction to Ions (Optional for stability, keeps them somewhat spread)
+                // In a perfect Drude model, the background positive charge is uniform.
+                // Here we simulate that by just keeping them in the box, but let's add slight drag.
+
+                // Update Velocity
+                p.vx += fx;
+                p.vy += fy;
+
+                // Damping (Resistance/Collisions)
+                p.vx *= DAMPING;
+                p.vy *= DAMPING;
+
+                // Thermal Jitter (Temperature)
+                p.vx += (Math.random() - 0.5) * 0.2;
+                p.vy += (Math.random() - 0.5) * 0.2;
+            }
+
+            // 2. Update Positions & Handle Boundaries
+            for (let p of electrons) {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Hard Walls (The surface of the conductor)
+                if (p.x < MAT_X) { p.x = MAT_X; p.vx *= -WALL_BOUNCE; }
+                if (p.x > MAT_X + MAT_W) { p.x = MAT_X + MAT_W; p.vx *= -WALL_BOUNCE; }
+                if (p.y < MAT_Y) { p.y = MAT_Y; p.vy *= -WALL_BOUNCE; }
+                if (p.y > MAT_Y + MAT_H) { p.y = MAT_Y + MAT_H; p.vy *= -WALL_BOUNCE; }
+            }
+
+            // 3. Update Grid Vectors (The "Net Field" Visualization)
+            // Net Field = External Field + Field from Charges
+            if (showVectors) {
+                for (let v of gridVectors) {
+                    // Start with External Field
+                    let ex = isFieldOn ? 1.5 : 0; // Arbitrary visual scale
+                    let ey = 0;
+
+                    // Add field from electrons (E ~ q/r^2)
+                    // We need to scale this carefully to show cancellation
+                    // This is a visual approximation, not a rigorous FEM solver
+                    const k = 800; // Visual scaling constant
+                    
+                    for (let p of electrons) {
+                        let dx = v.x - p.x;
+                        let dy = v.y - p.y;
+                        let rSq = dx*dx + dy*dy;
+                        if(rSq > 100) { // Avoid singularity
+                            // E points TOWARD electron (negative charge)
+                            let mag = k / rSq; 
+                            let dist = Math.sqrt(rSq);
+                            ex -= (dx/dist) * mag; // Minus because dx points away, E points to
+                            ey -= (dy/dist) * mag;
+                        }
+                    }
+
+                    // Add field from Ions (Positive background)
+                    // To make the math work out nicely without summing 1000 ions, 
+                    // we assume the ions cancel the electrons when neutral.
+                    // So we only really need to calculate the *perturbation*.
+                    // However, for this visual, summing ions helps stability.
+                    for (let ion of ions) {
+                        let dx = v.x - ion.x;
+                        let dy = v.y - ion.y;
+                        let rSq = dx*dx + dy*dy;
+                        if(rSq > 100) {
+                            // E points AWAY from ion
+                            let mag = k / rSq; 
+                            let dist = Math.sqrt(rSq);
+                            ex += (dx/dist) * mag;
+                            ey += (dy/dist) * mag;
+                        }
+                    }
+
+                    // Smooth update for visuals
+                    v.ex = v.ex * 0.8 + ex * 0.2;
+                    v.ey = v.ey * 0.8 + ey * 0.2;
+                }
+            }
+        }
+
+        // --- DRAWING ---
+        function draw() {
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+            // 1. Draw External Field Background
+            if (isFieldOn) {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+                ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+                ctx.lineWidth = 2;
+                const arrowSpacing = 100;
+                for(let y=50; y<HEIGHT; y+=arrowSpacing) {
+                    drawArrow(0, y, WIDTH, y, 10);
+                }
+            }
+
+            // 2. Draw Material Box
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(MAT_X, MAT_Y, MAT_W, MAT_H);
+
+            // 3. Draw Ions (Lattice)
+            ctx.fillStyle = "#e74c3c";
+            for (let ion of ions) {
+                ctx.beginPath();
+                ctx.arc(ion.x, ion.y, 4, 0, Math.PI*2);
+                ctx.fill();
+                // Plus sign
+                ctx.fillStyle = "rgba(255,255,255,0.5)";
+                ctx.fillRect(ion.x-2, ion.y-0.5, 4, 1);
+                ctx.fillRect(ion.x-0.5, ion.y-2, 1, 4);
+                ctx.fillStyle = "#e74c3c";
+            }
+
+            // 4. Draw Electrons
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "#3498db";
+            ctx.fillStyle = "#3498db";
+            for (let p of electrons) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+
+            // 5. Draw Net Field Vectors
+            if (showVectors) {
+                ctx.strokeStyle = "#f1c40f";
+                ctx.lineWidth = 2;
+                for (let v of gridVectors) {
+                    // Draw arrow based on v.ex, v.ey
+                    // We clamp the length for visuals
+                    let len = Math.sqrt(v.ex*v.ex + v.ey*v.ey);
+                    if (len > 0.1) {
+                        let scale = Math.min(len, 25) / len; // Cap length
+                        let dx = v.ex * scale * 10;
+                        let dy = v.ey * scale * 10;
+                        
+                        // Opacity based on strength (so zero field disappears)
+                        let alpha = Math.min(len, 1);
+                        ctx.strokeStyle = `rgba(241, 196, 15, ${alpha})`;
+                        
+                        drawArrow(v.x - dx/2, v.y - dy/2, v.x + dx/2, v.y + dy/2, 4);
+                    } else {
+                        // Draw small dot for zero field
+                        ctx.fillStyle = "rgba(46, 204, 113, 0.3)"; // Green for zero
+                        ctx.beginPath();
+                        ctx.arc(v.x, v.y, 2, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawArrow(x1, y1, x2, y2, headSize) {
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            
+            // Head
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headSize * Math.cos(angle - Math.PI / 6), y2 - headSize * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headSize * Math.cos(angle + Math.PI / 6), y2 - headSize * Math.sin(angle + Math.PI / 6));
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fill();
+        }
+
+        // --- CONTROLS ---
+
+        function toggleField() {
+            isFieldOn = !isFieldOn;
+            const btn = document.getElementById('btn-field');
+            const label = document.getElementById('field-label');
+            
+            if (isFieldOn) {
+                btn.classList.add('active');
+                btn.innerHTML = "<span>⚡</span> Field ON";
+                label.style.display = 'block';
+                statusText.innerHTML = "State: <span style='color:#f1c40f'>Transient Current</span> (Electrons shifting...)";
+                
+                // After a few seconds, update text to Equilibrium
+                setTimeout(() => {
+                    if(isFieldOn) statusText.innerHTML = "State: <span style='color:#2ecc71'>Equilibrium</span> (Internal Field = 0)";
+                }, 2000);
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = "<span>⚡</span> Apply External Field";
+                label.style.display = 'none';
+                statusText.innerHTML = "State: Relaxing...";
+            }
+        }
+
+        function toggleVectors() {
+            showVectors = !showVectors;
+            document.getElementById('btn-vectors').classList.toggle('active');
+        }
+
+        function resetSim() {
+            isFieldOn = false;
+            document.getElementById('btn-field').classList.remove('active');
+            document.getElementById('btn-field').innerHTML = "<span>⚡</span> Apply External Field";
+            document.getElementById('field-label').style.display = 'none';
+            statusText.innerHTML = "State: Reset";
+            init();
+        }
+
+        // Loop
+        function loop() {
+            updatePhysics();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Start
+        init();
+        loop();
+
+    </script>
+</body>
+</html>

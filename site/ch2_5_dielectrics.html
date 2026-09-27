@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Dielectrics</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dtau: "d\\tau"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 3rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); font-weight: 600; }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper { display: flex; justify-content: center; margin: 3rem auto; }
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        /* List Styling for Properties */
+        ol.properties-list {
+            counter-reset: item;
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 2rem;
+        }
+        ol.properties-list li {
+            position: relative;
+            padding-left: 3.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        ol.properties-list li strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        ol.properties-list li::before {
+            content: counter(item);
+            counter-increment: item;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2.5rem;
+            height: 2.5rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 2.5rem;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > Linear Dielectrics
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Linear Dielectrics</h1>
+        
+        <p>
+            In many substances, the polarization \(\vec{P}\) is proportional to the electric field. These are called <strong>linear dielectrics</strong>. While the microscopic physics can be complex, the macroscopic behavior is often simple and elegant.
+        </p>
+
+        <!-- SECTION 1: DEFINITIONS -->
+        <section>
+            <h2>1. Susceptibility and Permittivity</h2>
+            <p>
+                For a linear dielectric, the polarization is proportional to the <strong>total</strong> macroscopic field \(\vec{E}\). We define this relationship using the electric susceptibility \(\chi_e\):
+            </p>
+            
+            <div class="math-block">
+                $$ \vec{P} = \epsilon_0 \chi_e \vec{E} $$
+            </div>
+
+            <p>
+                Substituting this into the definition of Displacement (\(\vec{D} = \epsilon_0 \vec{E} + \vec{P}\)), we find that \(\vec{D}\) is also proportional to \(\vec{E}\):
+            </p>
+
+            <div class="math-block">
+                $$ \vec{D} = \epsilon \vec{E} $$
+            </div>
+
+            <ol class="properties-list">
+                <li>
+                    <strong>Electric Susceptibility (\(\chi_e\))</strong>
+                    A dimensionless measure of how easily a material polarizes. For vacuum, \(\chi_e = 0\).
+                </li>
+                <li>
+                    <strong>Permittivity (\(\epsilon\))</strong>
+                    Defined as \(\epsilon = \epsilon_0 (1 + \chi_e)\). This determines the field strength inside the material.
+                </li>
+                <li>
+                    <strong>Dielectric Constant (\(\epsilon_r\))</strong>
+                    The relative permittivity: \(\epsilon_r = 1 + \chi_e = \epsilon / \epsilon_0\). This is the factor by which the field is reduced.
+                </li>
+            </ol>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_5_capacitor_example.html?back=ch2_5_dielectrics.html"><span aria-hidden="true">+</span> Deep Dive: Capacitor with Dielectric</a>
+            </div>
+        </section>
+
+        <!-- SECTION 2: BOUNDARY VALUE PROBLEMS -->
+        <section>
+            <h2>2. Boundary Value Problems</h2>
+            <p>
+                When dealing with linear dielectrics, we often want to find the potential \(V\). If there is no <em>free</em> charge embedded in the dielectric (\(\rho_f = 0\)), the divergence of \(\vec{D}\) is zero.
+            </p>
+            <p>
+                This implies that inside a homogeneous linear dielectric, the potential obeys Laplace's Equation:
+            </p>
+
+            <div class="math-block">
+                $$ \nabla^2 V = 0 $$
+            </div>
+
+            <p>
+                This allows us to use standard techniques (like separation of variables) to solve for the field, provided we apply the correct boundary conditions at the interface between materials.
+            </p>
+
+            <div class="iframe-container">
+                <!-- Visualizer: Dielectric Sphere in Uniform Field -->
+                <iframe src="diagrams/dielectric_shielding.html" title="Dielectric Shielding"></iframe>
+            </div>
+
+            <div class="dive-wrapper">
+                <a href="ch2_5_dielectric_shielding_examples.html#dielectric-sphere" class="dive-btn">
+                    <span>🔮</span> Example: Dielectric Sphere in Uniform Field
+                </a>
+            </div>
+            
+            <div class="dive-wrapper">
+                <a href="ch2_5_dielectric_shielding_examples.html#metal-sphere" class="dive-btn">
+                    <span>⚙️</span> Example: Metal Sphere with Dielectric Shell
+                </a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: FORCES -->
+        <section>
+            <h2>3. Forces on Dielectrics</h2>
+            <p>
+                A neutral dielectric slab is attracted into the gap of a charged capacitor. This phenomenon cannot be explained by the uniform field inside the capacitor, as that field is perpendicular to the motion.
+            </p>
+            <p>
+                Instead, the force arises from the <strong>fringing fields</strong> at the edges. These non-uniform fields pull the induced dipoles inward to regions of stronger field, lowering the total energy of the system.
+            </p>
+
+            <div class="iframe-container">
+                <!-- Visualizer: Fringing fields pulling a slab -->
+                <iframe src="diagrams/capacitor_force.html" title="Force on Dielectric"></iframe>
+            </div>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ F = \frac{1}{2} V^2 \frac{dC}{dx} $$
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch2_5_forces_derivation.html?back=ch2_5_dielectrics.html"><span aria-hidden="true">+</span> Deep Dive: Force on a Dielectric Slab</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

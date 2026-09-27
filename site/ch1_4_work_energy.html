@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work and Energy - Physics II</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    /* 'hat' macro removed to prevent recursion error */
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}",
+                    dtau: "d\\tau",
+                    rcurs: "\\mathcal{r}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Warning Block */
+        .warning-block {
+            background-color: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .warning-title {
+            color: var(--danger-color);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* Deep Dive Buttons */
+        .dive-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 3rem auto;
+        }
+
+        .dive-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .dive-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > Work & Energy
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Work and Energy</h1>
+
+        <p>
+            How much energy is stored in an electrostatic system? We can answer this by calculating the work required to
+            assemble the system, bringing charges in from infinity one by one.
+        </p>
+
+        <!-- SECTION 1: WORK TO MOVE CHARGE -->
+        <section data-concept-title="1. Work to Move a Charge" id="concept-1-1-work-to-move-a-charge">
+            <h2>1. Work to Move a Charge</h2>
+            <p>
+                Based on the definition of electric potential, the work \(W\) required to move a test charge \(Q\) from
+                point \(a\) to point \(b\) is simply the charge times the potential difference.
+            </p>
+
+            <div class="math-block">
+                $$ W = Q [V(\vec{b}) - V(\vec{a})] $$
+            </div>
+
+            <p>
+                If we bring the charge in from infinity (where \(V=0\)) to a point \(\vec{r}\), the work done is:
+            </p>
+            <div class="math-block">
+                $$ W = Q V(\vec{r}) $$
+            </div>
+        </section>
+
+        <!-- SECTION 2: ENERGY OF POINT CHARGES -->
+        <section data-concept-title="2. The Energy of Point Charges" id="concept-2-2-the-energy-of-point-charges">
+            <h2>2. The Energy of Point Charges</h2>
+            <p>
+                Imagine assembling a system of point charges from scratch.
+            </p>
+            <ul style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                <li><strong>First charge (\(q_1\)):</strong> Takes 0 work (no field yet).</li>
+                <li><strong>Second charge (\(q_2\)):</strong> Must move against the field of \(q_1\). Work is \(q_2
+                    V_1(\vec{r}_2)\).</li>
+                <li><strong>Third charge (\(q_3\)):</strong> Must move against fields of \(q_1\) and \(q_2\).</li>
+            </ul>
+            <p>
+                Summing the work for all charges gives the total energy of the system. To avoid double-counting pairs,
+                we divide by 2:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ W = \frac{1}{2} \sum_{i=1}^n q_i V(\vec{r}_i) $$
+            </div>
+            <p>
+                Where \(V(\vec{r}_i)\) is the potential at the position of charge \(i\) caused by <em>all other</em>
+                charges.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_4_point_charge_assembly.html?back=ch1_4_work_energy.html%23concept-2-2-the-energy-of-point-charges"><span aria-hidden="true">+</span> Deep Dive: Point Charge Assembly</a>
+            </div>
+        </section>
+
+        <!-- SECTION 3: CONTINUOUS DISTRIBUTION -->
+        <section data-concept-title="3. Continuous Charge Distributions" id="concept-3-3-continuous-charge-distributions">
+            <h2>3. Continuous Charge Distributions</h2>
+            <p>
+                For a continuous distribution (like a charged cloud or solid object), the sum becomes an integral. We
+                replace \(q_i\) with \(\rho d\tau\) and the summation with integration over the volume.
+            </p>
+
+            <div class="math-block">
+                $$ W = \frac{1}{2} \int_{\mathcal{V}} \rho V d\tau $$
+            </div>
+
+            <p>
+                This equation represents the energy stored in the configuration of the charge density \(\rho\).
+            </p>
+        </section>
+
+        <!-- SECTION 4: ENERGY IN THE FIELD -->
+        <section data-concept-title="4. Where is the Energy Stored?" id="concept-4-4-where-is-the-energy-stored">
+            <h2>4. Where is the Energy Stored?</h2>
+            <p>
+                Using Gauss's Law (\(\rho = \epsilon_0 \nabla \cdot \vec{E}\)) and integration by parts, we can
+                transform the equation above into one involving only the Electric Field.
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ W = \frac{\epsilon_0}{2} \int_{\text{all space}} E^2 d\tau $$
+            </div>
+
+            <p>
+                This is a profound result. It suggests that the energy is not stored "in the charges," but <strong>in
+                    the electric field itself</strong>. Wherever there is a non-zero electric field, there is energy
+                density.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_4_energy_derivation.html?back=ch1_4_work_energy.html%23concept-4-4-where-is-the-energy-stored"><span aria-hidden="true">+</span> Deep Dive: Field Energy Derivation</a>
+            </div>
+
+            <div class="warning-block">
+                <span class="warning-title">⚠️ The Self-Energy Problem</span>
+                <p style="margin: 0; color: var(--text-primary);">
+                    The integral of \(E^2\) is always positive. However, the sum formula for point charges can be
+                    negative (e.g., opposite charges attracting). Why the difference?
+                    <br><br>
+                    The integral method includes the <strong>Self-Energy</strong> (the energy to create the point charge
+                    itself), which is infinite for a perfect point charge. The sum method ignores self-energy and only
+                    calculates interaction energy.
+                </p>
+            </div>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch1_4_energy_properties.html?back=ch1_4_work_energy.html%23concept-4-4-where-is-the-energy-stored"><span aria-hidden="true">+</span> Deep Dive: Properties of Electrostatic Energy</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

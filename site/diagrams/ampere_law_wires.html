@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ampere's Law - General Case</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script src="../vendor/katex/katex.min.js"></script>
+
+        <style>
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #0f172a; 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #sidebar {
+            width: 340px;
+            background: rgba(30, 41, 59, 0.95);
+            border-right: 1px solid #475569;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+            overflow-y: auto; /* Just in case, but styled to fit */
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            min-width: 0;
+            position: relative;
+        }
+
+        h1 { margin: 0; color: #f8fafc; font-size: 18px; margin-bottom: 5px; }
+        .subtitle { color: #94a3b8; font-size: 12px; margin-bottom: 20px; line-height: 1.4; }
+
+        .panel {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid #334155;
+            padding: 15px;
+            border-radius: 12px;
+            color: #e2e8f0;
+            margin-bottom: 15px;
+        }
+
+        .panel-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        button {
+            flex: 1;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #cbd5e1;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        button:hover { background: #334155; color: white; }
+        button.add-pos { border-color: #ef4444; color: #fca5a5; }
+        button.add-neg { border-color: #3b82f6; color: #93c5fd; }
+
+        input[type=range] { width: 100%; margin: 10px 0; cursor: pointer; }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .stat-val { font-family: 'Fira Code', monospace; font-weight: 700; font-size: 16px; }
+        
+        .match-indicator {
+            text-align: center;
+            padding: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #059669;
+            color: #34d399;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .legend {
+            margin-top: auto;
+            font-size: 11px;
+            color: #94a3b8;
+            padding-top: 15px;
+            border-top: 1px solid #334155;
+        }
+        .key { display: flex; align-items: center; margin-bottom: 6px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; }
+
+        .wire-label {
+            position: absolute;
+            color: white;
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 5px;
+            border-radius: 4px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        @media (max-width: 700px) {
+            body {
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100dvh;
+            }
+
+            #canvas-container {
+                grid-column: 1;
+                grid-row: 1;
+                min-height: 0;
+            }
+
+            #sidebar {
+                grid-column: 1;
+                grid-row: 2;
+                width: 100%;
+                height: auto;
+                max-height: none;
+                border-right: 0;
+                border-top: 1px solid #475569;
+                padding: 10px 12px;
+            }
+
+            h1 {
+                font-size: 15px;
+            }
+
+            .subtitle,
+            .panel,
+            .legend {
+                font-size: 0.78rem;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="header">
+            <h1 id="title-tex"></h1>
+            <div class="subtitle">Drag the loop to change enclosed currents. Values match perfectly due to Ampère's Law.</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Calculations</div>
+            <div class="stat-row">
+                <span id="tex-integral"></span>
+                <span class="stat-val" id="val-integral" style="color:#fbbf24">0.00</span>
+            </div>
+            <div class="stat-row">
+                <span id="tex-enc"></span>
+                <span class="stat-val" id="val-enc" style="color:#e2e8f0">0.00</span>
+            </div>
+            <div class="match-indicator" id="match-box">AMPÈRE'S LAW VERIFIED</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Loop Control</div>
+            <input type="range" id="radiusSlider" min="2" max="8" step="0.1" value="5">
+            <div class="panel-title" style="margin-top:15px;">Add Wires</div>
+            <div class="btn-group">
+                <button class="add-pos" onclick="addWire(1)">+1A</button>
+                <button class="add-neg" onclick="addWire(-1)">-1A</button>
+                <button onclick="clearWires()">Reset</button>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="key"><span class="dot" style="background:#ef4444"></span> Current OUT (+)</div>
+            <div class="key"><span class="dot" style="background:#3b82f6"></span> Current IN (-)</div>
+            <div class="key"><span class="dot" style="background:#38bdf8"></span> Magnetic Field (B)</div>
+            <div class="key"><span class="dot" style="background:#fbbf24"></span> Path dl</div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <div id="labels-container"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Math Setup ---
+        document.addEventListener("DOMContentLoaded", () => {
+            katex.render("\\frac{\\oint \\mathbf{B} \\cdot d\\mathbf{l}}{\\mu_0} = \\sum I_{\\text{enc}}", document.getElementById('title-tex'));
+            katex.render("\\frac{\\oint \\mathbf{B} \\cdot d\\mathbf{l}}{\\mu_0}", document.getElementById('tex-integral'));
+            katex.render("\\sum I_{\\text{enc}}", document.getElementById('tex-enc'));
+        });
+
+        // --- Three.js Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020617);
+        
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(5, 15, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        const orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        const grid = new THREE.GridHelper(40, 40, 0x1e293b, 0x1e293b);
+        scene.add(grid);
+
+        // --- State ---
+        const wires = []; 
+        let loopState = { x: 0, z: 0, r: 3 };
+
+        // --- Loop Objects ---
+        const loopGroup = new THREE.Group();
+        scene.add(loopGroup);
+
+        const loopGeo = new THREE.TorusGeometry(loopState.r, 0.06, 16, 100);
+        const loopMesh = new THREE.Mesh(loopGeo, new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+        loopMesh.rotation.x = Math.PI / 2;
+        loopGroup.add(loopMesh);
+
+        const vectorGroup = new THREE.Group();
+        scene.add(vectorGroup);
+
+        const dragPlane = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial({ visible: false }));
+        dragPlane.rotation.x = -Math.PI / 2;
+        scene.add(dragPlane);
+
+        // --- Interaction ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+
+        container.addEventListener('mousedown', (e) => {
+            const rect = container.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(dragPlane);
+            if (intersects.length > 0) {
+                const dist = intersects[0].point.distanceTo(new THREE.Vector3(loopState.x, 0, loopState.z));
+                if (dist < loopState.r + 0.5) { isDragging = true; orbit.enabled = false; }
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const rect = container.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(dragPlane);
+            if (intersects.length > 0) {
+                loopState.x = intersects[0].point.x;
+                loopState.z = intersects[0].point.z;
+                updatePhysics();
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; orbit.enabled = true; });
+
+        // --- Add/Clear Wires ---
+        window.addWire = (current) => {
+            const x = (Math.random() - 0.5) * 12;
+            const z = (Math.random() - 0.5) * 12;
+            const geo = new THREE.CylinderGeometry(0.12, 0.12, 30, 12);
+            const mat = new THREE.MeshStandardMaterial({ color: current > 0 ? 0xef4444 : 0x3b82f6 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, 0, z);
+            scene.add(mesh);
+
+            const div = document.createElement('div');
+            div.className = 'wire-label';
+            div.textContent = `I=${current > 0 ? '+' : ''}${current}A`;
+            document.getElementById('labels-container').appendChild(div);
+
+            wires.push({ mesh, current, x, z, label: div });
+            updatePhysics();
+        };
+
+        window.clearWires = () => {
+            wires.forEach(w => { scene.remove(w.mesh); w.label.remove(); });
+            wires.length = 0;
+            updatePhysics();
+        };
+
+        function getBAt(px, pz) {
+            let Bx = 0, Bz = 0, near = false;
+            wires.forEach(w => {
+                const dx = px - w.x, dz = pz - w.z;
+                const r2 = dx*dx + dz*dz;
+                if (r2 < 0.02) near = true; // Singularity check
+                const mag = w.current / r2; // Normalizing mu0/2pi = 1
+                Bx += -dz * mag;
+                Bz += dx * mag;
+            });
+            return { vec: new THREE.Vector3(Bx, 0, Bz), singularity: near };
+        }
+
+        function updatePhysics() {
+            loopGroup.position.set(loopState.x, 0, loopState.z);
+            const r = parseFloat(document.getElementById('radiusSlider').value);
+            if (r !== loopState.r) {
+                loopState.r = r;
+                loopMesh.geometry.dispose();
+                loopMesh.geometry = new THREE.TorusGeometry(r, 0.06, 16, 100);
+            }
+
+            vectorGroup.clear();
+            let integral = 0, isSingular = false;
+            const segments = 120;
+
+            for(let i=0; i<segments; i++) {
+                const theta = (i/segments) * Math.PI * 2;
+                const wx = loopState.x + loopState.r * Math.cos(theta);
+                const wz = loopState.z + loopState.r * Math.sin(theta);
+                
+                const B = getBAt(wx, wz);
+                if (B.singularity) isSingular = true;
+
+                const dl = new THREE.Vector3(-Math.sin(theta), 0, Math.cos(theta)).multiplyScalar((2 * Math.PI * loopState.r) / segments);
+                integral += B.vec.dot(dl);
+
+                if (i % 8 === 0) {
+                    const arrow = new THREE.ArrowHelper(B.vec.clone().normalize(), new THREE.Vector3(wx, 0, wz), Math.min(B.vec.length(), 2), 0x38bdf8, 0.2, 0.1);
+                    vectorGroup.add(arrow);
+                }
+            }
+
+            let encI = 0;
+            wires.forEach(w => {
+                const d = Math.sqrt((w.x - loopState.x)**2 + (w.z - loopState.z)**2);
+                if (d < loopState.r) encI += w.current;
+            });
+
+            const normInt = integral / (2 * Math.PI);
+            document.getElementById('val-integral').innerText = normInt.toFixed(2);
+            document.getElementById('val-enc').innerText = encI.toFixed(2);
+
+            const badge = document.getElementById('match-box');
+            if (isSingular || Math.abs(normInt - encI) > 0.05) {
+                badge.innerText = "BOUNDARY SINGULARITY";
+                badge.style.borderColor = "#d97706"; badge.style.color = "#fbbf24"; badge.style.background = "rgba(245,158,11,0.1)";
+            } else {
+                badge.innerText = "AMPÈRE'S LAW VERIFIED";
+                badge.style.borderColor = "#059669"; badge.style.color = "#34d399"; badge.style.background = "rgba(16,185,129,0.1)";
+            }
+        }
+
+        function updateLabels() {
+            wires.forEach(w => {
+                const pos = new THREE.Vector3(w.x, 2, w.z).project(camera);
+                w.label.style.left = `${(pos.x * 0.5 + 0.5) * container.clientWidth}px`;
+                w.label.style.top = `${(pos.y * -0.5 + 0.5) * container.clientHeight}px`;
+                w.label.style.display = pos.z > 1 ? 'none' : 'block';
+            });
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        document.getElementById('radiusSlider').addEventListener('input', updatePhysics);
+        addWire(1); addWire(-1);
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            orbit.update();
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+<script defer data-offline-bundle src="ampere_law_wires.0.offline.js"></script>
+
+
+
+</body>
+</html>

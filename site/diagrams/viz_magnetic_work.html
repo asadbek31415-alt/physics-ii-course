@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Work Visualization</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #e2e8f0;
+            --accent: #38bdf8; /* Cyan for Velocity */
+            --danger: #f87171; /* Red for Force */
+            --muted: #475569;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        canvas {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--muted);
+            backdrop-filter: blur(4px);
+            pointer-events: none; /* Let clicks pass through */
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            width: 200px;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .label { color: #94a3b8; }
+        .val { font-weight: bold; }
+        .val.v { color: var(--accent); }
+        .val.f { color: var(--danger); }
+        .val.w { color: #4ade80; } /* Green */
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            border: 1px solid var(--muted);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            accent-color: var(--accent);
+            width: 120px;
+            cursor: pointer;
+        }
+
+        button {
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+
+        /* Legend for B-Field */
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: var(--muted);
+            text-align: right;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        
+        <div class="legend">
+            Magnetic Field (B)<br>
+            Points INTO screen (&#10005;)
+        </div>
+
+        <div class="overlay">
+            <div class="stat-row">
+                <span class="label">Velocity (|v|):</span>
+                <span class="val v" id="disp-speed">0.0</span>
+            </div>
+            <div class="stat-row">
+                <span class="label">Kinetic Energy:</span>
+                <span class="val" id="disp-ke">Constant</span>
+            </div>
+            <div class="stat-row" style="margin-top:10px; border-top: 1px solid #334155; padding-top:5px;">
+                <span class="label">Force &middot; v:</span>
+                <span class="val f">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="label">Work Done:</span>
+                <span class="val w">0.00 J</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Initial Velocity (v)</label>
+                <input type="range" id="slider-v" min="2" max="8" value="4">
+            </div>
+            <div class="control-group">
+                <label>Magnetic Field (B)</label>
+                <input type="range" id="slider-b" min="1" max="10" value="3">
+            </div>
+            <button onclick="sim.reset()">Reset Particle</button>
+        </div>
+    </div>
+
+    <script>
+        class Simulation {
+            constructor() {
+                this.canvas = document.getElementById('simCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                // Physics State
+                this.particle = { x: 0, y: 0, vx: 0, vy: 0, path: [] };
+                this.running = true;
+                
+                // Inputs
+                this.sliderV = document.getElementById('slider-v');
+                this.sliderB = document.getElementById('slider-b');
+                
+                // Listeners
+                this.sliderV.addEventListener('input', () => this.reset());
+                this.sliderB.addEventListener('input', () => { /* allow dynamic B change */ });
+
+                this.reset();
+                this.loop();
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.cx = this.canvas.width / 2;
+                this.cy = this.canvas.height / 2;
+            }
+
+            reset() {
+                this.particle.x = -150; // Start left
+                this.particle.y = 0;
+                this.particle.vx = parseFloat(this.sliderV.value);
+                this.particle.vy = 0;
+                this.particle.path = [];
+                this.initialSpeed = Math.sqrt(this.particle.vx**2 + this.particle.vy**2);
+            }
+
+            update() {
+                const B = parseFloat(this.sliderB.value) * 0.05;
+                const p = this.particle;
+
+                // 1. Calculate Force Direction (Lorentz Force: F = q(v x B))
+                // Assuming B is into screen (z = -1) and q is positive.
+                // Cross product result: Fx = -vy, Fy = vx
+                let fx = -p.vy;
+                let fy = p.vx;
+
+                // 2. Apply Force (Change direction only)
+                // We add the perpendicular force vector to velocity
+                p.vx += fx * B;
+                p.vy += fy * B;
+
+                // 3. NORMALIZE Velocity (Crucial Step)
+                // Since Magnetic force does NO work, speed must be constant.
+                // Simple Euler integration introduces error that spirals out. 
+                // We correct this mathematically to enforce the physical law W=0.
+                const currentSpeed = Math.sqrt(p.vx**2 + p.vy**2);
+                p.vx = (p.vx / currentSpeed) * this.initialSpeed;
+                p.vy = (p.vy / currentSpeed) * this.initialSpeed;
+
+                // 4. Update Position
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // 5. Store Path
+                p.path.push({x: p.x, y: p.y});
+                if(p.path.length > 200) p.path.shift();
+
+                // 6. Update UI
+                document.getElementById('disp-speed').innerText = this.initialSpeed.toFixed(2);
+            }
+
+            draw() {
+                const ctx = this.ctx;
+                const p = this.particle;
+
+                // Clear
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw Background B-Field (Grid of X's)
+                ctx.fillStyle = '#334155';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                for(let x = 0; x < this.canvas.width; x += 50) {
+                    for(let y = 0; y < this.canvas.height; y += 50) {
+                        ctx.fillText('×', x, y);
+                    }
+                }
+
+                ctx.save();
+                ctx.translate(this.cx, this.cy);
+
+                // Draw Path
+                if(p.path.length > 1) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+                    ctx.lineWidth = 2;
+                    ctx.moveTo(p.path[0].x, p.path[0].y);
+                    for(let i=1; i<p.path.length; i++) {
+                        ctx.lineTo(p.path[i].x, p.path[i].y);
+                    }
+                    ctx.stroke();
+                }
+
+                // Draw Particle
+                ctx.fillStyle = '#e2e8f0';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI*2);
+                ctx.fill();
+
+                // Draw Velocity Vector (Cyan)
+                this.drawArrow(p.x, p.y, p.vx * 10, p.vy * 10, '#38bdf8', 'v');
+
+                // Draw Force Vector (Red) - Perpendicular to V
+                // Force direction is (-vy, vx)
+                const B = parseFloat(this.sliderB.value);
+                const fx = -p.vy * B * 0.8; 
+                const fy = p.vx * B * 0.8;
+                this.drawArrow(p.x, p.y, fx, fy, '#f87171', 'F');
+
+                // Draw Right Angle marker
+                // Only draw if we have speed
+                if(this.initialSpeed > 0.1) {
+                    this.drawRightAngle(p.x, p.y, p.vx, p.vy, fx, fy);
+                }
+
+                ctx.restore();
+            }
+
+            drawArrow(x, y, dx, dy, color, label) {
+                const ctx = this.ctx;
+                const headlen = 10;
+                const angle = Math.atan2(dy, dx);
+                
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = 3;
+
+                // Line
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + dx, y + dy);
+                ctx.stroke();
+
+                // Head
+                ctx.beginPath();
+                ctx.moveTo(x + dx, y + dy);
+                ctx.lineTo(x + dx - headlen * Math.cos(angle - Math.PI / 6), y + dy - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(x + dx - headlen * Math.cos(angle + Math.PI / 6), y + dy - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.fill();
+
+                // Label
+                ctx.font = "bold 14px sans-serif";
+                ctx.fillText(label, x + dx + 10, y + dy + 10);
+            }
+
+            drawRightAngle(x, y, vx, vy, fx, fy) {
+                // Normalize vectors for drawing the little square
+                const len = 15;
+                const vLen = Math.sqrt(vx*vx + vy*vy);
+                const fLen = Math.sqrt(fx*fx + fy*fy);
+                
+                if(vLen === 0 || fLen === 0) return;
+
+                const uVx = (vx/vLen) * len;
+                const uVy = (vy/vLen) * len;
+                const uFx = (fx/fLen) * len;
+                const uFy = (fy/fLen) * len;
+
+                this.ctx.strokeStyle = '#94a3b8';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + uVx, y + uVy);
+                this.ctx.lineTo(x + uVx + uFx, y + uVy + uFy);
+                this.ctx.lineTo(x + uFx, y + uFy);
+                this.ctx.stroke();
+            }
+
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        const sim = new Simulation();
+    </script>
+</body>
+</html>

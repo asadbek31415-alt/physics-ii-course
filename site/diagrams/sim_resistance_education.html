@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educational Resistance Sim</title>
+    <!-- Fonts -->
+    
+    
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js"
+            }
+        }
+    </script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        
+        /* Dashboard UI */
+        #dashboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 340px;
+            background: rgba(20, 20, 25, 0.9);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            color: #e0e0e0;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        h1 { font-size: 18px; margin: 0 0 5px 0; color: #fff; }
+        p { font-size: 13px; color: #a0a0a0; margin-bottom: 20px; line-height: 1.5; }
+
+        /* Meters */
+        .meter-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .meter-box {
+            background: #1a1a20;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .meter-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .meter-value { font-family: 'Fira Code', monospace; font-size: 24px; font-weight: 600; }
+        
+        #amp-val { color: #4ade80; } /* Green */
+        #temp-val { color: #f87171; } /* Red */
+
+        /* Controls */
+        .toggle-container {
+            display: flex;
+            background: #2a2a30;
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #888;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Legend */
+        .legend {
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="dashboard">
+        <h1>Microscopic Resistance</h1>
+        <p>Observe how the crystal lattice structure impedes electron flow, creating resistance and heat.</p>
+
+        <div class="toggle-container">
+            <button id="btn-low" class="toggle-btn active">Conductor (Low R)</button>
+            <button id="btn-high" class="toggle-btn">Resistor (High R)</button>
+        </div>
+
+        <div class="meter-container">
+            <div class="meter-box">
+                <div class="meter-label">Current (I)</div>
+                <div class="meter-value" id="amp-val">0.0 A</div>
+            </div>
+            <div class="meter-box">
+                <div class="meter-label">Temperature</div>
+                <div class="meter-value" id="temp-val">25°C</div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="dot" style="background:#3b82f6"></span> Electron (Charge Carrier)</div>
+            <div class="legend-item"><span class="dot" style="background:#4b5563"></span> Lattice Atom</div>
+            <div class="legend-item"><span class="dot" style="background:#ef4444; box-shadow: 0 0 5px red;"></span> Heat (Energy Transfer)</div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+
+        // === CONFIG ===
+        const CONFIG = {
+            electronCount: 300,
+            radius: 6,
+            length: 40,
+            force: 0.015, // The Electric Field push
+            
+            // Material Settings
+            conductor: { atoms: 50, color: 0x10b981 },
+            resistor: { atoms: 600, color: 0xef4444 }
+        };
+
+        let currentMode = 'conductor';
+        let atoms = []; // Stores physics data for atoms
+        let electrons = []; // Stores physics data for electrons
+
+        // === SCENE SETUP ===
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        
+        // Static Camera - Angled for best 3D view without motion sickness
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 20, 35); 
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // === OBJECTS ===
+
+        // 1. The Wire (Glass Tube)
+        const wireGeo = new THREE.CylinderGeometry(CONFIG.radius, CONFIG.radius, CONFIG.length, 32, 1, true);
+        const wireMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0x222222, 
+            metalness: 0.1, 
+            roughness: 0.1, 
+            transmission: 0.9, // Glass-like
+            transparent: true, 
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+        wireMesh.rotation.z = Math.PI / 2;
+        scene.add(wireMesh);
+
+        // 2. The Current Gate (Glowing Ring at the end)
+        const ringGeo = new THREE.TorusGeometry(CONFIG.radius, 0.2, 16, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.y = Math.PI / 2;
+        ring.position.x = CONFIG.length / 2; // Place at end
+        scene.add(ring);
+
+        // Glow effect for ring
+        const glowGeo = new THREE.TorusGeometry(CONFIG.radius, 0.8, 16, 32);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.2 });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.rotation.y = Math.PI / 2;
+        glow.position.x = CONFIG.length / 2;
+        scene.add(glow);
+
+
+        // 3. Instanced Meshes
+        // Atoms
+        const atomGeo = new THREE.IcosahedronGeometry(0.5, 1);
+        const atomMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+        const atomMesh = new THREE.InstancedMesh(atomGeo, atomMat, 1000); // Max capacity
+        scene.add(atomMesh);
+
+        // Electrons
+        const elecGeo = new THREE.SphereGeometry(0.2, 8, 8);
+        const elecMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+        const elecMesh = new THREE.InstancedMesh(elecGeo, elecMat, CONFIG.electronCount);
+        scene.add(elecMesh);
+
+        // === SIMULATION LOGIC ===
+
+        function initAtoms(count) {
+            atoms = [];
+            atomMesh.count = count;
+            const dummy = new THREE.Object3D();
+
+            for(let i=0; i<count; i++) {
+                // Distribute inside cylinder
+                const x = (Math.random() - 0.5) * CONFIG.length;
+                const r = CONFIG.radius * Math.sqrt(Math.random()) * 0.8;
+                const theta = Math.random() * Math.PI * 2;
+                const y = r * Math.cos(theta);
+                const z = r * Math.sin(theta);
+
+                dummy.position.set(x, y, z);
+                dummy.updateMatrix();
+                atomMesh.setMatrixAt(i, dummy.matrix);
+
+                atoms.push({
+                    x, y, z,
+                    heat: 0, // 0 to 1
+                    baseY: y,
+                    baseZ: z
+                });
+            }
+            atomMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function initElectrons() {
+            electrons = [];
+            const dummy = new THREE.Object3D();
+
+            for(let i=0; i<CONFIG.electronCount; i++) {
+                const x = (Math.random() - 0.5) * CONFIG.length;
+                const y = (Math.random() - 0.5) * CONFIG.radius;
+                const z = (Math.random() - 0.5) * CONFIG.radius;
+
+                dummy.position.set(x, y, z);
+                dummy.updateMatrix();
+                elecMesh.setMatrixAt(i, dummy.matrix);
+
+                electrons.push({
+                    x, y, z,
+                    vx: 0, vy: 0, vz: 0
+                });
+            }
+        }
+
+        // === PHYSICS LOOP ===
+        
+        // Temp variables
+        const dummy = new THREE.Object3D();
+        const _color = new THREE.Color();
+        const gray = new THREE.Color(0x64748b);
+        const red = new THREE.Color(0xef4444);
+
+        // Stats
+        let electronPassCount = 0;
+        let totalHeat = 0;
+        let lastTime = performance.now();
+
+        function update() {
+            const now = performance.now();
+            const dt = (now - lastTime) / 1000; // seconds
+            lastTime = now;
+
+            const boundary = CONFIG.length / 2;
+            const collisionDistSq = 0.6 * 0.6; // (atomRad + elecRad)^2 approx
+
+            // 1. Update Electrons
+            for(let i=0; i<CONFIG.electronCount; i++) {
+                const e = electrons[i];
+
+                // Apply Electric Field (Force)
+                e.vx += CONFIG.force;
+                
+                // Terminal velocity cap (for visual stability)
+                if(e.vx > 0.8) e.vx = 0.8;
+
+                // Move
+                let nx = e.x + e.vx;
+                let ny = e.y + e.vy;
+                let nz = e.z + e.vz;
+
+                // Collision Detection (Brute force optimized by volume check)
+                // Only check if inside lattice
+                let collided = false;
+                
+                // Optimization: In a real engine we use octrees. 
+                // Here, we just check a subset or accept O(N*M) for N=300, M=600 is fine in JS.
+                for(let j=0; j<atoms.length; j++) {
+                    const a = atoms[j];
+                    // Quick box check
+                    if(Math.abs(nx - a.x) > 0.8) continue;
+
+                    const dx = nx - a.x;
+                    const dy = ny - a.y;
+                    const dz = nz - a.z;
+                    
+                    if(dx*dx + dy*dy + dz*dz < collisionDistSq) {
+                        // HIT!
+                        collided = true;
+                        
+                        // 1. Scatter Electron (Drude Model)
+                        // Lose forward momentum, randomize direction
+                        e.vx = -0.1 * e.vx; // Bounce back slightly
+                        e.vy = (Math.random() - 0.5) * 0.2;
+                        e.vz = (Math.random() - 0.5) * 0.2;
+
+                        // 2. Heat up Atom
+                        a.heat = Math.min(a.heat + 0.3, 1.0);
+                        totalHeat += 1;
+                        
+                        // Push electron out to prevent sticking
+                        nx = e.x; ny = e.y; nz = e.z;
+                        break; 
+                    }
+                }
+
+                // Wall Bounce
+                if(ny*ny + nz*nz > (CONFIG.radius-0.5)**2) {
+                    e.vy *= -1;
+                    e.vz *= -1;
+                }
+
+                // Boundary / Current Counting
+                if(nx > boundary) {
+                    electronPassCount++;
+                    nx = -boundary; // Teleport to start
+                    // Reset thermal velocity on re-entry for smooth flow look
+                    e.vy = (Math.random()-0.5)*0.1;
+                    e.vz = (Math.random()-0.5)*0.1;
+                }
+
+                // Update Data
+                e.x = nx; e.y = ny; e.z = nz;
+
+                // Update Mesh
+                dummy.position.set(nx, ny, nz);
+                dummy.updateMatrix();
+                elecMesh.setMatrixAt(i, dummy.matrix);
+            }
+            elecMesh.instanceMatrix.needsUpdate = true;
+
+            // 2. Update Atoms (Heat & Vibration)
+            let avgTemp = 0;
+            for(let i=0; i<atoms.length; i++) {
+                const a = atoms[i];
+                
+                if(a.heat > 0.01) {
+                    // Decay heat
+                    a.heat *= 0.95;
+                    
+                    // Vibrate based on heat
+                    const jitter = a.heat * 0.2;
+                    dummy.position.set(
+                        a.x + (Math.random()-0.5)*jitter,
+                        a.baseY + (Math.random()-0.5)*jitter,
+                        a.baseZ + (Math.random()-0.5)*jitter
+                    );
+                    
+                    // Color: Interpolate Gray -> Red
+                    _color.lerpColors(gray, red, a.heat);
+                    atomMesh.setColorAt(i, _color);
+                } else {
+                    dummy.position.set(a.x, a.baseY, a.baseZ);
+                    atomMesh.setColorAt(i, gray);
+                }
+                
+                avgTemp += a.heat;
+                dummy.updateMatrix();
+                atomMesh.setMatrixAt(i, dummy.matrix);
+            }
+            atomMesh.instanceMatrix.needsUpdate = true;
+            atomMesh.instanceColor.needsUpdate = true;
+
+            // 3. Update UI
+            updateMeters(avgTemp);
+        }
+
+        // === UI HANDLING ===
+        const ui = {
+            amp: document.getElementById('amp-val'),
+            temp: document.getElementById('temp-val'),
+            btnLow: document.getElementById('btn-low'),
+            btnHigh: document.getElementById('btn-high')
+        };
+
+        // Smooth the meter readings
+        let displayAmps = 0;
+        let displayTemp = 25;
+
+        function updateMeters(totalHeatVal) {
+            // Amps = particles per frame * scalar
+            // We smooth it out
+            const instantAmps = electronPassCount * 0.5; // Arbitrary scale
+            displayAmps += (instantAmps - displayAmps) * 0.1;
+            electronPassCount = 0; // Reset counter
+
+            // Temp
+            const targetTemp = 25 + (totalHeatVal * 2); // Base 25C + heat
+            displayTemp += (targetTemp - displayTemp) * 0.05;
+
+            ui.amp.innerText = displayAmps.toFixed(1) + " A";
+            ui.temp.innerText = Math.floor(displayTemp) + "°C";
+            
+            // Visual feedback on text color
+            if(displayTemp > 100) ui.temp.style.color = "#ef4444";
+            else ui.temp.style.color = "#e0e0e0";
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            if(mode === 'conductor') {
+                initAtoms(CONFIG.conductor.atoms);
+                ui.btnLow.classList.add('active');
+                ui.btnHigh.classList.remove('active');
+            } else {
+                initAtoms(CONFIG.resistor.atoms);
+                ui.btnLow.classList.remove('active');
+                ui.btnHigh.classList.add('active');
+            }
+        }
+
+        ui.btnLow.onclick = () => setMode('conductor');
+        ui.btnHigh.onclick = () => setMode('resistor');
+
+        // Init
+        initElectrons();
+        setMode('conductor');
+
+        // Resize
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+
+        // Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="sim_resistance_education.0.offline.js"></script>
+
+
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Divergence of E</title>
+    
+    
+    
+    
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              hat: "\\mathbf",
+              div: "\\nabla \\cdot"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #28a745;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 2.8rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        h3 { color: var(--text-primary); font-weight: 600; margin-top: 2rem; font-size: 1.4rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); }
+        .field-symbol {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 800;
+            font-style: normal;
+        }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--accent-color);
+        }
+
+        /* Concept Box */
+        .concept-box {
+            background-color: rgba(40, 167, 69, 0.1);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        .concept-box h3 { margin-top: 0; color: var(--success-color); }
+
+        /* Iframe */
+        .iframe-container {
+            width: 100%;
+            height: 600px;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Code/Formula Lists */
+        .formula-list {
+            list-style: none;
+            padding: 0;
+        }
+        .formula-list li {
+            background-color: rgba(255,255,255,0.05);
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #aaddff;
+        }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+        .back-btn { display: inline-block; margin-top: 1rem; padding: 10px 20px; border: 1px solid var(--accent-color); border-radius: 50px; text-decoration: none; color: var(--accent-color); transition: all 0.2s; }
+        .back-btn:hover { background-color: var(--accent-color); color: white; }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrostatics_index.html">Electrostatics</a> > <a href="ch1_2_gauss_law.html">Gauss's Law</a> > Divergence
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: The Divergence of <span class="field-symbol">E</span></h1>
+        
+        <p>
+            We have seen the integral form of Gauss's Law, which applies to large, macroscopic regions. But what if we want to describe the electric field at a <strong>single point</strong> in space? For this, we need the concept of <strong>Divergence</strong>.
+        </p>
+
+        <!-- SECTION 1: WHAT IS DIVERGENCE & VISUALIZATION -->
+        <section>
+            <h2>1. What is Divergence?</h2>
+            <p>
+                Mathematically, divergence is an operator that takes a vector field and outputs a scalar function. Physically, it measures how much a vector field <strong>spreads out</strong> (diverges) from a specific point.
+            </p>
+            
+            <div class="concept-box">
+                <h3>The "Faucet" Analogy</h3>
+                <p>Imagine the vector field represents the flow of water.</p>
+                <ul>
+                    <li><strong>Positive Divergence:</strong> The point is a <strong>source</strong> (like a faucet turned on). Water is being created there and flowing outwards.</li>
+                    <li><strong>Negative Divergence:</strong> The point is a <strong>sink</strong> (like a drain). Water is flowing inwards and disappearing there.</li>
+                    <li><strong>Zero Divergence:</strong> The water is just flowing through. Whatever flows in, flows out. No water is created or destroyed.</li>
+                </ul>
+            </div>
+
+            <p>
+                In electrostatics, <strong>electric charge</strong> acts as the "source" or "sink" of the electric field. Positive charge creates outward flow (positive divergence), and negative charge creates inward flow (negative divergence).
+            </p>
+
+            <!-- VISUALIZATION -->
+            <div class="iframe-container">
+                <!-- Placeholder for Divergence Visualizer -->
+                <iframe src="simulators/divergence_visualizer.html" title="Divergence Visualization"></iframe>
+            </div>
+            <p style="text-align: center; font-style: italic; font-size: 0.9rem;">
+                Visualizing sources (Positive Divergence) and sinks (Negative Divergence).
+            </p>
+        </section>
+
+        <!-- SECTION 2: THE DERIVATION -->
+        <section>
+            <h2>2. Deriving the Differential Form</h2>
+            <p>
+                Where does the equation \(\nabla \cdot \vec{E} = \rho/\epsilon_0\) come from? It comes directly from the integral form of Gauss's Law combined with the <strong>Divergence Theorem</strong>.
+            </p>
+
+            <h3>Step 1: Start with the Integral Form</h3>
+            <div class="math-block">
+                $$ \oint_{\mathcal{S}} \vec{E} \cdot d\vec{a} = \frac{Q_{\text{enc}}}{\epsilon_0} $$
+            </div>
+
+            <h3>Step 2: Rewrite Charge as an Integral</h3>
+            <p>
+                The enclosed charge \(Q_{\text{enc}}\) is simply the integral of the volume charge density \(\rho\) over the volume \(\mathcal{V}\):
+            </p>
+            <div class="math-block" style="padding: 1rem; font-size: 1.1rem;">
+                $$ Q_{\text{enc}} = \int_{\mathcal{V}} \rho \, d\tau $$
+            </div>
+
+            <h3>Step 3: Apply the Divergence Theorem</h3>
+            <p>
+                The Divergence Theorem is a purely mathematical tool that relates the flow through a surface to the divergence inside the volume:
+            </p>
+            <div class="math-block" style="padding: 1rem; font-size: 1.1rem; border-color: #fff;">
+                $$ \oint_{\mathcal{S}} \vec{E} \cdot d\vec{a} = \int_{\mathcal{V}} (\nabla \cdot \vec{E}) \, d\tau $$
+            </div>
+
+            <h3>Step 4: Comparison</h3>
+            <p>
+                Now substitute both integrals back into Gauss's Law:
+            </p>
+            <div class="math-block">
+                $$ \int_{\mathcal{V}} (\nabla \cdot \vec{E}) \, d\tau = \int_{\mathcal{V}} \left( \frac{\rho}{\epsilon_0} \right) \, d\tau $$
+            </div>
+            <p>
+                Since this must hold true for <em>any</em> volume \(\mathcal{V}\) we choose, the terms inside the integrals (the integrands) must be equal at every point. Thus, we arrive at <strong>Maxwell's First Equation</strong>:
+            </p>
+            <div class="math-block" style="border-color: var(--success-color);">
+                $$ \nabla \cdot \vec{E} = \frac{\rho}{\epsilon_0} $$
+            </div>
+        </section>
+
+        <!-- SECTION 3: CALCULATION -->
+        <section>
+            <h2>3. How to Calculate Divergence</h2>
+            <p>
+                To solve problems, you need to calculate \(\nabla \cdot \vec{E}\) using the appropriate coordinate system.
+            </p>
+
+            <h3>Cartesian Coordinates (x, y, z)</h3>
+            <ul class="formula-list">
+                <li>$$ \nabla \cdot \vec{E} = \frac{\partial E_x}{\partial x} + \frac{\partial E_y}{\partial y} + \frac{\partial E_z}{\partial z} $$</li>
+            </ul>
+
+            <h3>Cylindrical Coordinates (s, &phi;, z)</h3>
+            <ul class="formula-list">
+                <li>$$ \nabla \cdot \vec{E} = \frac{1}{s}\frac{\partial}{\partial s}(s E_s) + \frac{1}{s}\frac{\partial E_\phi}{\partial \phi} + \frac{\partial E_z}{\partial z} $$</li>
+            </ul>
+
+            <h3>Spherical Coordinates (r, &theta;, &phi;)</h3>
+            <ul class="formula-list">
+                <li>$$ \nabla \cdot \vec{E} = \frac{1}{r^2}\frac{\partial}{\partial r}(r^2 E_r) + \frac{1}{r\sin\theta}\frac{\partial}{\partial \theta}(\sin\theta E_\theta) + \frac{1}{r\sin\theta}\frac{\partial E_\phi}{\partial \phi} $$</li>
+            </ul>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

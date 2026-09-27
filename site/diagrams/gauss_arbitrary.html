@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauss's Law Comprehensive</title>
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #eee; }
+        
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 260px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        h3 { margin: 0 0 15px 0; color: #3498db; font-size: 1.1rem; border-bottom: 1px solid #555; padding-bottom: 5px; }
+        
+        .control-group { margin-bottom: 15px; }
+        .group-label { font-size: 0.85rem; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .toggle-label { font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        
+        /* Custom Checkbox */
+        input[type="checkbox"] {
+            appearance: none;
+            width: 40px;
+            height: 20px;
+            background: #555;
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.3s;
+        }
+        input[type="checkbox"]::after {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 16px; height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        input[type="checkbox"]:checked { background: #3498db; }
+        input[type="checkbox"]:checked::after { transform: translateX(20px); }
+
+        /* Flux Display */
+        #stage {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #050505;
+        }
+
+        #flux-display {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(520px, calc(100% - 32px));
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.88);
+            border: 2px solid #3498db;
+            padding: 12px 18px;
+            border-radius: 18px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            z-index: 5;
+        }
+        .flux-title { font-size: 0.85rem; color: #aaa; margin-bottom: 4px; }
+        .flux-equation {
+            font-size: clamp(0.95rem, 2.1vw, 1.25rem);
+            font-weight: 700;
+            color: #dfefff;
+            white-space: nowrap;
+        }
+        .flux-value {
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-weight: 800;
+        }
+        @media (max-width: 760px) {
+            #flux-display {
+                bottom: 10px;
+                padding: 10px 12px;
+            }
+            .flux-equation {
+                white-space: normal;
+                line-height: 1.35;
+            }
+        }
+
+        /* Legend dots */
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot-pos { background: #ff5252; box-shadow: 0 0 5px #ff5252; }
+        .dot-neg { background: #448aff; box-shadow: 0 0 5px #448aff; }
+
+    </style>
+    <!-- MathJax -->
+    <script>MathJax = { tex: { inlineMath: [['$', '$']] } };</script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+    
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <!-- Controls -->
+    <div id="ui-container">
+        <h3>Scenario Controls</h3>
+        
+        <div class="control-group">
+            <div class="group-label">Inside Surface</div>
+            <div class="toggle-row">
+                <span class="toggle-label"><span class="dot dot-pos"></span> Charge (+q)</span>
+                <input type="checkbox" id="chk-in-pos" checked onchange="updateScenario()">
+            </div>
+            <div class="toggle-row">
+                <span class="toggle-label"><span class="dot dot-neg"></span> Charge (-q)</span>
+                <input type="checkbox" id="chk-in-neg" onchange="updateScenario()">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="group-label">Outside Surface</div>
+            <div class="toggle-row">
+                <span class="toggle-label"><span class="dot dot-pos"></span> Charge (+q)</span>
+                <input type="checkbox" id="chk-out-pos" onchange="updateScenario()">
+            </div>
+            <div class="toggle-row">
+                <span class="toggle-label"><span class="dot dot-neg"></span> Charge (-q)</span>
+                <input type="checkbox" id="chk-out-neg" onchange="updateScenario()">
+            </div>
+        </div>
+        
+        <div style="font-size: 0.8rem; color: #888; margin-top: 10px; line-height: 1.4;">
+            *Toggle external charges. Notice arrows change, but Flux value stays constant!
+        </div>
+    </div>
+
+    <div id="stage">
+        <!-- Flux Readout -->
+        <div id="flux-display">
+            <div class="flux-title">Net electric flux</div>
+            <div class="flux-equation">
+                &Phi;<sub>E</sub> = &oint; <strong>E</strong> &middot; d<strong>a</strong> =
+                Q<sub>enc</sub> / &epsilon;<sub>0</sub> =
+                <span id="flux-val" class="flux-value">0 q / &epsilon;<sub>0</sub></span>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 8, 16);
+        
+        const stage = document.getElementById('stage');
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        stage.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- 1. THE GAUSSIAN SURFACE ---
+        // Create a blobby shape
+        const geometry = new THREE.SphereGeometry(3, 64, 64);
+        const posAttribute = geometry.attributes.position;
+        const v = new THREE.Vector3();
+        
+        // Deform sphere to look "Arbitrary"
+        for (let i = 0; i < posAttribute.count; i++) {
+            v.fromBufferAttribute(posAttribute, i);
+            const noise = Math.sin(v.x * 0.8) * Math.cos(v.y * 0.8) * Math.sin(v.z * 0.8);
+            const scale = 1 + 0.15 * noise;
+            v.multiplyScalar(scale);
+            posAttribute.setXYZ(i, v.x, v.y, v.z);
+        }
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x3498db,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide,
+            shininess: 90,
+            depthWrite: false
+        });
+        const surfaceMesh = new THREE.Mesh(geometry, material);
+        scene.add(surfaceMesh);
+
+        // Wireframe for better visibility
+        const wireGeo = new THREE.WireframeGeometry(geometry);
+        const wireMat = new THREE.LineBasicMaterial({ color: 0x3498db, transparent: true, opacity: 0.1 });
+        const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
+        surfaceMesh.add(wireMesh);
+
+        // --- 2. CHARGES CONFIGURATION ---
+        // Define potential charges
+        const chargesConfig = [
+            { id: 'chk-in-pos',  q: 1,  pos: new THREE.Vector3(0.5, 0, 0),   isInside: true,  color: 0xff5252 },
+            { id: 'chk-in-neg',  q: -1, pos: new THREE.Vector3(-0.5, 0.5, 0), isInside: true,  color: 0x448aff },
+            { id: 'chk-out-pos', q: 1,  pos: new THREE.Vector3(5, 2, 0),     isInside: false, color: 0xff5252 },
+            { id: 'chk-out-neg', q: -1, pos: new THREE.Vector3(-5, -2, 2),   isInside: false, color: 0x448aff }
+        ];
+
+        const chargeMeshes = [];
+        const sphereGeo = new THREE.SphereGeometry(0.3, 32, 32);
+
+        // Initialize Charge Meshes (hidden by default)
+        chargesConfig.forEach(c => {
+            const mat = new THREE.MeshBasicMaterial({ color: c.color });
+            const mesh = new THREE.Mesh(sphereGeo, mat);
+            mesh.position.copy(c.pos);
+            mesh.visible = false; // Controlled by UI
+            
+            // Add glow
+            const glow = new THREE.PointLight(c.color, 1, 5);
+            mesh.add(glow);
+            
+            scene.add(mesh);
+            chargeMeshes.push({ config: c, mesh: mesh });
+        });
+
+        // --- 3. VECTOR FIELD ON SURFACE ---
+        // We place arrows on the surface vertices to visualize E
+        const arrows = [];
+        const sampleGeo = new THREE.SphereGeometry(3, 24, 24); // Lower res for arrows
+        const samplePos = sampleGeo.attributes.position;
+
+        for(let i=0; i<samplePos.count; i++){
+            v.fromBufferAttribute(samplePos, i);
+            // Apply same deformation
+            const noise = Math.sin(v.x * 0.8) * Math.cos(v.y * 0.8) * Math.sin(v.z * 0.8);
+            const scale = 1 + 0.15 * noise;
+            v.multiplyScalar(scale);
+
+            // Create arrow
+            const arrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), v, 1, 0xffff00, 0.3, 0.2);
+            scene.add(arrow);
+            
+            // Store normal for flux visualization (dot product)
+            // Approximate normal by normalizing position vector (good enough for blob)
+            const normal = v.clone().normalize(); 
+            
+            arrows.push({ helper: arrow, pos: v.clone(), normal: normal });
+        }
+
+        // --- LOGIC ---
+        
+        window.updateScenario = function() {
+            let totalEnclosedQ = 0;
+            const activeCharges = [];
+
+            // 1. Update Charge Visibility & Calculate Q_enc
+            chargeMeshes.forEach(item => {
+                const checkbox = document.getElementById(item.config.id);
+                const isActive = checkbox.checked;
+                item.mesh.visible = isActive;
+
+                if (isActive) {
+                    activeCharges.push(item.config);
+                    if (item.config.isInside) {
+                        totalEnclosedQ += item.config.q;
+                    }
+                }
+            });
+
+            // 2. Update Flux Text
+            const fluxEl = document.getElementById('flux-val');
+            fluxEl.innerHTML = `${totalEnclosedQ > 0 ? '+' : ''}${totalEnclosedQ} q / &epsilon;<sub>0</sub>`;
+            fluxEl.style.color = totalEnclosedQ > 0 ? '#ff5252' : (totalEnclosedQ < 0 ? '#448aff' : '#fff');
+
+            // 3. Update Vector Field (The heavy lifting)
+            arrows.forEach(arrowObj => {
+                const E_net = new THREE.Vector3(0, 0, 0);
+                
+                // Superposition Principle: Sum E from all active charges
+                activeCharges.forEach(c => {
+                    const rVec = new THREE.Vector3().subVectors(arrowObj.pos, c.pos);
+                    const rSq = rVec.lengthSq();
+                    const rMag = Math.sqrt(rSq);
+                    
+                    // E = k * q / r^2 * r_hat
+                    // Simplified k=10 for visual scale
+                    const E_contrib = rVec.normalize().multiplyScalar((15 * c.q) / rSq);
+                    E_net.add(E_contrib);
+                });
+
+                const mag = E_net.length();
+                
+                if (mag < 0.1) {
+                    arrowObj.helper.visible = false;
+                } else {
+                    arrowObj.helper.visible = true;
+                    const dir = E_net.clone().normalize();
+                    arrowObj.helper.setDirection(dir);
+                    
+                    // Scale arrow length by magnitude (clamped)
+                    const len = Math.min(2.5, Math.max(0.5, mag * 0.5));
+                    arrowObj.helper.setLength(len, len*0.3, len*0.15);
+
+                    // Color based on Flux contribution (E dot n)
+                    // If E points OUT (aligned with normal), Yellow.
+                    // If E points IN (opposed to normal), Cyan.
+                    const dot = dir.dot(arrowObj.normal);
+                    const color = new THREE.Color();
+                    if (dot > 0) color.setHex(0xffd700); // Out (Yellow)
+                    else color.setHex(0x00ffff); // In (Cyan)
+                    
+                    arrowObj.helper.setColor(color);
+                }
+            });
+        };
+
+        // Init
+        updateScenario();
+
+        // --- ANIMATION ---
+        function resizeRenderer() {
+            const width = Math.max(1, stage.clientWidth || window.innerWidth);
+            const height = Math.max(1, stage.clientHeight || window.innerHeight);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="gauss_arbitrary.0.offline.js"></script>
+
+
+</body>
+</html>

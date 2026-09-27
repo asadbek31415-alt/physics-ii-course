@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Derivation of the Multipole Expansion</title>
+    
+    
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            macros: {
+              vec: "\\mathbf",
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\vec{l}",
+              dtau: "d\\tau"
+              /* 'hat' macro removed to prevent recursion error */
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Header */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .nav-container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
+        .breadcrumb a { text-decoration: none; color: var(--accent-color); font-weight: 500; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Main Layout */
+        .container {
+            max-width: 960px; 
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 { font-size: 3rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
+        h2 { color: var(--accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 4rem; }
+        h3 { color: var(--text-primary); font-weight: 600; margin-top: 2rem; font-size: 1.4rem; }
+        p { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+        strong { color: var(--text-primary); }
+
+        /* Math Blocks */
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            overflow-x: auto;
+        }
+
+        /* Visualizing Iframe */
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        /* Formula Breakdown */
+        .breakdown-box {
+            display: grid;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .breakdown-item {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 15px;
+        }
+        .breakdown-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+        .symbol-col {
+            font-size: 1.4rem;
+            font-family: 'Times New Roman', serif;
+            color: var(--warning-color);
+            font-weight: bold;
+        }
+
+        /* Back Button Wrapper */
+        .back-wrapper { margin-top: 4rem; text-align: center; }
+        .back-btn {
+            display: inline-block;
+            padding: 10px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+        .back-btn:hover { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
+
+        footer { text-align: center; padding: 4rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary); }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="electrostatics_index.html">Electrostatics</a> > 
+                <a href="ch1_5_multipole_expansion.html">Multipole Expansion</a> > 
+                Derivation Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Derivation of the Multipole Expansion</h1>
+        
+        <p>
+            How do we move from a specific case (two charges) to a general formula that works for <em>any</em> shape?
+        </p>
+
+        <!-- SECTION 1: DIPOLE LIMIT RECAP -->
+        <section>
+            <h2>1. Recap: The Dipole Limit</h2>
+            <p>
+                In the previous section, we saw that for a simple physical dipole (two charges \(\pm q\) separated by \(d\)), applying the approximation \(r \gg d\) leads to a potential that decays as \(1/r^2\):
+            </p>
+            <div class="math-block">
+                $$ V(\vec{r}) \approx \frac{1}{4\pi\epsilon_0} \frac{qd \cos\theta}{r^2} $$
+            </div>
+            <p>
+                This revealed a pattern: when net charge is zero (Monopole cancels), the next leading term is the Dipole term.
+            </p>
+        </section>
+
+        <!-- SECTION 2: VISUALIZING THE HIERARCHY -->
+        <section>
+            <h2>2. Visualizing the Hierarchy</h2>
+            <p>
+                This pattern continues indefinitely. By arranging dipoles to cancel each other, we get a Quadrupole (\(1/r^3\)). Arranging quadrupoles gives an Octupole (\(1/r^4\)). 
+            </p>
+            <p>
+                Interact with the simulation below to visualize the 3D geometry of these potential fields. Notice how higher-order poles have more complex lobe structures and represent finer details of the charge distribution.
+            </p>
+
+            <div class="iframe-container">
+                <!-- Interactive visualizer replacing the static cards -->
+                <iframe src="diagrams/multipole_expansion_visualizer.html" title="Multipole Hierarchy Visualizer"></iframe>
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE GENERAL FORMULA -->
+        <section>
+            <h2>3. The General Formula</h2>
+            <p>
+                To generalize this for any charge distribution \(\rho\), we start with the Coulomb integral and expand the \(1/|\vec{r}-\vec{r}'|\) term using the Law of Cosines and Legendre Polynomials.
+            </p>
+            <p>
+                The result is the **Multipole Expansion**:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ V(\vec{r}) = \frac{1}{4\pi\epsilon_0} \sum_{n=0}^{\infty} \frac{1}{r^{n+1}} \int (r')^n P_n(\cos\alpha) \rho(\vec{r}') d\tau' $$
+            </div>
+
+            <h3>Deconstructing the Equation</h3>
+            <p>
+                This formula separates the world into two parts: the <strong>Observer</strong> (you, at \(r\)) and the <strong>Source</strong> (the charge at \(r'\)).
+            </p>
+
+            <div class="breakdown-box">
+                <!-- Decay Rate -->
+                <div class="breakdown-item">
+                    <div class="symbol-col">\(\frac{1}{r^{n+1}}\)</div>
+                    <div>
+                        <strong>The Decay Rate (Observer):</strong> Determines how fast the potential dies off. 
+                        <br>\(n=0 \to 1/r\) (Monopole)
+                        <br>\(n=1 \to 1/r^2\) (Dipole)
+                    </div>
+                </div>
+
+                <!-- Angular Shape -->
+                <div class="breakdown-item">
+                    <div class="symbol-col">\(P_n(\cos\alpha)\)</div>
+                    <div>
+                        <strong>The Shape (Legendre Polynomials):</strong> These mathematical functions determine the "lobes" of the field.
+                        <br>\(P_0 = 1\) (Sphere)
+                        <br>\(P_1 = \cos\theta\) (Dumbbell shape)
+                    </div>
+                </div>
+
+                <!-- Multipole Moment -->
+                <div class="breakdown-item">
+                    <div class="symbol-col">\(\int \dots d\tau'\)</div>
+                    <div>
+                        <strong>The Moment (Source):</strong> This integral depends <em>only</em> on the charge distribution \(\rho\). It is a constant number for a given object. 
+                        <br>For \(n=0\), it becomes the Total Charge \(Q\).
+                        <br>For \(n=1\), it becomes the Dipole Moment \(\vec{p}\).
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="back-wrapper">
+            <a href="ch1_5_multipole_expansion.html" class="back-btn">← Return to Multipole Expansion</a>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

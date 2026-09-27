@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electrostatic Pressure Diagram</title>
+    
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #1c2734;
+            --surface-color: #2c3e50;
+            --surface-highlight: #34495e;
+            --text-color: #e0e0e0;
+            --accent-blue: #3498db;   /* E_other */
+            --accent-yellow: #f1c40f; /* E_patch */
+            --accent-green: #2ecc71;  /* E_total */
+            --accent-red: #e74c3c;    /* Force */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Controls --- */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 4px;
+            gap: 5px;
+            z-index: 20; /* Ensure buttons are clickable */
+        }
+
+        .btn {
+            background: transparent;
+            border: none;
+            color: #8899a6;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover { color: white; background: rgba(255,255,255,0.05); }
+        .btn.active { background: var(--surface-highlight); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        /* --- Diagram Area --- */
+        .diagram-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 320px; /* Increased height slightly for better spacing */
+            margin-top: 10px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* --- Math Labels (Overlays) --- */
+        .math-label {
+            position: absolute;
+            font-size: 1rem;
+            pointer-events: none; /* Let clicks pass through */
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            opacity: 0;
+            transform: translateY(10px);
+            /* Ensure text is readable against dark background */
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8); 
+            background: rgba(28, 39, 52, 0.6); /* Semi-transparent bg */
+            padding: 2px 6px;
+            border-radius: 4px;
+            z-index: 10; /* Force on top of SVG */
+            white-space: nowrap;
+        }
+
+        .math-label.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 
+           Positioning Strategy:
+           Use left/top percentages to place roughly, 
+           transform translate to center on that point.
+        */
+
+        /* Total Field View */
+        #lbl-total-out { left: 55%; top: 20%; color: var(--accent-green); }
+        #lbl-total-in  { left: 50%; top: 75%; transform: translateX(-50%); color: var(--accent-green); }
+        
+        /* Decomposition View - Separated Left and Right */
+        /* Blue (Left) */
+        #lbl-other-out { left: 20%; top: 25%; color: var(--accent-blue); }
+        #lbl-other-in  { left: 20%; top: 65%; color: var(--accent-blue); }
+        
+        /* Yellow (Right) */
+        #lbl-patch-out { left: 65%; top: 25%; color: var(--accent-yellow); }
+        #lbl-patch-in  { left: 65%; top: 65%; color: var(--accent-yellow); }
+
+        /* Force View */
+        #lbl-force     { left: 55%; top: 10%; color: var(--accent-red); font-weight: bold; }
+
+        /* --- SVG Elements Styling --- */
+        .conductor-body { fill: url(#grad1); stroke: #4a6b8a; stroke-width: 1; }
+        .patch { fill: var(--accent-yellow); stroke: none; opacity: 0.8; }
+        
+        .arrow { stroke-width: 3; fill: none; transition: opacity 0.4s; }
+        .arrow-head { transition: opacity 0.4s; }
+        
+        .hidden { opacity: 0; }
+        .dimmed { opacity: 0.2; }
+
+        /* --- Caption --- */
+        .caption-box {
+            margin-top: 5px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid var(--accent-blue);
+            padding: 10px 20px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #b0c4de;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <div class="controls">
+        <button class="btn active" onclick="setMode('total')">1. Total Field</button>
+        <button class="btn" onclick="setMode('decompose')">2. Decomposition</button>
+        <button class="btn" onclick="setMode('force')">3. The Force</button>
+    </div>
+
+    <!-- Diagram -->
+    <div class="diagram-container">
+        
+        <!-- MathJax Overlays -->
+        <div id="lbl-total-out" class="math-label">$\vec{E} = \frac{\sigma}{\epsilon_0}\hat{n}$</div>
+        <div id="lbl-total-in" class="math-label">$\vec{E} = 0$</div>
+
+        <div id="lbl-other-out" class="math-label">$\vec{E}_{\text{other}} = \frac{\sigma}{2\epsilon_0}\hat{n}$</div>
+        <div id="lbl-other-in" class="math-label">$\vec{E}_{\text{other}} = \frac{\sigma}{2\epsilon_0}\hat{n}$</div>
+
+        <div id="lbl-patch-out" class="math-label">$\vec{E}_{\text{patch}} = \frac{\sigma}{2\epsilon_0}\hat{n}$</div>
+        <div id="lbl-patch-in" class="math-label">$\vec{E}_{\text{patch}} = -\frac{\sigma}{2\epsilon_0}\hat{n}$</div>
+
+        <div id="lbl-force" class="math-label">$\vec{f} = \sigma \vec{E}_{\text{other}}$</div>
+
+        <svg viewBox="0 0 600 320" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:var(--surface-highlight);stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:var(--surface-color);stop-opacity:1" />
+                </linearGradient>
+                
+                <!-- Arrowheads -->
+                <marker id="head-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#2ecc71" />
+                </marker>
+                <marker id="head-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#3498db" />
+                </marker>
+                <marker id="head-yellow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#f1c40f" />
+                </marker>
+                <marker id="head-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c" />
+                </marker>
+            </defs>
+
+            <!-- Conductor Surface -->
+            <path d="M 0,200 Q 300,120 600,200 L 600,350 L 0,350 Z" class="conductor-body" />
+            
+            <!-- The Patch (Centered) -->
+            <path d="M 260,168 Q 300,158 340,168 L 340,175 L 260,175 Z" class="patch" />
+            <text x="300" y="195" text-anchor="middle" fill="#f1c40f" font-size="14" font-weight="bold" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Patch ($\sigma$)</text>
+
+            <!-- VECTORS -->
+            <!-- Center X = 300. Surface Y approx 160. -->
+
+            <!-- 1. Total Field (Green) -->
+            <g id="vec-total">
+                <line x1="300" y1="160" x2="300" y2="60" stroke="#2ecc71" class="arrow" marker-end="url(#head-green)" />
+            </g>
+
+            <!-- 2. Decomposition Vectors (Separated) -->
+            <g id="vec-decomp" class="hidden">
+                <!-- E_other (Blue) - Shifted LEFT (x=240) -->
+                <!-- Up Outside -->
+                <line x1="240" y1="150" x2="240" y2="80" stroke="#3498db" class="arrow" marker-end="url(#head-blue)" />
+                <!-- Up Inside -->
+                <line x1="240" y1="180" x2="240" y2="110" stroke="#3498db" class="arrow" marker-end="url(#head-blue)" transform="translate(0, 100)" /> 
+                <!-- Note: Manual coord adjustment for inside vector to point UP inside -->
+                <!-- Let's redraw inside vector explicitly to be safe -->
+                <line x1="240" y1="180" x2="240" y2="250" stroke="none" /> <!-- Clear previous -->
+                <line x1="240" y1="175" x2="240" y2="245" stroke="#3498db" class="arrow" marker-end="url(#head-blue)" transform="rotate(180 240 210)" /> 
+                <!-- Wait, E_other points UP inside too. So arrow head should be at top. -->
+                <!-- Correct E_other Inside: Starts deep, points up towards surface -->
+                <line x1="240" y1="250" x2="240" y2="180" stroke="#3498db" class="arrow" marker-end="url(#head-blue)" />
+
+
+                <!-- E_patch (Yellow) - Shifted RIGHT (x=360) -->
+                <!-- Up Outside -->
+                <line x1="360" y1="150" x2="360" y2="80" stroke="#f1c40f" class="arrow" marker-end="url(#head-yellow)" />
+                <!-- Down Inside -->
+                <line x1="360" y1="180" x2="360" y2="250" stroke="#f1c40f" class="arrow" marker-end="url(#head-yellow)" />
+            </g>
+
+            <!-- 3. Force (Red) - Centered -->
+            <g id="vec-force" class="hidden">
+                <!-- Ghosted Patch Field (to show it's ignored) -->
+                <line x1="320" y1="160" x2="320" y2="90" stroke="#f1c40f" class="arrow dimmed" stroke-dasharray="5,5" />
+                
+                <!-- E_other acting on patch (Centered) -->
+                <line x1="300" y1="160" x2="300" y2="90" stroke="#3498db" class="arrow" marker-end="url(#head-blue)" />
+                
+                <!-- Resulting Force -->
+                <line x1="300" y1="160" x2="300" y2="40" stroke="#e74c3c" stroke-width="6" class="arrow" opacity="0.4" marker-end="url(#head-red)" />
+            </g>
+
+        </svg>
+    </div>
+
+    <div id="caption-text" class="caption-box">
+        Loading visualization...
+    </div>
+
+    <script>
+        const captions = {
+            'total': "<strong>Observed Reality:</strong> The electric field is discontinuous. Inside the conductor, $\\vec{E}=0$. Just outside, $\\vec{E} = \\sigma/\\epsilon_0$. We need to find the force on the surface charge $\\sigma$.",
+            'decompose': "<strong>Superposition:</strong> We separate the vectors to see them clearly. <span style='color:#3498db'>Blue ($\\vec{E}_{other}$)</span> points UP everywhere. <span style='color:#f1c40f'>Yellow ($\\vec{E}_{patch}$)</span> points OUT from the surface (Up outside, Down inside). Inside, they cancel perfectly.",
+            'force': "<strong>The Result:</strong> The patch cannot exert a force on itself. It only feels the field from 'Everything Else' ($\\vec{E}_{other}$). This field is exactly half the total field outside."
+        };
+
+        function setMode(mode) {
+            // 1. Update Buttons
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            const btnIndex = mode === 'total' ? 0 : mode === 'decompose' ? 1 : 2;
+            document.querySelectorAll('.btn')[btnIndex].classList.add('active');
+
+            // 2. Update SVG Visibility
+            const vecTotal = document.getElementById('vec-total');
+            const vecDecomp = document.getElementById('vec-decomp');
+            const vecForce = document.getElementById('vec-force');
+
+            // Helper to hide/show SVG groups
+            const showSvg = (el, show) => el.setAttribute('class', show ? '' : 'hidden');
+
+            showSvg(vecTotal, mode === 'total');
+            showSvg(vecDecomp, mode === 'decompose');
+            showSvg(vecForce, mode === 'force');
+
+            // 3. Update Math Labels (HTML Overlays)
+            document.querySelectorAll('.math-label').forEach(el => el.classList.remove('visible'));
+
+            if (mode === 'total') {
+                document.getElementById('lbl-total-out').classList.add('visible');
+                document.getElementById('lbl-total-in').classList.add('visible');
+            } else if (mode === 'decompose') {
+                document.getElementById('lbl-other-out').classList.add('visible');
+                document.getElementById('lbl-other-in').classList.add('visible');
+                document.getElementById('lbl-patch-out').classList.add('visible');
+                document.getElementById('lbl-patch-in').classList.add('visible');
+            } else if (mode === 'force') {
+                document.getElementById('lbl-force').classList.add('visible');
+            }
+
+            // 4. Update Caption & Retypeset Math
+            const captionEl = document.getElementById('caption-text');
+            captionEl.innerHTML = captions[mode];
+            MathJax.typesetPromise([captionEl]);
+        }
+
+        // Initialize
+        window.onload = () => setMode('total');
+    </script>
+</body>
+</html>

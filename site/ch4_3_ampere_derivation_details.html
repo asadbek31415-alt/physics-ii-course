@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Deriving Ampère’s Law for H</title>
+    
+    <!-- External Resources -->
+    
+    <link rel="stylesheet" href="style.css">
+        <script src="course-map.js"></script>
+<script src="global.js" defer></script>
+    
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['\\(', '\\)']],
+            displayMath: [['$$', '$$']],
+            macros: {
+              grad: "\\nabla",
+              div: "\\nabla \\cdot",
+              curl: "\\nabla \\times",
+              dl: "d\\mathbf{l}",
+              da: "d\\mathbf{a}",
+              B: "\\mathbf{B}",
+              H: "\\mathbf{H}",
+              M: "\\mathbf{M}",
+              J: "\\mathbf{J}",
+              Jf: "\\mathbf{J}_f",
+              Jb: "\\mathbf{J}_b"
+            }
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <!-- Page Specific Styles -->
+    <style>
+        .step-box {
+            background-color: var(--card-bg, #1c2734);
+            border-left: 4px solid var(--accent-color, #3498db);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .step-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-color, #3498db);
+            margin-bottom: 0.5rem;
+            display: block;
+            font-weight: 700;
+        }
+
+        /* IFRAMES */
+        .iframe-container {
+            width: 100%;
+            margin: 2rem 0;
+            border: 1px solid var(--border-color, #2c3e50);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: 500px;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            color: var(--accent-color, #3498db);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .back-link:hover { text-decoration: underline; color: #fff; }
+
+        .note {
+            font-size: 0.95rem;
+            color: var(--text-secondary, #b0c4de);
+            margin-top: 0.5rem;
+            padding: 1rem;
+            background: rgba(241, 196, 15, 0.1);
+            border-left: 3px solid var(--warning-color, #f1c40f);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > 
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> > 
+                <a href="ch4_3_auxiliary_field.html">The Auxiliary Field H</a> >
+                Derivation
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Deriving Ampère’s Law for H</h1>
+
+        <p>
+            The motivation for introducing \(\mathbf{H}\) is to express magnetic fields in terms of <strong>Free Current</strong> (\(\mathbf{J}_f\)) alone, hiding the complex bound currents (\(\mathbf{J}_b\)) inside the material definition.
+        </p>
+
+        <!-- SECTION 1: THE DERIVATION -->
+        <section>
+            <h2>1. The Differential Derivation</h2>
+            <p>We start with the fundamental Ampère’s Law for the total magnetic field \(\mathbf{B}\), which depends on <em>all</em> currents.</p>
+
+            <div class="step-box">
+                <span class="step-label">Step 1: Total Current</span>
+                <p>The total current density \(\mathbf{J}\) is the sum of the free current (in wires) and bound current (from magnetization).</p>
+                $$ \frac{1}{\mu_0} (\nabla \times \mathbf{B}) = \mathbf{J} = \mathbf{J}_f + \mathbf{J}_b $$
+            </div>
+
+            <div class="step-box">
+                <span class="step-label">Step 2: Substitute Bound Current</span>
+                <p>Recall from the previous section that the bound current is the curl of the magnetization: \(\mathbf{J}_b = \nabla \times \mathbf{M}\).</p>
+                $$ \frac{1}{\mu_0} (\nabla \times \mathbf{B}) = \mathbf{J}_f + (\nabla \times \mathbf{M}) $$
+            </div>
+
+            <div class="step-box">
+                <span class="step-label">Step 3: Definition of H</span>
+                <p>Move the magnetization term to the left side and group the curls:</p>
+                $$ \nabla \times \left( \frac{1}{\mu_0}\mathbf{B} - \mathbf{M} \right) = \mathbf{J}_f $$
+                <p>The term in parentheses is defined as the Auxiliary Field, \(\mathbf{H}\), leading to:</p>
+                $$ \nabla \times \mathbf{H} = \mathbf{J}_f $$
+            </div>
+        </section>
+
+        <!-- SECTION 2: INTEGRAL FORM -->
+        <section>
+            <h2>2. The Integral Form</h2>
+            <p>
+                In practice, we rarely use the differential form directly. By applying Stokes' Theorem to a surface \(S\) bounded by a loop \(P\), we get the useful form for solving problems with symmetry:
+            </p>
+
+            <div class="math-block" style="border-left-color: var(--success-color, #2ecc71);">
+                $$ \oint \mathbf{H} \cdot d\mathbf{l} = I_{f_{\text{enc}}} $$
+            </div>
+
+            <div class="note">
+                <strong>Note:</strong> This integral form is typically useful only in cases of high symmetry (such as infinite cylinders, solenoids, or planes) where \(\mathbf{H}\) can be pulled out of the integral.
+            </div>
+        </section>
+
+        <!-- SECTION 3: WORKED EXAMPLE (Example 6.2) -->
+        <section>
+            <h2>3. Worked Example: Long Copper Rod</h2>
+            
+            <p><strong>Problem:</strong> A long copper rod of radius \(R\) carries a uniformly distributed (free) current \(I\). Find \(\mathbf{H}\) inside and outside the rod.</p>
+
+            <!-- SIMULATOR -->
+            <div class="iframe-container">
+                <!-- Using the existing visualization which works for this setup -->
+                <iframe src="diagrams/ampere_law_h.html" title="Current in Rod Simulation"></iframe>
+            </div>
+
+            <div class="step-box">
+                <span class="step-label">Symmetry Argument</span>
+                <p>Because the current is longitudinal (along the rod), the fields \(\mathbf{B}\), \(\mathbf{M}\), and therefore \(\mathbf{H}\) are circumferential. We apply Ampère's law to a circular loop of radius \(s\).</p>
+                $$ \oint \mathbf{H} \cdot d\mathbf{l} = H(2\pi s) = I_{f_{\text{enc}}} $$
+            </div>
+
+            <div class="step-box">
+                <span class="step-label">Region 1: Inside the Wire (\(s \le R\))</span>
+                <p>The enclosed free current is proportional to the area of the loop relative to the total cross-section.</p>
+                $$ I_{f_{\text{enc}}} = I \frac{\pi s^2}{\pi R^2} = I \left( \frac{s}{R} \right)^2 $$
+                <p>Solving for \(H\):</p>
+                $$ H(2\pi s) = I \frac{s^2}{R^2} \implies \mathbf{H} = \frac{I s}{2\pi R^2} \hat{\boldsymbol{\phi}} $$
+            </div>
+
+            <div class="step-box">
+                <span class="step-label">Region 2: Outside the Wire (\(s \ge R\))</span>
+                <p>The loop encloses the total current \(I\).</p>
+                $$ H(2\pi s) = I \implies \mathbf{H} = \frac{I}{2\pi s} \hat{\boldsymbol{\phi}} $$
+            </div>
+
+            <div class="step-box">
+                <span class="step-label">Conclusion regarding B</span>
+                <p>Outside the wire (in empty space), magnetization \(\mathbf{M} = 0\), so we can easily find \(\mathbf{B}\):</p>
+                $$ \mathbf{B} = \mu_0 \mathbf{H} = \frac{\mu_0 I}{2\pi s} \hat{\boldsymbol{\phi}} $$
+                <p><em>Inside</em> the wire, \(\mathbf{B}\) cannot be determined yet because we do not know \(\mathbf{M}\) (though in copper it is very small).</p>
+            </div>
+
+        </section>
+
+        <a href="ch4_3_auxiliary_field.html" class="back-link">← Back to The Auxiliary Field H</a>
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

@@ -1,0 +1,65 @@
+name: Build offline Android app
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'android/**', '.github/workflows/android.yml', '.github/actions/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: course-android
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build-circuitjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Install wrapper dependencies
+        working-directory: android
+        run: npm ci
+      - name: Generate Android project with bundled course
+        working-directory: android
+        run: npx cap add android
+      - name: Prepare signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/physics-ii.p12"
+      - name: Build signed offline APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/physics-ii.p12
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          node configure.cjs
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/Physics-II-Android.apk"
+      - name: Verify APK signature
+        run: "$ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose Physics-II-Android.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Physics-II-Android
+          path: Physics-II-Android.apk
+          retention-days: 30
+      - name: Publish APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "android-0.9.${GITHUB_RUN_NUMBER}" Physics-II-Android.apk --title "Physics II Android 0.9.${GITHUB_RUN_NUMBER}" --notes "Offline Android course, built from the same lesson and simulator files as the website. Install the APK on Android 7 or newer. Internet is needed only for feedback and downloading updates. Physical-device verification is still required for simulator gestures and performance."

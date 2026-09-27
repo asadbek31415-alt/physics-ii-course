@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flux Integral Concept</title>
+    
+    <!-- MathJax for Formulas -->
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$']] } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #eee; }
+        
+        #controls {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(30, 30, 30, 0.9); padding: 15px;
+            border-radius: 8px; border: 1px solid #444; width: 260px;
+            z-index: 10;
+        }
+        
+        h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: #ffcc00; border-bottom: 1px solid #555; padding-bottom: 5px; }
+        
+        label { display: block; margin-bottom: 8px; font-size: 0.9rem; font-weight: 500;}
+        input[type=range] { width: 100%; accent-color: #ffcc00; margin-top: 5px; }
+        input[type=checkbox] { margin-right: 10px; accent-color: #ffcc00; }
+        
+        .info { font-size: 0.85rem; color: #aaa; margin-top: 10px; line-height: 1.4; border-top: 1px solid #444; padding-top: 10px; }
+    </style>
+    
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="controls">
+        <h3>General Flux Integral</h3>
+        
+        <label>
+            Surface Waviness:
+            <input type="range" id="slider-wave" min="0" max="1.5" step="0.01" value="0.6">
+        </label>
+
+        <label>
+            <input type="checkbox" id="check-normals" checked> Show Normals ($d\vec{a}$)
+        </label>
+        <label>
+            <input type="checkbox" id="check-field" checked> Show Field ($\vec{E}$)
+        </label>
+
+        <div class="info">
+            We divide the surface into tiny squares ($da$). The total Flux is the sum (integral) of the field passing through each square.
+            <br><br>
+            $$\Phi = \int \vec{E} \cdot d\vec{a}$$
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(10, 8, 12);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- GROUPS ---
+        const surfaceGroup = new THREE.Group();
+        const normalsGroup = new THREE.Group();
+        const fieldGroup = new THREE.Group();
+        
+        scene.add(surfaceGroup);
+        scene.add(normalsGroup);
+        scene.add(fieldGroup);
+
+        // --- 1. SURFACE GEOMETRY ---
+        const width = 8, height = 8;
+        const segs = 8; // 8x8 squares
+        const planeGeo = new THREE.PlaneGeometry(width, height, segs, segs);
+        
+        // Rotate flat initially
+        const baseRotation = -Math.PI / 2;
+        surfaceGroup.rotation.x = baseRotation;
+        normalsGroup.rotation.x = baseRotation; 
+        fieldGroup.rotation.x = baseRotation; 
+
+        // A. The "Skin" (Transparent Mesh)
+        const material = new THREE.MeshPhongMaterial({ 
+            color: 0x333333, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.7,
+            shininess: 50,
+            specular: 0x111111
+        });
+        const mesh = new THREE.Mesh(planeGeo, material);
+        surfaceGroup.add(mesh);
+
+        // B. The "Squares" (Custom Grid Helper)
+        // We create line segments manually to look like squares, not triangles
+        const gridGeo = new THREE.BufferGeometry();
+        // Store initial grid line positions
+        const gridPositions = [];
+        
+        // Helper to add line p1->p2
+        // We will build this dynamically in updateGeometry, just creating placeholder here
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x888888 });
+        const gridLines = new THREE.LineSegments(gridGeo, lineMat);
+        surfaceGroup.add(gridLines);
+
+        // --- LOGIC ---
+
+        // We need to calculate centers of faces for the arrows
+        function getVertexPos(index, positions) {
+            return new THREE.Vector3(
+                positions.getX(index),
+                positions.getY(index),
+                positions.getZ(index)
+            );
+        }
+
+        function updateGeometry(waveAmp) {
+            const positions = planeGeo.attributes.position;
+            
+            // 1. Deform the Plane Vertices
+            for(let i = 0; i < positions.count; i++) {
+                // PlaneGeometry is created on XY plane. Z is the "height"
+                const x = (i % (segs + 1)) / segs * width - (width/2);
+                const y = - (Math.floor(i / (segs + 1)) / segs * height - (height/2)); // Y is reversed in generation
+                
+                // Make a bump
+                const z = Math.sin(x * 0.8) * Math.cos(y * 0.8) * waveAmp;
+                
+                positions.setXYZ(i, x, y, z);
+            }
+            positions.needsUpdate = true;
+            planeGeo.computeVertexNormals();
+
+            // 2. Rebuild the Grid Lines (The Squares)
+            const lineVerts = [];
+            const vertexCount = segs + 1;
+            
+            // Horizontal lines
+            for(let j=0; j<vertexCount; j++) {
+                for(let i=0; i<segs; i++) {
+                    let idx1 = j * vertexCount + i;
+                    let idx2 = j * vertexCount + i + 1;
+                    lineVerts.push(positions.getX(idx1), positions.getY(idx1), positions.getZ(idx1));
+                    lineVerts.push(positions.getX(idx2), positions.getY(idx2), positions.getZ(idx2));
+                }
+            }
+            // Vertical lines
+            for(let i=0; i<vertexCount; i++) {
+                for(let j=0; j<segs; j++) {
+                    let idx1 = j * vertexCount + i;
+                    let idx2 = (j+1) * vertexCount + i;
+                    lineVerts.push(positions.getX(idx1), positions.getY(idx1), positions.getZ(idx1));
+                    lineVerts.push(positions.getX(idx2), positions.getY(idx2), positions.getZ(idx2));
+                }
+            }
+            gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineVerts, 3));
+
+            // 3. Update Arrows (Normals and Fields)
+            updateArrows(positions);
+        }
+
+        function updateArrows(positions) {
+            // Clear old arrows
+            while(normalsGroup.children.length > 0) normalsGroup.remove(normalsGroup.children[0]);
+            while(fieldGroup.children.length > 0) fieldGroup.remove(fieldGroup.children[0]);
+
+            const widthPoints = segs + 1;
+
+            // Loop through each SQUARE face
+            for(let y = 0; y < segs; y++) {
+                for(let x = 0; x < segs; x++) {
+                    
+                    // Get indices of the 4 corners of the square
+                    const bl = y * widthPoints + x;       // Bottom-Left
+                    const br = y * widthPoints + (x + 1); // Bottom-Right
+                    const tl = (y + 1) * widthPoints + x; // Top-Left
+                    const tr = (y + 1) * widthPoints + (x+1); // Top-Right
+
+                    const vBL = getVertexPos(bl, positions);
+                    const vBR = getVertexPos(br, positions);
+                    const vTL = getVertexPos(tl, positions);
+                    
+                    // 1. Calculate CENTER of the square
+                    // (Average of diagonal is sufficient for center approx on smooth surface)
+                    const center = new THREE.Vector3().addVectors(vBL, getVertexPos(tr, positions)).multiplyScalar(0.5);
+
+                    // 2. Calculate NORMAL (Cross product of two edges)
+                    const edge1 = new THREE.Vector3().subVectors(vBR, vBL);
+                    const edge2 = new THREE.Vector3().subVectors(vTL, vBL);
+                    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+
+                    // 3. Create Normal Arrow (Yellow) - da
+                    // We draw these in Local Space (because groups are rotated)
+                    const nArrow = new THREE.ArrowHelper(normal, center, 1.0, 0xffff00, 0.3, 0.2);
+                    normalsGroup.add(nArrow);
+
+                    // 4. Create Field Arrow (Blue) - E
+                    // Field is uniform "Up" in World Space (Y axis).
+                    // But our Group is rotated by -90 deg on X.
+                    // So "Up" in World (0,1,0) corresponds to (0,0,1) in this local group space.
+                    // OR: We can transform the field vector to local space.
+                    
+                    // World Up (0,1,0). 
+                    // Inverse Rotation of Group (-PI/2 x) -> (0,0,1)
+                    const fieldDir = new THREE.Vector3(0, 0, 1); 
+                    
+                    // Center the field arrow on the patch too
+                    const fArrow = new THREE.ArrowHelper(fieldDir, center, 1.5, 0x448aff, 0.3, 0.2);
+                    fieldGroup.add(fArrow);
+                }
+            }
+        }
+
+        // --- INPUT HANDLERS ---
+        const slider = document.getElementById('slider-wave');
+        const checkNorm = document.getElementById('check-normals');
+        const checkField = document.getElementById('check-field');
+
+        slider.addEventListener('input', () => updateGeometry(parseFloat(slider.value)));
+        checkNorm.addEventListener('change', (e) => normalsGroup.visible = e.target.checked);
+        checkField.addEventListener('change', (e) => fieldGroup.visible = e.target.checked);
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // --- INITIALIZATION ---
+        // Ensure geometry is built immediately on load
+        updateGeometry(parseFloat(slider.value));
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="flux_concept_diagram.0.offline.js"></script>
+
+
+</body>
+</html>

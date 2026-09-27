@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Filled Solenoid</title>
+    
+    
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                macros: {
+                    bfB: "\\mathbf{B}",
+                    bfH: "\\mathbf{H}",
+                    bfM: "\\mathbf{M}",
+                    bfK: "\\mathbf{K}",
+                    bfJ: "\\mathbf{J}",
+                    bfn: "\\mathbf{\\hat{n}}",
+                    bfz: "\\mathbf{\\hat{z}}",
+                    bfphi: "\\mathbf{\\hat{\\phi}}"
+                }
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            margin-top: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: var(--text-primary);
+            margin-top: 2rem;
+        }
+
+        section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .formula-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        .concept-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .trap-box {
+            background-color: rgba(231, 76, 60, 0.1);
+            border-left: 4px solid var(--danger-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: 450px;
+            background-color: #000;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin: 2rem 0;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: 0.2s;
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt;
+                <a href="magnetic_fields_in_matter_index.html">Fields in Matter</a> &gt;
+                <a href="ch4_4_linear_media.html">Linear Media</a> &gt;
+                Example: The Filled Solenoid
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Deep Dive: The Filled Solenoid</h1>
+        <p>
+            This example explores how a linear material alters the field of a standard solenoid. It is a fundamental
+            calculation that demonstrates the utility of the auxiliary field $\bfH$.
+        </p>
+
+        <section>
+            <div class="concept-box">
+                <p><strong>The Problem:</strong></p>
+                <p>An infinite solenoid ($n$ turns per unit length, current $I$) is filled with linear material of
+                    susceptibility $\chi_m$. Find the magnetic field inside the solenoid.</p>
+            </div>
+
+            <div class="iframe-container">
+                <iframe src="diagrams/dd_example_the_solenoid.html" title="Solenoid Diagram"></iframe>
+            </div>
+
+            <h2>1. Finding the Auxiliary Field (H)</h2>
+            <p>
+                Because the $\bfB$ field is due in part to bound currents (which we don't yet know), we cannot compute
+                it directly. However, for a solenoid, we can calculate $\bfH$ from the <strong>free current</strong>
+                alone using the integral form of Ampère's law:
+            </p>
+            <div class="formula-box">
+                $$ \bfH = n I \bfz $$
+            </div>
+
+            <h2>2. Calculating the Total Field (B)</h2>
+            <p>
+                With $\bfH$ in hand, we apply the linear constitutive relation for magnetic media:
+            </p>
+            <div class="formula-box" style="border-left: 4px solid var(--success-color);">
+                $$ \bfB = \mu_0(1 + \chi_m)nI \bfz $$
+            </div>
+            <p>
+                <strong>Physical Interpretation:</strong>
+            <ul>
+                <li>If the medium is <strong>paramagnetic</strong> ($\chi_m > 0$), the field is slightly enhanced.</li>
+                <li>If the medium is <strong>diamagnetic</strong> ($\chi_m < 0$), the field is somewhat reduced.</li>
+            </ul>
+            </p>
+
+            <h2>3. Bound Currents</h2>
+            <p>
+                The change in the field is physically caused by <strong>bound surface currents</strong>. Since the
+                magnetization $\bfM = \chi_m \bfH = \chi_m n I \bfz$ is uniform inside, the volume bound current $\bfJ_b
+                = \nabla \times \bfM = 0$.
+            </p>
+            <p>
+                The surface bound current is:
+            </p>
+            <div class="formula-box">
+                $$ \bfK_b = \bfM \times \bfn = \chi_m (\bfH \times \bfn) = \chi_m n I \bfphi $$
+            </div>
+            <p>
+                This bound current flows in the <strong>same direction</strong> as the free current $I$ if the material
+                is paramagnetic ($\chi_m > 0$), and in the <strong>opposite direction</strong> if it is diamagnetic
+                ($\chi_m < 0$). </p>
+        </section>
+
+        <section>
+            <h2>The "Divergence Trap"</h2>
+            <p>
+                You might suppose that linear media escape the defect in the parallel between $\bfB$ and $\bfH$: since
+                $\bfM$ and $\bfH$ are now proportional to $\bfB$, does it not follow that their divergence, like
+                $\bfB$'s, must always vanish?
+            </p>
+
+            <div class="trap-box">
+                <p><strong>Unfortunately, it does not.</strong></p>
+                <p>At the <strong>boundary</strong> between two materials of different permeability, the divergence of
+                    $\bfM$ can actually be infinite.</p>
+            </div>
+
+            <p>
+                Consider the end of a cylinder of linear material. Inside, there is a uniform $\bfM$; outside, $\bfM$ is
+                zero. If we draw a small "Gaussian pillbox" at the boundary, the flux of $\bfM$ is non-zero ($\oint \bfM
+                \cdot d\mathbf{a} \neq 0$).
+            </p>
+            <p>
+                By the divergence theorem, $\nabla \cdot \bfM$ cannot vanish everywhere within it. In fact:
+                $$ \nabla \cdot \bfH = \nabla \cdot \left( \frac{1}{\mu} \bfB \right) = \frac{1}{\mu} \nabla \cdot \bfB
+                + \bfB \cdot \nabla \left( \frac{1}{\mu} \right) $$
+                So $\bfH$ is <strong>not</strong> divergenceless at points where the permeability $\mu$ is changing.
+            </p>
+        </section>
+
+        <section>
+            <h2>Volume vs. Surface Bound Currents</h2>
+            <p>
+                In a homogeneous linear material, the volume bound current density is proportional to the <em>free</em>
+                current density:
+            </p>
+            <div class="formula-box">
+                $$ \bfJ_b = \nabla \times \bfM = \nabla \times (\chi_m \bfH) = \chi_m \bfJ_f $$
+            </div>
+            <p>
+                <strong>Key Takeaway:</strong> Unless free current actually flows <em>through</em> the material ($\bfJ_f
+                \neq 0$), all bound current will reside on the surface.
+            </p>
+        </section>
+
+    </div>
+
+    <footer></footer>
+
+</body>
+
+</html>

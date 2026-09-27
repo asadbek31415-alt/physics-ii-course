@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multipole Expansion Visualizer</title>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #121a23;
+            font-family: 'Inter', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(210px, 25vw, 280px) minmax(0, 1fr);
+            grid-template-rows: auto 1fr;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            grid-column: 2;
+            grid-row: 1 / span 2;
+        }
+        
+        /* Controls Container */
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            background: rgba(28, 39, 52, 0.95);
+            padding: 14px;
+            border-radius: 0;
+            border: 1px solid #2c3e50;
+            border-top: 0;
+            border-left: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            z-index: 10;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        button {
+            background: #1c2734;
+            border: 1px solid #4a5568;
+            color: #cbd5e0;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: #2d3748; border-color: #3498db; color: white; }
+        button.active { background: #3498db; border-color: #3498db; color: white; box-shadow: 0 0 8px rgba(52, 152, 219, 0.4); }
+
+        /* Info Text */
+        .math-info {
+            text-align: center;
+            color: #e0e0e0;
+        }
+        .term-name { font-size: 1rem; font-weight: bold; display: block; margin-bottom: 4px; }
+        .term-math { font-family: 'Roboto Mono', monospace; font-size: 0.85rem; color: #f1c40f; }
+
+        /* Legend */
+        #legend {
+            position: relative;
+            grid-column: 1;
+            grid-row: 2;
+            background: rgba(28, 39, 52, 0.8);
+            padding: 10px 15px;
+            border-radius: 0;
+            border-left: 3px solid #e74c3c;
+            pointer-events: none;
+            border-right: 1px solid #2c3e50;
+            border-bottom: 1px solid #2c3e50;
+            box-sizing: border-box;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e0; margin-bottom: 4px; }
+        .legend-item:last-child { margin-bottom: 0; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto minmax(0, 1fr);
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 10px;
+            }
+
+            #legend {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 3;
+            }
+        }
+
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="legend">
+        <div class="legend-item"><span class="dot" style="background: #e74c3c;"></span> Positive Potential (+V)</div>
+        <div class="legend-item"><span class="dot" style="background: #3498db;"></span> Negative Potential (-V)</div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="btn-row">
+            <button onclick="updateShape(0)" id="btn-0" class="active">n=0</button>
+            <button onclick="updateShape(1)" id="btn-1">n=1</button>
+            <button onclick="updateShape(2)" id="btn-2">n=2</button>
+            <button onclick="updateShape(3)" id="btn-3">n=3</button>
+        </div>
+        <div class="math-info">
+            <span class="term-name" id="label-name">Monopole</span>
+            <span class="term-math" id="label-math">Spherical (Isotropic)</span>
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23);
+        scene.fog = new THREE.FogExp2(0x121a23, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        camera.position.set(5, 4, 5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        function resizeRenderer() {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 2.0;
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x404040, 2));
+        const light1 = new THREE.DirectionalLight(0xffffff, 2);
+        light1.position.set(2, 5, 2);
+        scene.add(light1);
+        const light2 = new THREE.DirectionalLight(0xaaaaff, 1);
+        light2.position.set(-2, -5, -2);
+        scene.add(light2);
+
+        // Grid Helper (subtle)
+        const grid = new THREE.GridHelper(10, 10, 0x2c3e50, 0x1a2530);
+        grid.position.y = -1.5;
+        scene.add(grid);
+
+        // --- SHAPE LOGIC ---
+        
+        let currentMesh = null;
+        let currentWire = null;
+
+        const baseGeo = new THREE.SphereGeometry(1, 128, 128); // High res for smooth deformation
+        const material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.3,
+            metalness: 0.1,
+            side: THREE.DoubleSide
+        });
+
+        const labels = {
+            0: { name: "Monopole (n=0)", math: "P₀ = 1" },
+            1: { name: "Dipole (n=1)", math: "P₁ = cos(θ)" },
+            2: { name: "Quadrupole (n=2)", math: "Y₂₂ ∝ sin²(θ)cos(2φ)" }, 
+            // Note: While derivation uses Pn (Axial), visualizers usually show Tesseral (Lobes) for n=2+ 
+            // because Axial Quadrupole (3cos^2-1) looks like a donut, which is confusing for beginners.
+            // We will use the 'Four Leaf Clover' shape for n=2 visually.
+            3: { name: "Octupole (n=3)", math: "Y₃₂ ∝ sin²(θ)cos(θ)cos(2φ)" }
+        };
+
+        window.updateShape = function(n) {
+            // UI Updates
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${n}`).classList.add('active');
+            document.getElementById('label-name').innerText = labels[n].name;
+            document.getElementById('label-math').innerText = labels[n].math;
+
+            // Remove old mesh
+            if (currentMesh) {
+                scene.remove(currentMesh);
+                scene.remove(currentWire);
+                currentMesh.geometry.dispose();
+            }
+
+            // Create New Geometry
+            const geometry = baseGeo.clone();
+            const positions = geometry.attributes.position;
+            const colors = [];
+            const count = positions.count;
+
+            const p = new THREE.Vector3();
+            const spherical = new THREE.Spherical();
+
+            for (let i = 0; i < count; i++) {
+                p.set(positions.getX(i), positions.getY(i), positions.getZ(i));
+                // Convert to Spherical. ThreeJS Y is Up. Physics usually Z is up.
+                // We will map: Physics Z -> Three Y. Physics X -> Three X.
+                // Theta is angle from Y-axis (0 to PI).
+                // Phi is angle around Y-axis.
+                
+                spherical.setFromVector3(p); 
+                const r_base = spherical.radius;
+                const theta = spherical.phi;   // Polar angle (0 at Up)
+                const phi = spherical.theta;   // Azimuthal
+
+                let val = 0;
+
+                // Define the Angular Shapes
+                if (n === 0) {
+                    val = 1.0; // Sphere
+                } 
+                else if (n === 1) {
+                    val = Math.cos(theta); // P1 (Dipole along Y)
+                } 
+                else if (n === 2) {
+                    // Visual Quadrupole (Four Lobes / Y22)
+                    // sin^2(theta) * cos(2*phi)
+                    val = Math.pow(Math.sin(theta), 2) * Math.cos(2 * phi);
+                } 
+                else if (n === 3) {
+                    // Visual Octupole (Eight Lobes / Y32 variant)
+                    val = Math.pow(Math.sin(theta), 2) * Math.cos(theta) * Math.cos(2 * phi);
+                }
+
+                // Deform Radius
+                const absVal = Math.abs(val);
+                const scale = 0.2 + (absVal * 2.0); // Keep a small core so it doesn't pinch to 0 completely visually
+                
+                const x = p.x * scale;
+                const y = p.y * scale;
+                const z = p.z * scale;
+
+                positions.setXYZ(i, x, y, z);
+
+                // Color Mapping (Red +, Blue -)
+                // Colors are pushed r, g, b
+                if (val >= 0) {
+                    colors.push(0.905, 0.298, 0.235); // #e74c3c
+                } else {
+                    colors.push(0.203, 0.596, 0.858); // #3498db
+                }
+            }
+
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.computeVertexNormals();
+
+            // Mesh
+            currentMesh = new THREE.Mesh(geometry, material);
+            scene.add(currentMesh);
+
+            // Wireframe (subtle)
+            const wireGeo = new THREE.WireframeGeometry(geometry);
+            const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05 });
+            currentWire = new THREE.LineSegments(wireGeo, wireMat);
+            scene.add(currentWire);
+        };
+
+        // Initialize
+        updateShape(0);
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize Handle
+        window.addEventListener('resize', () => {
+            resizeRenderer();
+        });
+        resizeRenderer();
+
+    </script>
+<script defer data-offline-bundle src="multipole_expansion_visualizer.0.offline.js"></script>
+
+
+</body>
+</html>

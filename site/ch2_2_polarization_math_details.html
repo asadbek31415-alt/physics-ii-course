@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: The Definition of \(\vec{P}\)</title>
+    
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\boldsymbol",
+                    dtau: "d\\tau"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --math-bg: #0f172a;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Navigation */
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Content */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            color: white;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+            border-left: 3px solid var(--accent-color);
+            padding-left: 15px;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 3rem;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+        }
+
+        .math-block {
+            background-color: var(--math-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Simulation Box */
+        .sim-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        .unit-analysis {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            margin: 2rem 0;
+            color: var(--text-secondary);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electrostatics_index.html">Electrostatics</a> >
+                <a href="ch2_2_polarization.html">Polarization</a> >
+                Math Details
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: The Definition of \(\vec{P}\)</h1>
+        <div class="subtitle">From discrete molecules to a continuous vector field.</div>
+
+        <section>
+            <p>
+                In a physical dielectric, the dipole moment is not spread out smoothly like butter; it exists as
+                discrete "lumps" at specific atomic locations. However, dealing with \(10^{23}\) discrete vectors is
+                impossible. We need a smooth approximation.
+            </p>
+
+            <h3>The Discrete Definition</h3>
+            <p>
+                Consider a small volume \(\Delta V\). It contains \(N\) atoms, each with a dipole moment \(\vec{p}_i\).
+                The total dipole moment in this volume is the vector sum:
+            </p>
+            <div class="math-block">
+                $$ \vec{P} = \frac{\sum_{i=1}^{N} \vec{p}_i}{\Delta V} $$
+            </div>
+
+            <h3>The Continuous Limit</h3>
+            <p>
+                To do calculus, we take the limit as the volume shrinks. But there is a catch! If we shrink \(\Delta V\)
+                too much (smaller than an atom), the volume will mostly contain empty space, and the value of
+                \(\vec{P}\) will fluctuate wildly between "huge" (inside an electron cloud) and "zero" (between atoms).
+            </p>
+            <p>
+                Therefore, when we write the integral definition:
+            </p>
+            <div class="math-block">
+                $$ \vec{P}(\vec{r}) = \frac{d\vec{p}}{d\tau} $$
+            </div>
+            <p>
+                We implicitly mean a <strong>"Macroscopic Infinitesimal"</strong>. The volume \(d\tau\) is small enough
+                to be considered a point for calculus, but large enough to contain thousands of atoms so the statistical
+                average is smooth.
+            </p>
+        </section>
+
+        <!-- MACROSCOPIC VECTOR FIELD DIAGRAM -->
+        <section>
+            <h2>Macroscopic Visualization</h2>
+            <p>
+                The Polarization \(\vec{P}\) is a smooth vector field that represents the net dipole density at every
+                point in the material. Switch to the interactive visualizer below to see how external fields and thermal
+                effects shape this field.
+            </p>
+
+            <div class="sim-container" style="height: 500px;">
+                <iframe src="diagrams/polarization_vector_field.html" title="Polarization Vector Field"
+                    style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </section>
+
+        <section>
+            <h2>Dimensional Analysis</h2>
+            <p>
+                What are the units of Polarization?
+            </p>
+            <div class="unit-analysis">
+                <div>Dipole Moment \((C \cdot m)\)</div>
+                <div>&divide;</div>
+                <div>Volume \((m^3)\)</div>
+                <div>=</div>
+                <div><strong>\(C / m^2\)</strong></div>
+            </div>
+            <p>
+                Wait, Coulombs per square meter (\(C/m^2\))? Those are the units of <strong>Surface Charge
+                    Density</strong> (\(\sigma\)).
+            </p>
+            <p>
+                This is not a coincidence! As we will see in the next section, the Polarization \(\vec{P}\) physically
+                manifests itself as bound charge smeared over the surface of the material.
+            </p>
+            <div class="math-block">
+                $$ \sigma_b = \vec{P} \cdot \hat{n} $$
+            </div>
+        </section>
+
+    </main>
+
+    <div class="back-wrapper" style="text-align: center; margin-top: 5rem;">
+        <a href="ch2_2_polarization.html" class="back-btn"
+            style="display: inline-block; background: linear-gradient(135deg, var(--card-bg), #2c3e50); color: var(--text-primary); padding: 1rem 2rem; border-radius: 50px; text-decoration: none; font-weight: 600; border: 1px solid var(--accent-color); transition: transform 0.2s, box-shadow 0.2s;">&larr;
+            Return to Polarization Chapter</a>
+    </div>
+
+    <footer></footer>
+
+</body>
+
+</html>

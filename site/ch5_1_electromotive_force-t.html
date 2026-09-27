@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 7.1: Electromotive Force</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        /* Specific tweaks for flow improvement */
+        .concept-block {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .diagram-caption {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .warning-box {
+            background-color: #fff4e5;
+            border-left: 4px solid #ff9800;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .warning-title {
+            color: #d35400;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        details {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+        }
+
+        summary {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+    </style>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> > <a href="electrodynamics_index.html">Electrodynamics</a> > Electromotive Force
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Electromotive Force</h1>
+        <p class="intro-text">
+            In Electrostatics, charges were stationary, and the electric field inside a conductor was zero. 
+            <strong>Electrodynamics</strong> changes the rules. To make charges move continuously (a current), 
+            we must push them. This chapter explains the "Push" (EMF) and the "Drag" (Resistance).
+        </p>
+
+        <!-- PRIMER: DEFINITIONS -->
+        <details>
+            <summary>📝 Primer: Key Definitions (Click to Expand)</summary>
+            <div class="def-list" style="margin-top: 1rem;">
+                <div class="def-item">
+                    <span class="def-symbol">$\mathbf{J}$</span>
+                    <span class="def-text"><strong>Current Density</strong> (Amps/m²). The flow of charge per unit area. Vector pointing in direction of flow.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$\sigma$</span>
+                    <span class="def-text"><strong>Conductivity</strong>. How easily a material allows flow. Large for metals, small for glass.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">$\rho$</span>
+                    <span class="def-text"><strong>Resistivity</strong> ($1/\sigma$). How much a material resists flow.</span>
+                </div>
+            </div>
+        </details>
+
+        <!-- CONCEPT 1: THE MATERIAL (OHM'S LAW) -->
+        <section class="concept-block">
+            <h2>1. The "Drag": Ohm's Law</h2>
+            
+            <p>
+                Electrons moving through a wire are like people running through a dense crowd. They don't accelerate forever; 
+                they collide with ions and scatter. To keep them moving at a constant average speed, you need a continuous force $\mathbf{f}$.
+            </p>
+
+            <div class="warning-box">
+                <span class="warning-title">⚠️ Major Conceptual Shift</span>
+                In Electrostatics, $\mathbf{E} = 0$ inside a conductor. <br>
+                In <strong>Electrodynamics</strong> (circuits), $\mathbf{E} \neq 0$ inside the wire! This $\mathbf{E}$ field provides the force that pushes the current.
+            </div>
+
+            <p><strong>The Microscopic Law:</strong> For many materials, the current density is proportional to the force pushing it:</p>
+            <div class="math-block">$$ \mathbf{J} = \sigma \mathbf{E} $$</div>
+
+            <p>
+                This simple relation implies that if you double the field $\mathbf{E}$, you double the flow $\mathbf{J}$. 
+                When applied to a wire of length $L$ and area $A$, this integrates into the macroscopic version we know from high school:
+            </p>
+            <div class="math-block">$$ V = IR \quad \text{where} \quad R = \rho \frac{L}{A} $$</div>
+
+            <!-- DIAGRAM 1: The Microscopic View -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/drude_model.html" title="Microscopic Resistance" scrolling="no"></iframe>
+            </div>
+            <p class="diagram-caption">
+                <strong>Fig 1:</strong> Electrons (blue) naturally move randomly. The E-field adds a slight "drift" to the right. 
+                Collisions with ions (red) reset this drift, creating resistance.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_ohms_details.html?back=ch5_1_electromotive_force-t.html"><span aria-hidden="true">+</span> Deep Dive: The Drude Model</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 2: THE SOURCE (EMF) -->
+        <section class="concept-block">
+            <h2>2. The "Pump": Electromotive Force (EMF)</h2>
+            <p>
+                Ohm's Law tells us the wire resists flow. So, what pushes the charges? An electrostatic field alone cannot do it, 
+                because the net work done by an electrostatic field around a closed loop is always zero ($\oint \mathbf{E} \cdot d\mathbf{l} = 0$).
+            </p>
+            <p>
+                To drive a steady current, we need a <strong>Source</strong> (battery, generator, photocell) that exerts a 
+                <strong>non-electrostatic force</strong> $\mathbf{f}_s$.
+            </p>
+
+            <div class="math-block">
+                $$ \mathcal{E} \equiv \oint \mathbf{f}_s \cdot d\mathbf{l} $$
+            </div>
+
+            <ul class="fact-list">
+                <li><strong>It's not a Force:</strong> Despite the name, EMF is the <strong>work per unit charge</strong> (Joules/Coulomb = Volts).</li>
+                <li><strong>The Battery Role:</strong> Inside a battery, chemical forces ($\mathbf{f}_s$) push positive charges from the (-) terminal to the (+) terminal, <em>against</em> the electric field. It acts exactly like a water pump lifting water to a higher elevation.</li>
+            </ul>
+
+            <!-- DIAGRAM 2: The Pump Analogy -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/battery_emf.html" title="Battery vs Resistor" scrolling="no"></iframe>
+            </div>
+            <p class="diagram-caption">
+                <strong>Fig 2:</strong> The "Pump" (Source) does work to lift charges to high potential. The "Pipe" (Resistor) dissipates that energy as heat.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_emf_details.html?back=ch5_1_electromotive_force-t.html"><span aria-hidden="true">+</span> Deep Dive: Batteries & Sources</a>
+            </div>
+        </section>
+
+        <!-- CONCEPT 3: MOTIONAL EMF -->
+        <section class="concept-block">
+            <h2>3. A Specific Source: Motional EMF</h2>
+            <p>
+                Batteries use chemicals to create the push. <strong>Generators</strong> use magnetic fields.
+                When a conductor moves through a magnetic field, the charges inside experience the <strong>Lorentz Force</strong>:
+            </p>
+            <div class="math-block">$$ \mathbf{F}_{mag} = q(\mathbf{v} \times \mathbf{B}) $$</div>
+
+            <p>
+                This magnetic force acts as the source force $\mathbf{f}_s$. If we move a loop of wire, this force drives a current.
+                Calculating the cross product $\mathbf{v} \times \mathbf{B}$ for every part of a complex loop is difficult, 
+                so we use a powerful shortcut called the <strong>Flux Rule</strong> for the changing magnetic flux
+                $\Phi_B$ linked with the loop.
+            </p>
+
+            <div class="math-block" style="border: 2px solid var(--accent-color);">
+                $$ \mathcal{E} = -\frac{d\Phi_B}{dt} $$
+            </div>
+
+            <p>
+                This rule states that the EMF is simply the rate of change of magnetic flux ($\Phi_B$) through the loop.
+                It works whether the loop is moving, expanding, or rotating.
+            </p>
+
+            <!-- DIAGRAM 3: Sliding Bar -->
+            <div class="iframe-container">
+                <iframe class="diagram-frame" src="diagrams/motional_emf.html" title="Sliding Bar Generator" scrolling="no"></iframe>
+            </div>
+            <p class="diagram-caption">
+                <strong>Fig 3:</strong> As the bar slides right, the area increases, so magnetic flux $\Phi_B$ increases. Nature opposes this change (Lenz's Law), creating a current.
+            </p>
+
+            <div class="dive-wrapper">
+                <a class="dive-btn deep-dive-link" href="ch5_1_motional_details.html?back=ch5_1_electromotive_force-t.html"><span aria-hidden="true">+</span> Deep Dive: Motional EMF</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+</html>

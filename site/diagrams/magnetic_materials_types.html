@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Materials Types</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        canvas { display: block; cursor: move; /* Indicates rotatable */ }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            z-index: 10;
+        }
+
+        /* Collapsible Panel Styling */
+        .controls {
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+            transition: height 0.3s ease;
+        }
+
+        .controls-header {
+            padding: 15px 20px;
+            background: #1e293b;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            user-select: none;
+        }
+
+        .controls-header h2 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .toggle-icon {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            transition: transform 0.3s;
+        }
+
+        .controls-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Collapsed State */
+        .controls.collapsed .controls-content { display: none; }
+        .controls.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .controls.collapsed { border-bottom: none; }
+
+
+        /* Buttons */
+        .btn-group { display: flex; flex-direction: column; gap: 8px; }
+
+        button {
+            background: #0f172a;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            text-align: left;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button:hover { background: #334155; color: white; }
+        
+        button.active {
+            background: #0ea5e9;
+            color: white;
+            border-color: #0ea5e9;
+            font-weight: 600;
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .switch-label { color: #e0e0e0; font-weight: 600; }
+        
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        #btn-erase {
+            margin-top: 10px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border-color: #ef4444;
+            text-align: center;
+            justify-content: center;
+            display: none;
+        }
+        #btn-erase:hover { background: #ef4444; color: white; }
+
+        /* 3D Labels */
+        .annotation {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+    
+    <!-- Load Three.js and OrbitControls -->
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="controls" id="controls-box">
+            <div class="controls-header" onclick="toggleUI()">
+                <h2>Simulation Controls</h2>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="controls-content">
+                <div class="btn-group">
+                    <button id="btn-para" class="active" onclick="setMaterial('para')">
+                        I. Paramagnet
+                        <span style="font-size:0.8em; opacity:0.7">Aligns || B</span>
+                    </button>
+                    <button id="btn-dia" onclick="setMaterial('dia')">
+                        II. Diamagnet
+                        <span style="font-size:0.8em; opacity:0.7">Aligns Anti-||</span>
+                    </button>
+                    <button id="btn-ferro" onclick="setMaterial('ferro')">
+                        III. Ferromagnet
+                        <span style="font-size:0.8em; opacity:0.7">Memory</span>
+                    </button>
+                </div>
+
+                <div class="toggle-row">
+                    <!-- Fixed HTML Text -->
+                    <span class="switch-label">External Field (<b>B</b>)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="fieldToggle" onchange="toggleField()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <button id="btn-erase" onclick="eraseHistory()">
+                    🔥 Erase History (Heat)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="label-b" class="annotation" style="color: #2ecc71; border: 1px solid #2ecc71;">B Field</div>
+
+    <script>
+        // --- UI LOGIC ---
+        function toggleUI() {
+            const box = document.getElementById('controls-box');
+            box.classList.toggle('collapsed');
+        }
+
+        // --- STATE VARIABLES ---
+        let currentMaterial = 'para';
+        let isFieldOn = false;
+        let ferroHistory = false;
+
+        // --- THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.Fog(0x0f172a, 20, 60);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(20, 15, 20);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- ORBIT CONTROLS (Rotatable Scene) ---
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Smooth drag
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 10;
+        controls.maxDistance = 50;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // --- OBJECT CREATION ---
+        const atoms = [];
+        const GRID_SIZE = 4;
+        const SPACING = 3.0;
+
+        const atomGeo = new THREE.SphereGeometry(0.6, 16, 16);
+        const atomMat = new THREE.MeshStandardMaterial({ 
+            color: 0x475569, 
+            transparent: true, 
+            opacity: 0.3,
+            roughness: 0.5
+        });
+
+        const offset = (GRID_SIZE * SPACING) / 2 - (SPACING/2);
+
+        for(let x=0; x<GRID_SIZE; x++) {
+            for(let y=0; y<GRID_SIZE; y++) {
+                for(let z=0; z<GRID_SIZE; z++) {
+                    const group = new THREE.Group();
+                    
+                    const sphere = new THREE.Mesh(atomGeo, atomMat);
+                    group.add(sphere);
+
+                    const dir = new THREE.Vector3(0, 1, 0);
+                    const origin = new THREE.Vector3(0, -1, 0);
+                    const length = 2.2;
+                    const color = 0xfacc15;
+                    const arrow = new THREE.ArrowHelper(dir, origin, length, color, 0.6, 0.4);
+                    group.add(arrow);
+
+                    group.position.set(
+                        x * SPACING - offset,
+                        y * SPACING - offset,
+                        z * SPACING - offset
+                    );
+
+                    const randomEuler = new THREE.Euler(
+                        Math.random() * Math.PI * 2,
+                        Math.random() * Math.PI * 2,
+                        Math.random() * Math.PI * 2
+                    );
+                    group.rotation.copy(randomEuler);
+
+                    group.userData = {
+                        targetQuaternion: new THREE.Quaternion().copy(group.quaternion),
+                        baseRandomQuaternion: new THREE.Quaternion().copy(group.quaternion)
+                    };
+
+                    scene.add(group);
+                    atoms.push(group);
+                }
+            }
+        }
+
+        // --- B FIELD VISUALIZATION ---
+        const bFieldGroup = new THREE.Group();
+        scene.add(bFieldGroup);
+        bFieldGroup.visible = false;
+
+        for(let i=-1; i<=1; i++) {
+            const bArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(i*5, -8, -5),
+                16,
+                0x2ecc71,
+                3, 2
+            );
+            bFieldGroup.add(bArrow);
+        }
+
+        // --- LOGIC ENGINE ---
+        function setMaterial(type) {
+            currentMaterial = type;
+            ferroHistory = false;
+            
+            document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + type).classList.add('active');
+            
+            const eraseBtn = document.getElementById('btn-erase');
+            eraseBtn.style.display = (type === 'ferro') ? 'flex' : 'none';
+
+            calculateTargets();
+        }
+
+        function toggleField() {
+            isFieldOn = document.getElementById('fieldToggle').checked;
+            
+            bFieldGroup.visible = isFieldOn;
+            document.getElementById('label-b').style.opacity = isFieldOn ? 1 : 0;
+
+            if(currentMaterial === 'ferro' && isFieldOn) {
+                ferroHistory = true;
+            }
+
+            calculateTargets();
+        }
+
+        function eraseHistory() {
+            if(currentMaterial !== 'ferro') return;
+            
+            const btn = document.getElementById('btn-erase');
+            btn.innerHTML = "💥 History Erased!";
+            setTimeout(() => btn.innerHTML = "🔥 Erase History (Heat)", 1000);
+
+            ferroHistory = false;
+            calculateTargets();
+        }
+
+        function calculateTargets() {
+            const upQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0));
+            const downQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0));
+
+            atoms.forEach(atom => {
+                let target = new THREE.Quaternion();
+
+                if (isFieldOn) {
+                    if (currentMaterial === 'para' || currentMaterial === 'ferro') {
+                        target.copy(upQ);
+                    } else if (currentMaterial === 'dia') {
+                        target.copy(downQ);
+                    }
+                } else {
+                    if (currentMaterial === 'ferro' && ferroHistory) {
+                        target.copy(upQ);
+                    } else {
+                        target.copy(atom.userData.baseRandomQuaternion);
+                    }
+                }
+                atom.userData.targetQuaternion.copy(target);
+            });
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+
+            // Smoothly rotate atoms
+            atoms.forEach(atom => {
+                atom.quaternion.slerp(atom.userData.targetQuaternion, 0.08);
+            });
+
+            // Update Label Position
+            if(isFieldOn) {
+                const vec = new THREE.Vector3(5, 5, -5);
+                vec.project(camera);
+                const x = (vec.x * .5 + .5) * window.innerWidth;
+                const y = (-(vec.y * .5) + .5) * window.innerHeight;
+                const lbl = document.getElementById('label-b');
+                lbl.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Complete</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="course-map.js"></script>
+    <script src="feedback-config.js"></script>
+    <script src="feedback.js"></script>
+    <script src="global.js"></script>
+    <style>
+        .completion-shell {
+            max-width: 680px;
+            min-height: 56vh;
+            margin: 4rem auto 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 4rem;
+            text-align: center;
+        }
+
+        .completion-message {
+            padding-top: 3rem;
+        }
+
+        .completion-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 3.5rem;
+            height: 3.5rem;
+            margin-bottom: 1.2rem;
+            border: 1px solid rgba(46, 204, 113, 0.65);
+            border-radius: 50%;
+            color: #6ee7a0;
+            font-size: 1.8rem;
+        }
+
+        .completion-message h1 {
+            margin: 0;
+        }
+
+        .completion-message p,
+        .completion-review p {
+            color: var(--text-secondary);
+        }
+
+        .completion-review {
+            padding: 1.25rem 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .completion-review p {
+            margin: 0 0 0.85rem;
+        }
+
+        .completion-review a {
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        @media (max-width: 560px) {
+            .completion-shell {
+                min-height: 62vh;
+                margin-top: 2rem;
+            }
+
+            .completion-message {
+                padding-top: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <div class="completion-shell">
+            <section class="completion-message" aria-labelledby="completion-title">
+                <div class="completion-mark" aria-hidden="true">&#10003;</div>
+                <h1 id="completion-title">Congratulations</h1>
+                <p>You have reached the end of the Physics II Interactive Course.</p>
+            </section>
+
+            <section class="completion-review" aria-labelledby="review-invitation-title">
+                <p id="review-invitation-title">At the very end, would you share a short review of the whole course?</p>
+                <a href="course_review.html">Review the whole course</a>
+            </section>
+        </div>
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

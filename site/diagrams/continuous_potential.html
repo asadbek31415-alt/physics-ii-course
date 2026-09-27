@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous Charge → V Field</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            width: 100%;
+            height: 100%;
+            background: #0a0a10;
+            font-family: 'Segoe UI', sans-serif;
+            color: #eee;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: clamp(250px, 28vw, 300px) minmax(0, 1fr) minmax(0, 1fr);
+            height: 100vh;
+        }
+
+        .canvas-area {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .canvas-view { position: relative; min-width: 0; }
+        .canvas-view canvas { aspect-ratio: 1; height: auto !important; }
+        .canvas-view .label { display: block; position: static; text-align: center; margin-top: 8px; }
+        .exp { display: block; width: 100%; text-align: left; color: inherit; font-weight: normal; }
+        .exp:hover, .exp:focus-visible { border-color: #3498db; }
+        .exp[aria-pressed="true"] { border-color: #fbbf24; }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        #draw-canvas {
+            grid-column: 2;
+            border-right: 1px solid #333;
+        }
+
+        #v-canvas {
+            grid-column: 3;
+        }
+
+        .label {
+            position: absolute;
+            bottom: 15px;
+            font-size: 12px;
+            color: #666;
+            pointer-events: none;
+        }
+
+        .label-left {
+            left: calc(clamp(250px, 28vw, 300px) + 15px);
+        }
+
+        .label-right {
+            left: calc(clamp(250px, 28vw, 300px) + 50% + 15px);
+        }
+
+        /* UI Panel */
+        .ui-panel {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid #333;
+            border-width: 0 1px 0 0;
+            border-radius: 0;
+            padding: 12px;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 10;
+            scrollbar-color: #555 #15151d;
+            scrollbar-width: thin;
+        }
+
+        .ui-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .ui-panel::-webkit-scrollbar-track {
+            background: #15151d;
+        }
+
+        .ui-panel::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 10px;
+        }
+
+        h4 {
+            color: #3498db;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        #btn-pos {
+            background: #ef4444;
+            color: white;
+        }
+
+        #btn-neg {
+            background: #3b82f6;
+            color: white;
+        }
+
+        #btn-clear {
+            background: #333;
+            color: #888;
+            width: 100%;
+        }
+
+        button.active {
+            box-shadow: 0 0 0 2px white;
+        }
+
+        .v-box {
+            background: #111;
+            border: 1px solid #4ade80;
+            border-radius: 5px;
+            padding: 8px;
+            text-align: center;
+            font-family: monospace;
+            color: #4ade80;
+            margin-top: 10px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: none;
+        }
+
+        .ui-panel .sidebar {
+            display: block;
+            width: auto;
+            background: transparent;
+            border-left: 0;
+            padding: 0;
+            overflow: visible;
+            margin-top: 10px;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+
+        .exp {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 7px;
+            margin-bottom: 7px;
+        }
+
+        .exp h5 {
+            color: #fbbf24;
+            font-size: 11px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .exp p {
+            color: #aaa;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+        
+        .math-snippet {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            color: #888;
+            font-size: 11px;
+            margin-top: 4px;
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            html,
+            body {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            .container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: minmax(0, 1fr) auto;
+                height: 100%;
+                min-height: 0;
+            }
+
+            .ui-panel {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                height: auto;
+                max-height: none;
+                border-width: 0 0 1px 0;
+                overflow: hidden;
+                padding: 8px 10px;
+            }
+
+            #draw-canvas {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            #v-canvas {
+                grid-column: 2;
+                grid-row: 1;
+            }
+
+            .ui-panel .sidebar {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 5px;
+            }
+
+            .ui-panel .sidebar h4 {
+                grid-column: 1 / -1;
+                margin-bottom: 0 !important;
+            }
+
+            .exp {
+                margin: 0;
+            }
+
+            button {
+                min-height: 36px;
+                font-size: 12px;
+                padding: 5px 6px;
+            }
+
+            .exp h5 {
+                font-size: 10.5px;
+                margin-bottom: 0;
+            }
+
+            .exp p,
+            .math-snippet {
+                display: none;
+            }
+
+            .label {
+                display: none;
+            }
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <div class="canvas-view">
+            <canvas id="draw-canvas"></canvas>
+            <div class="label label-left">Charge Distribution (ρ)</div>
+            </div>
+            <div class="canvas-view">
+            <canvas id="v-canvas"></canvas>
+            <div class="label label-right">Resulting Potential (V)</div>
+            </div>
+        </div>
+
+            <div class="ui-panel">
+                <h4>DRAW CHARGE</h4>
+                <div class="btn-row">
+                    <button id="btn-pos" class="active">+ρ</button>
+                    <button id="btn-neg">−ρ</button>
+                </div>
+                <button id="btn-clear">Clear</button>
+                <div class="v-box" id="v-display">V = 0</div>
+            </div>
+        <div class="sidebar">
+    <h4 style="color: #3498db; margin-bottom: 15px;">EXPERIMENTS</h4>
+    
+    <div class="exp">
+        <h5>1. The Riemann Sum</h5>
+        <p>Start with spaced dots, then fill the gaps. Watch the "bumpy" potential smooth out. This visualizes the limit as sum becomes integral.</p>
+        <span class="math-snippet">V = &Sigma; (q/r) &rarr; &int; (dq/r)</span>
+    </div>
+
+    <div class="exp">
+        <h5>2. Line Charge (&lambda;)</h5>
+        <p>Draw a long straight line. Notice the equipotentials form parallel cylinders. The potential decays slower than a point charge.</p>
+        <span class="math-snippet">dq = &lambda; dl'</span>
+    </div>
+
+    <div class="exp">
+        <h5>3. Charged Shell (&sigma;)</h5>
+        <p>A cross-section of a uniformly charged spherical shell. The potential is <b>constant</b> inside, so the field (-&nabla;V) is zero there.</p>
+        <span class="math-snippet">V<sub>in</sub> = constant</span>
+    </div>
+    
+    <div class="exp">
+        <h5>4. Volume Blob (&rho;)</h5>
+        <p>Fill in a solid shape. This represents volume density &rho;. Far away, the complex shape's potential looks just like a single point charge.</p>
+        <span class="math-snippet">V &approx; k Q<sub>tot</sub> / r</span>
+    </div>
+</div>
+    </div>
+
+    <script>
+        const drawCanvas = document.getElementById('draw-canvas');
+        const vCanvas = document.getElementById('v-canvas');
+        const drawCtx = drawCanvas.getContext('2d');
+        const vCtx = vCanvas.getContext('2d');
+        document.querySelector('.ui-panel').appendChild(document.querySelector('.sidebar'));
+
+        const W = 360, H = 360;
+        let shell = null;
+        let isDrawing = false;
+        let drawPositive = true;
+
+        // Store charges as simple array of {x, y, q}
+        const charges = [];
+
+        function resize() {
+            drawCanvas.width = W;
+            drawCanvas.height = H;
+            vCanvas.width = W;
+            vCanvas.height = H;
+
+            redrawCharges();
+            renderV();
+        }
+
+        function redrawCharges() {
+            drawCtx.fillStyle = '#0a0a12';
+            drawCtx.fillRect(0, 0, W, H);
+
+            for (const c of charges) {
+                drawCtx.beginPath();
+                drawCtx.arc(c.x, c.y, 6, 0, Math.PI * 2); // Slightly smaller dots for smoother drawing feel
+                drawCtx.fillStyle = c.q > 0 ? '#ef4444' : '#3b82f6';
+                drawCtx.fill();
+            }
+        }
+
+        function calcV(px, py) {
+            let V = shell ? 50 * shell.q / Math.max(shell.radius, Math.hypot(px - W / 2, py - H / 2)) : 0;
+            const k = 50;
+            for (const c of charges) {
+                if (c.shell) continue;
+                const dx = px - c.x;
+                const dy = py - c.y;
+                const r = Math.sqrt(dx * dx + dy * dy);
+                V += k * c.q / Math.max(r, 5);
+            }
+            return V;
+        }
+
+        function renderV() {
+            if (charges.length === 0) {
+                vCtx.fillStyle = '#000';
+                vCtx.fillRect(0, 0, W, H);
+                return;
+            }
+
+            const step = 4; // Pixel step for speed
+            const imageData = vCtx.createImageData(W, H);
+            const data = imageData.data;
+
+            // Find max V for normalization
+            let maxV = 1;
+            // Sampling for maxV to avoid iterating every pixel twice fully
+            for (let y = 0; y < H; y += step * 4) {
+                for (let x = 0; x < W; x += step * 4) {
+                    maxV = Math.max(maxV, Math.abs(calcV(x, y)));
+                }
+            }
+            maxV = Math.min(maxV, 300); // Clamp max brightness
+
+            for (let y = 0; y < H; y += step) {
+                for (let x = 0; x < W; x += step) {
+                    const V = calcV(x, y);
+                    const norm = Math.tanh(V / maxV); // Soft clamp -1 to 1
+
+                    let r, g, b;
+                    // Heatmap coloring: Red (Pos) -> Black (0) -> Blue (Neg)
+                    if (norm >= 0) {
+                        r = Math.floor(norm * 255);
+                        g = Math.floor(norm * 50);
+                        b = 0;
+                    } else {
+                        r = 0;
+                        g = Math.floor(-norm * 100);
+                        b = Math.floor(-norm * 255);
+                    }
+
+                    // Fill block
+                    for (let dy = 0; dy < step && y + dy < H; dy++) {
+                        for (let dx = 0; dx < step && x + dx < W; dx++) {
+                            const i = ((y + dy) * W + (x + dx)) * 4;
+                            data[i] = r;
+                            data[i + 1] = g;
+                            data[i + 2] = b;
+                            data[i + 3] = 255;
+                        }
+                    }
+                }
+            }
+
+            vCtx.putImageData(imageData, 0, 0);
+        }
+
+        function addCharge(x, y) {
+            document.querySelectorAll('.exp').forEach(button => button.setAttribute('aria-pressed', 'false'));
+            // Add smaller charge increments for continuous feel
+            charges.push({ x, y, q: drawPositive ? 0.5 : -0.5 });
+            redrawCharges();
+            
+            // Debounce render for performance
+            clearTimeout(addCharge.timer);
+            addCharge.timer = setTimeout(renderV, 30);
+        }
+
+        // Events
+        function position(e, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: (e.clientX - rect.left) * W / rect.width, y: (e.clientY - rect.top) * H / rect.height };
+        }
+        drawCanvas.addEventListener('pointerdown', (e) => {
+            isDrawing = true;
+            drawCanvas.setPointerCapture?.(e.pointerId);
+            const p = position(e, drawCanvas);
+            addCharge(p.x, p.y);
+        });
+
+        drawCanvas.addEventListener('pointermove', (e) => {
+            if (!isDrawing) return;
+            const p = position(e, drawCanvas);
+            if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) addCharge(p.x, p.y);
+        });
+
+        window.addEventListener('pointerup', () => isDrawing = false);
+        window.addEventListener('pointercancel', () => isDrawing = false);
+
+        vCanvas.addEventListener('pointermove', (e) => {
+            const p = position(e, vCanvas);
+            const V = calcV(p.x, p.y);
+            document.getElementById('v-display').textContent = `V = ${V.toFixed(1)}`;
+        });
+
+        document.getElementById('btn-pos').addEventListener('click', () => {
+            drawPositive = true;
+            document.getElementById('btn-pos').classList.add('active');
+            document.getElementById('btn-neg').classList.remove('active');
+        });
+
+        document.getElementById('btn-neg').addEventListener('click', () => {
+            drawPositive = false;
+            document.getElementById('btn-neg').classList.add('active');
+            document.getElementById('btn-pos').classList.remove('active');
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            charges.length = 0;
+            shell = null;
+            document.querySelectorAll('.exp').forEach(button => button.setAttribute('aria-pressed', 'false'));
+            document.getElementById('v-display').textContent = 'V = 0';
+            redrawCharges();
+            renderV();
+        });
+
+        function loadExperiment(index) {
+            charges.length = 0;
+            shell = null;
+            document.getElementById('btn-pos').click();
+            const put = (x, y, q = 0.5) => charges.push({ x, y, q });
+            if (index === 0 || index === 1) {
+                const count = index === 0 ? 7 : 49;
+                for (let i = 0; i < count; i++) put(60 + 240 * i / (count - 1), 180, 24.5 / count);
+            } else if (index === 2) {
+                shell = { radius: 95, q: 24 };
+                for (let i = 0; i < 64; i++) {
+                    const angle = i * Math.PI / 32;
+                    charges.push({ x: 180 + 95 * Math.cos(angle), y: 180 + 95 * Math.sin(angle), q: 24 / 64, shell: true });
+                }
+            } else {
+                for (let y = 100; y <= 260; y += 12) {
+                    for (let x = 85; x <= 275; x += 12) {
+                        if (((x - 180) / 95) ** 2 + ((y - 180) / 80) ** 2 <= 1) put(x, y);
+                    }
+                }
+            }
+            document.querySelectorAll('.exp').forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
+            redrawCharges();
+            renderV();
+            document.getElementById('v-display').textContent = 'V = ' + calcV(180, 180).toFixed(1);
+        }
+
+        document.querySelectorAll('.exp').forEach((card, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'exp';
+            button.innerHTML = card.innerHTML;
+            button.setAttribute('aria-pressed', 'false');
+            button.addEventListener('click', () => loadExperiment(index));
+            card.replaceWith(button);
+        });
+        resize();
+        loadExperiment(0);
+    </script>
+</body>
+
+</html>

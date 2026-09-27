@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Chapter 6 Review</title>
+    
+    
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="vendor/katex/katex.min.css">
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: "$$", right: "$$", display: true },
+                    { left: "$", right: "$", display: false }
+                ]
+            });
+        });
+    </script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <div class="header-bar">
+        <header>
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> &gt; <a href="ch6_electromagnetic_waves.html">EM Waves</a> &gt; Review
+            </div>
+            <a href="https://t.me/turin_prep" target="_blank" class="author-link">Turin Prep</a>
+        </header>
+    </div>
+
+    <main class="container">
+        <h1 class="main-title">Deep Dive: Chapter 6 Review</h1>
+
+        <section class="topic-section">
+            <h2>Key Concepts</h2>
+            <div class="def-list">
+                <div class="def-item">
+                    <span class="def-symbol">Wave Equation</span>
+                    <span class="def-text">Derived from Maxwell's Equations, predicting that EM waves travel at speed
+                        \(c = 1/\sqrt{\mu_0 \epsilon_0}\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Transverse</span>
+                    <span class="def-text">\(\mathbf{E}\) and \(\mathbf{B}\) are perpendicular to each other and to the
+                        direction of propagation \(\mathbf{k}\).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Energy</span>
+                    <span class="def-text">Waves carry energy (Poynting vector \(\mathbf{S}\)) and momentum
+                        (\(\mathbf{g} = \mathbf{S}/c^2\)).</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-symbol">Boundaries</span>
+                    <span class="def-text">Reflection and refraction governed by Fresnel equations and EM boundary
+                        conditions.</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="interactive-diagram">
+            <h3 class="diagram-title">Interactive: Field Configurations</h3>
+            <iframe src="" title="Review Simulation" class="diagram-frame"></iframe>
+            <div class="caption">
+                Summary visualization of electromagnetic wave properties.
+            </div>
+        </section>
+
+        <section class="topic-section">
+            <h2>Important Formulas</h2>
+            <div class="equation-box">
+                $$ c = \frac{1}{\sqrt{\mu_0 \epsilon_0}} \approx 3 \times 10^8 \text{ m/s} $$
+                $$ \mathbf{S} = \frac{1}{\mu_0} (\mathbf{E} \times \mathbf{B}) $$
+                $$ I = \frac{1}{2} c \epsilon_0 E_0^2 $$
+                $$ n = \frac{c}{v} = \sqrt{\frac{\epsilon \mu}{\epsilon_0 \mu_0}} $$
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer>
+</body>
+
+</html>

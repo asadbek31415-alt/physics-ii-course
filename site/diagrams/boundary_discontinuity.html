@@ -1,0 +1,277 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boundary Discontinuity</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #121a23; font-family: 'Inter', sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(28, 39, 52, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2c3e50;
+            color: #e0e0e0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.1rem; color: #3498db; border-bottom: 1px solid #2c3e50; padding-bottom: 10px; }
+        
+        .control-group { margin-bottom: 15px; }
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; color: #b0c4de; }
+        
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3498db;
+        }
+
+        .math-display {
+            font-family: 'Courier New', monospace;
+            background: #0a0f14;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            border: 1px solid #2c3e50;
+            color: #f1c40f;
+        }
+
+        .legend { font-size: 0.8rem; color: #b0c4de; margin-top: 15px; line-height: 1.6; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    </style>
+    
+    <!-- MathJax -->
+    <script>MathJax = { tex: { inlineMath: [['$', '$']] } };</script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>Boundary Conditions</h2>
+        
+        <div class="control-group">
+            <div class="label-row">
+                <span>Surface Charge ($\sigma$)</span>
+                <span id="sigmaVal">1.0</span>
+            </div>
+            <input type="range" id="sigmaSlider" min="-2" max="2" step="0.1" value="1.0">
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="dot" style="background:#fff"></span> Potential $V(x)$ (Continuous)</div>
+            <div class="legend-item"><span class="dot" style="background:#3498db"></span> Charged Sheet</div>
+            <div class="legend-item"><span class="dot" style="background:#f1c40f"></span> Electric Field $\vec{E}$ (Jump)</div>
+            <div class="legend-item"><span class="dot" style="background:#888"></span> Tangent Lines</div>
+        </div>
+
+        <div class="math-display" id="slopeDisplay">
+            Slope Jump $\Delta E = \frac{\sigma}{\epsilon_0}$
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121a23);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(6, 4, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 2, 0); // Look at the peak of the graph
+        controls.enableDamping = true;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        // --- Objects ---
+        const group = new THREE.Group();
+        scene.add(group);
+
+        // 1. Boundary Plane (x=0)
+        // Using MeshBasicMaterial to ensure visibility regardless of lighting angles
+        const planeGeo = new THREE.PlaneGeometry(6, 6);
+        const planeMat = new THREE.MeshBasicMaterial({ 
+            color: 0x3498db, 
+            side: THREE.DoubleSide, 
+            transparent: true, 
+            opacity: 0.2,
+            depthWrite: false // Helps with transparency rendering
+        });
+        const boundaryPlane = new THREE.Mesh(planeGeo, planeMat);
+        boundaryPlane.rotation.y = Math.PI / 2;
+        group.add(boundaryPlane);
+
+        // 2. Grid Helper (Floor)
+        const grid = new THREE.GridHelper(10, 10, 0x2c3e50, 0x1c2734);
+        grid.position.y = 0;
+        scene.add(grid);
+
+        // 3. The Potential Graph Line (V)
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+        const lineGeo = new THREE.BufferGeometry();
+        // Initialize with dummy data to prevent crashes
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(300), 3));
+        const lineMesh = new THREE.Line(lineGeo, lineMat);
+        group.add(lineMesh);
+
+        // 4. Tangent Lines (Dashed)
+        const dashMat = new THREE.LineDashedMaterial({ color: 0x888888, dashSize: 0.2, gapSize: 0.1, opacity: 0.5, transparent: true });
+        const tanLeftGeo = new THREE.BufferGeometry();
+        const tanRightGeo = new THREE.BufferGeometry();
+        
+        // Initialize dummy data
+        tanLeftGeo.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 0,0,0], 3));
+        tanRightGeo.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 0,0,0], 3));
+
+        const tanLeft = new THREE.Line(tanLeftGeo, dashMat);
+        const tanRight = new THREE.Line(tanRightGeo, dashMat);
+        group.add(tanLeft);
+        group.add(tanRight);
+
+        // 5. Arrows (Electric Field)
+        const arrowHelpers = [];
+        const arrowColor = 0xf1c40f;
+        for(let i=0; i<4; i++) {
+            const arrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, arrowColor, 0.3, 0.2);
+            arrowHelpers.push(arrow);
+            group.add(arrow);
+        }
+
+        // --- Logic ---
+        let sigma = 1.0;
+        const V0 = 2.5; // Height of the potential at x=0
+
+        function updateScene() {
+            // Math: V(x) = V0 - (sigma/2)*|x|
+            // Slope = -sigma/2 for x>0
+            
+            const points = [];
+            const range = 4;
+            const steps = 60;
+            
+            // 1. Update Main Line
+            for(let i=0; i<=steps; i++) {
+                const x = -range + (i/steps)*(range*2);
+                const y = V0 - (Math.abs(sigma) / 2) * Math.abs(x);
+                // We map graph y -> world y, graph x -> world x
+                points.push(x, Math.max(0, y), 0); // Clamp at floor
+            }
+            lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+            lineGeo.attributes.position.needsUpdate = true;
+
+            // 2. Update Tangents
+            const slopeMag = Math.abs(sigma) / 2;
+            const leftSlope = slopeMag;
+            const rightSlope = -slopeMag;
+
+            // Left Tangent (extending past x=0 to show the kink)
+            const tl_x1 = -2; const tl_y1 = V0 - slopeMag * 2;
+            const tl_x2 = 1.5; const tl_y2 = V0 + leftSlope * 1.5;
+            tanLeftGeo.setAttribute('position', new THREE.Float32BufferAttribute([tl_x1, tl_y1, 0, tl_x2, tl_y2, 0], 3));
+            tanLeftGeo.attributes.position.needsUpdate = true;
+            tanLeft.computeLineDistances(); // Crucial for dashed lines
+
+            // Right Tangent
+            const tr_x1 = -1.5; const tr_y1 = V0 - rightSlope * 1.5;
+            const tr_x2 = 2; const tr_y2 = V0 - slopeMag * 2;
+            tanRightGeo.setAttribute('position', new THREE.Float32BufferAttribute([tr_x1, tr_y1, 0, tr_x2, tr_y2, 0], 3));
+            tanRightGeo.attributes.position.needsUpdate = true;
+            tanRight.computeLineDistances();
+
+            // 3. Update Arrows
+            // E points AWAY from positive charge.
+            // Left side (x<0): E points Left (-1, 0, 0)
+            // Right side (x>0): E points Right (1, 0, 0)
+            // If sigma is negative, directions flip.
+            
+            const dirRight = new THREE.Vector3(sigma > 0 ? 1 : -1, 0, 0);
+            const dirLeft = new THREE.Vector3(sigma > 0 ? -1 : 1, 0, 0);
+            
+            const arrowY = V0 - 0.8; 
+            
+            // Right Arrows
+            arrowHelpers[0].position.set(0.5, arrowY, 0.5);
+            arrowHelpers[0].setDirection(dirRight);
+            arrowHelpers[0].setLength(Math.abs(sigma) + 0.2); // Scale length with charge
+
+            arrowHelpers[1].position.set(2.0, arrowY - (slopeMag*1.5), -0.5);
+            arrowHelpers[1].setDirection(dirRight);
+            arrowHelpers[1].setLength(Math.abs(sigma) + 0.2);
+
+            // Left Arrows
+            arrowHelpers[2].position.set(-0.5, arrowY, -0.5);
+            arrowHelpers[2].setDirection(dirLeft);
+            arrowHelpers[2].setLength(Math.abs(sigma) + 0.2);
+
+            arrowHelpers[3].position.set(-2.0, arrowY - (slopeMag*1.5), 0.5);
+            arrowHelpers[3].setDirection(dirLeft);
+            arrowHelpers[3].setLength(Math.abs(sigma) + 0.2);
+
+            // 4. Update Plane Color
+            boundaryPlane.material.color.setHex(sigma >= 0 ? 0x3498db : 0xe74c3c);
+        }
+
+        // --- Events ---
+        document.getElementById('sigmaSlider').addEventListener('input', (e) => {
+            sigma = parseFloat(e.target.value);
+            document.getElementById('sigmaVal').textContent = sigma.toFixed(1);
+            updateScene();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Init ---
+        updateScene();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="boundary_discontinuity.0.offline.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dielectric vs Conductor Simulation</title>
+    
+    
+    <!-- MathJax -->
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --plate-pos: #e74c3c;
+            --plate-neg: #3498db;
+            --text-color: #e0e0e0;
+            --accent: #2ecc71;
+            --dielectric-bg: rgba(241, 196, 15, 0.1);
+            --dielectric-border: rgba(241, 196, 15, 0.5);
+            --conductor-bg: rgba(149, 165, 166, 0.1);
+            --conductor-border: rgba(149, 165, 166, 0.5);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Controls */
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        button {
+            background: #1c2734;
+            color: #b0c4de;
+            border: 1px solid #4a6fa5;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: #4a6fa5; color: white; }
+        button.active { background: var(--accent); color: #121a23; border-color: var(--accent); font-weight: bold; }
+
+        /* Canvas Area */
+        .canvas-container {
+            position: relative;
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            border-radius: 4px;
+            border: 1px solid #2c3e50;
+            background: #0b1016;
+        }
+
+        /* Labels overlay */
+        .overlay-text {
+            position: absolute;
+            pointer-events: none;
+            font-size: 14px;
+            background: rgba(18, 26, 35, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #fff;
+        }
+    </style>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div class="controls">
+        <button id="btn-vacuum" onclick="setMode('vacuum')">Vacuum (Ref)</button>
+        <button id="btn-dielectric" class="active" onclick="setMode('dielectric')">Dielectric (Insulator)</button>
+        <button id="btn-conductor" onclick="setMode('conductor')">Conductor</button>
+        
+        <div style="width: 20px;"></div> <!-- Spacer -->
+        
+        <button id="btn-field" onclick="toggleField()">Toggle E-Field</button>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="simCanvas" width="600" height="400"></canvas>
+        
+        <!-- HTML Labels for MathJax -->
+        <div id="label-ext" class="overlay-text" style="left: 10px; top: 180px; display:none;">
+            $ \vec{E}_{ext} $
+        </div>
+        <div id="label-net" class="overlay-text" style="left: 280px; top: 180px;">
+            $ \vec{E}_{net} $
+        </div>
+        <div id="label-formula" class="overlay-text" style="left: 450px; top: 350px;">
+            Initializing...
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // State
+        let mode = 'dielectric'; // vacuum, dielectric, conductor
+        let fieldOn = false;
+        let animationFrame = 0;
+        
+        // Physics Parameters
+        const atoms = [];
+        const numAtomsX = 6;
+        const numAtomsY = 4;
+        const spacingX = 60;
+        const spacingY = 60;
+        const centerX = 300;
+        const centerY = 200;
+
+        // Initialize Atoms/Charges
+        function initParticles() {
+            atoms.length = 0;
+            // Create grid of atoms
+            for(let x = 0; x < numAtomsX; x++) {
+                for(let y = 0; y < numAtomsY; y++) {
+                    atoms.push({
+                        baseX: centerX - ((numAtomsX-1)*spacingX)/2 + x*spacingX,
+                        baseY: centerY - ((numAtomsY-1)*spacingY)/2 + y*spacingY,
+                        posShift: 0,  // Current shift amount (animation)
+                        targetShift: 0 // Target shift amount
+                    });
+                }
+            }
+        }
+
+        initParticles();
+
+        // Control Logic
+        function setMode(newMode) {
+            mode = newMode;
+            // Update buttons
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${newMode}`).classList.add('active');
+            updateLabels();
+        }
+
+        function toggleField() {
+            fieldOn = !fieldOn;
+            document.getElementById('btn-field').textContent = fieldOn ? "E-Field: ON" : "E-Field: OFF";
+            document.getElementById('btn-field').style.background = fieldOn ? "#e74c3c" : "#1c2734";
+            document.getElementById('label-ext').style.display = fieldOn ? "block" : "none";
+        }
+
+        function updateLabels() {
+            const labelFormula = document.getElementById('label-formula');
+            if (mode === 'vacuum') {
+                labelFormula.innerHTML = '$ \\vec{E}_{net} = \\vec{E}_{ext} $';
+            } else if (mode === 'dielectric') {
+                labelFormula.innerHTML = '$ \\vec{E}_{net} = \\vec{E}_{ext} - \\vec{E}_{pol} $';
+            } else if (mode === 'conductor') {
+                labelFormula.innerHTML = '$ \\vec{E}_{net} = 0 $';
+            }
+            if (typeof window.MathJax?.typesetPromise === 'function') {
+                window.MathJax.typesetPromise([labelFormula]);
+            }
+        }
+
+        // --- DRAWING FUNCTIONS ---
+
+        function drawPlate(y, isPositive) {
+            ctx.fillStyle = isPositive ? '#c0392b' : '#2980b9';
+            ctx.fillRect(50, y, 500, 10);
+            
+            // Draw charges on plate
+            ctx.fillStyle = 'white';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            const sign = isPositive ? "+" : "-";
+            for(let i=1; i<10; i++) {
+                ctx.fillText(sign, 50 + i*50, y + 10); // Center text in bar
+            }
+        }
+
+        function drawFieldLines() {
+            if(!fieldOn) return;
+
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.lineWidth = 2;
+            
+            // Draw external field lines (ignoring material for a moment)
+            for(let i=1; i<10; i++) {
+                let x = 50 + i*50;
+                // If inside material block width
+                if(x > 140 && x < 460) {
+                    // Top segment
+                    drawArrow(x, 60, x, 100);
+                    // Bottom segment
+                    drawArrow(x, 300, x, 340);
+                    
+                    // Inside Material logic
+                    if(mode === 'vacuum') {
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; // Full strength
+                        drawArrow(x, 100, x, 300);
+                    } else if (mode === 'dielectric') {
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; // Weakened
+                        drawArrow(x, 100, x, 300);
+                    } else {
+                        // Conductor: No field lines inside
+                    }
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; // Reset
+                } else {
+                    // Outside material, full line
+                    drawArrow(x, 60, x, 340);
+                }
+            }
+        }
+
+        function drawArrow(x1, y1, x2, y2) {
+            const headlen = 10;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // Arrowhead
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fill();
+        }
+
+        function drawMaterialBlock() {
+            if (mode === 'vacuum') return;
+
+            const x = 150, y = 100, w = 300, h = 200;
+            
+            ctx.fillStyle = mode === 'dielectric' ? 'rgba(241, 196, 15, 0.05)' : 'rgba(149, 165, 166, 0.1)';
+            ctx.strokeStyle = mode === 'dielectric' ? 'rgba(241, 196, 15, 0.5)' : 'rgba(149, 165, 166, 0.5)';
+            ctx.lineWidth = 2;
+            
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+            
+            // Label
+            ctx.fillStyle = mode === 'dielectric' ? '#f1c40f' : '#95a5a6';
+            ctx.font = '16px Inter';
+            ctx.fillText(mode === 'dielectric' ? "Dielectric Material" : "Conductor", x + 150, y - 10);
+        }
+
+        function drawParticles() {
+            if(mode === 'vacuum') return;
+
+            // Animation interpolation
+            const k = 0.1; // Lerp speed
+
+            atoms.forEach(atom => {
+                let shiftY = 0;
+
+                if (mode === 'dielectric') {
+                    // Bound Charge Logic: Dipoles stretch but stay centered
+                    atom.targetShift = fieldOn ? 8 : 0;
+                    atom.posShift += (atom.targetShift - atom.posShift) * k;
+                    
+                    // Draw Oval Orbit
+                    ctx.beginPath();
+                    ctx.ellipse(atom.baseX, atom.baseY, 15, 22, 0, 0, 2 * Math.PI);
+                    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+                    ctx.stroke();
+
+                    // Negative Charge (moves UP against field)
+                    drawCharge(atom.baseX, atom.baseY - atom.posShift, false);
+                    // Positive Charge (moves DOWN with field)
+                    drawCharge(atom.baseX, atom.baseY + atom.posShift, true);
+
+                    // Draw connection
+                    ctx.beginPath();
+                    ctx.moveTo(atom.baseX, atom.baseY - atom.posShift);
+                    ctx.lineTo(atom.baseX, atom.baseY + atom.posShift);
+                    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+                    ctx.stroke();
+
+                } else if (mode === 'conductor') {
+                    // Free Charge Logic: Charges move to boundaries
+                    // Calculate target Y positions
+                    let targetNegY = fieldOn ? 115 : atom.baseY; // Top of box
+                    let targetPosY = fieldOn ? 285 : atom.baseY; // Bottom of box
+                    
+                    // We simulate "electron clouds" moving independently of nuclei? 
+                    // To keep it simple visually: Positive ions stay fixed, electrons move up
+                    
+                    // Actually, for a pure conductor visualization, let's just split them apart
+                    // Use a separate tracking property for conductor to avoid conflict
+                    if(!atom.condYNeg) atom.condYNeg = atom.baseY;
+                    if(!atom.condYPos) atom.condYPos = atom.baseY;
+
+                    atom.condYNeg += (targetNegY - atom.condYNeg) * k;
+                    atom.condYPos += (targetPosY - atom.condYPos) * k;
+
+                    // Random jitter for "free electron" look
+                    let jitter = fieldOn ? (Math.random() - 0.5) * 5 : 0;
+
+                    drawCharge(atom.baseX + jitter, atom.condYNeg, false);
+                    drawCharge(atom.baseX, atom.condYPos, true);
+                }
+            });
+        }
+
+        function drawCharge(x, y, isPositive) {
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = isPositive ? '#e74c3c' : '#3498db';
+            ctx.fill();
+            
+            // Sign
+            ctx.fillStyle = 'white';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(isPositive ? '+' : '-', x, y + 1);
+        }
+
+        // Main Loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Plates
+            drawPlate(50, true);  // Top +
+            drawPlate(340, false); // Bottom -
+
+            // 2. Draw Material Background
+            drawMaterialBlock();
+
+            // 3. Draw External Field Lines (Behind atoms)
+            drawFieldLines();
+
+            // 4. Draw Atoms/Charges
+            drawParticles();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start
+        updateLabels();
+        animate();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multipole Field & Decay</title>
+    
+    <style>
+        body {
+            margin: 0;
+            background-color: #121a23;
+            font-family: 'Inter', sans-serif;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Layout: Left (Sim) and Right (Graph) */
+        .container {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            width: 100%;
+            height: 100%;
+        }
+
+        .panel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #2c3e50;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(28, 39, 52, 0.95);
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid #2c3e50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        button {
+            background: #1c2734;
+            border: 1px solid #4a5568;
+            color: #b0c4de;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: #2d3748; color: white; }
+        button.active { background: #3498db; border-color: #3498db; color: white; }
+
+        /* Labels */
+        .label {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(18, 26, 35, 0.8);
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid #2c3e50;
+            font-size: 0.8rem;
+            color: #3498db;
+            pointer-events: none;
+        }
+
+        /* Graph specific styles */
+        .graph-panel {
+            background: #0f151c;
+        }
+        .graph-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+        .falloff-tag {
+            font-family: 'Roboto Mono', monospace;
+            color: #e74c3c;
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- LEFT: Field Visualization -->
+        <div class="panel">
+            <div class="label">1. Electric Field Lines</div>
+            <canvas id="simCanvas"></canvas>
+            
+            <div class="controls">
+                <button onclick="setMode(0)" id="btn0" class="active">Monopole</button>
+                <button onclick="setMode(1)" id="btn1">Dipole</button>
+                <button onclick="setMode(2)" id="btn2">Quadrupole</button>
+            </div>
+        </div>
+
+        <!-- RIGHT: Decay Graph -->
+        <div class="panel graph-panel">
+            <div class="label" style="color: #e74c3c">2. Field Strength vs Distance</div>
+            <canvas id="graphCanvas"></canvas>
+            <div class="graph-overlay">
+                <div id="falloffText" class="falloff-tag">E ∝ 1/r²</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Setup Canvases
+        const simCanvas = document.getElementById('simCanvas');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const ctxSim = simCanvas.getContext('2d');
+        const ctxGraph = graphCanvas.getContext('2d');
+        const falloffText = document.getElementById('falloffText');
+
+        // State
+        let mode = 0; // 0: Mono, 1: Dipole, 2: Quadrupole
+        let widthSim, heightSim, widthGraph, heightGraph;
+        
+        // Physics Configuration
+        // Charges are objects {x, y, q}
+        let charges = [];
+
+        // Colors
+        const c_pos = "#e74c3c"; // Red
+        const c_neg = "#3498db"; // Blue
+        const c_line = "rgba(255, 255, 255, 0.2)";
+        const c_graph_line = "#e74c3c";
+        const c_grid = "#2c3e50";
+
+        function setMode(m) {
+            mode = m;
+            
+            // Update Buttons
+            document.querySelectorAll('button').forEach((b, i) => {
+                b.classList.toggle('active', i === m);
+            });
+
+            // Update Charges
+            charges = [];
+            const spacing = 60; 
+
+            if (mode === 0) { // Monopole
+                charges.push({x: 0, y: 0, q: 1});
+                falloffText.innerHTML = "E ∝ 1/r²";
+            } else if (mode === 1) { // Dipole
+                charges.push({x: 0, y: -spacing/2, q: 1});
+                charges.push({x: 0, y: spacing/2, q: -1});
+                falloffText.innerHTML = "E ∝ 1/r³";
+            } else if (mode === 2) { // Quadrupole
+                charges.push({x: -spacing/2, y: -spacing/2, q: 1});
+                charges.push({x: spacing/2, y: -spacing/2, q: -1});
+                charges.push({x: spacing/2, y: spacing/2, q: 1});
+                charges.push({x: -spacing/2, y: spacing/2, q: -1});
+                falloffText.innerHTML = "E ∝ 1/r⁴";
+            }
+
+            draw();
+        }
+
+        function resize() {
+            // Get container dimensions
+            const container = document.querySelector('.container');
+            const leftPanel = document.querySelector('.panel');
+            const rightPanel = document.querySelector('.graph-panel');
+
+            widthSim = leftPanel.clientWidth;
+            heightSim = leftPanel.clientHeight;
+            widthGraph = rightPanel.clientWidth;
+            heightGraph = rightPanel.clientHeight;
+
+            const dpr = window.devicePixelRatio || 1;
+
+            simCanvas.width = widthSim * dpr;
+            simCanvas.height = heightSim * dpr;
+            ctxSim.scale(dpr, dpr);
+
+            graphCanvas.width = widthGraph * dpr;
+            graphCanvas.height = heightGraph * dpr;
+            ctxGraph.scale(dpr, dpr);
+
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+
+        // --- PHYSICS ENGINE ---
+
+        function getField(x, y, cx, cy) {
+            // x, y are screen coordinates relative to cx, cy center
+            let Ex = 0;
+            let Ey = 0;
+            
+            for (let c of charges) {
+                const dx = x - (cx + c.x);
+                const dy = y - (cy + c.y);
+                const r2 = dx*dx + dy*dy;
+                const r = Math.sqrt(r2);
+                if (r < 5) continue; // Singularity avoidance
+
+                const E = 5000 * c.q / (r2); // Strength constant
+                Ex += E * (dx/r);
+                Ey += E * (dy/r);
+            }
+            return {x: Ex, y: Ey};
+        }
+
+        function drawSphere(ctx, x, y, q) {
+            const r = 12;
+            const color = q > 0 ? c_pos : c_neg;
+            
+            const grad = ctx.createRadialGradient(x - r/3, y - r/3, r/4, x, y, r);
+            grad.addColorStop(0, "#fff");
+            grad.addColorStop(0.3, color);
+            grad.addColorStop(1, "#121a23"); // Fade edges
+
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+            
+            // Text sign
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(q > 0 ? "+" : "-", x, y + 1);
+        }
+
+        function drawFieldLines(cx, cy) {
+            ctxSim.strokeStyle = c_line;
+            ctxSim.lineWidth = 1;
+
+            // Spawn lines from positive charges
+            const linesPerCharge = 16; 
+            
+            for (let c of charges) {
+                if (c.q < 0) continue; 
+
+                for (let i = 0; i < linesPerCharge; i++) {
+                    const angle = (Math.PI * 2 * i) / linesPerCharge;
+                    let x = cx + c.x + Math.cos(angle) * 15;
+                    let y = cy + c.y + Math.sin(angle) * 15;
+
+                    ctxSim.beginPath();
+                    ctxSim.moveTo(x, y);
+
+                    // Trace
+                    for (let step = 0; step < 200; step++) {
+                        const field = getField(x, y, cx, cy);
+                        const mag = Math.sqrt(field.x*field.x + field.y*field.y);
+                        
+                        if (mag === 0) break;
+
+                        // Step size depends on magnitude (adaptive?) 
+                        // Fixed step for visuals
+                        const stepSize = 8;
+                        x += (field.x / mag) * stepSize;
+                        y += (field.y / mag) * stepSize;
+
+                        ctxSim.lineTo(x, y);
+
+                        // Stop if out of bounds
+                        if (x < 0 || x > widthSim || y < 0 || y > heightSim) break;
+                        
+                        // Stop if hitting a negative charge
+                        let hit = false;
+                        for(let nc of charges) {
+                            if(nc.q < 0) {
+                                const dist = Math.sqrt((x - (cx+nc.x))**2 + (y - (cy+nc.y))**2);
+                                if(dist < 10) hit = true;
+                            }
+                        }
+                        if(hit) break;
+                    }
+                    ctxSim.stroke();
+                }
+            }
+        }
+
+        function drawGraph() {
+            const ctx = ctxGraph;
+            const w = widthGraph;
+            const h = heightGraph;
+            const margin = 40;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Axes
+            ctx.strokeStyle = "#555";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(margin, h - margin);
+            ctx.lineTo(w - 10, h - margin); // r axis
+            ctx.moveTo(margin, h - margin);
+            ctx.lineTo(margin, 10); // E axis
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = "#888";
+            ctx.font = "12px Inter";
+            ctx.fillText("Distance (r)", w - 70, h - 15);
+            ctx.save();
+            ctx.translate(15, h/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillText("Field Strength |E|", 0, 0);
+            ctx.restore();
+
+            // Plot Data
+            // We measure E along the positive X axis from center of charges
+            ctx.beginPath();
+            ctx.strokeStyle = c_graph_line;
+            ctx.lineWidth = 3;
+
+            const rStart = 80; // Don't start inside charge
+            const rEnd = w;
+            const cx = 0; // In sim coords (simulation center)
+            const cy = 0; 
+
+            let first = true;
+
+            for (let px = 0; px < w - margin - 10; px += 2) {
+                const r = rStart + px * 2; // Distance factor
+                
+                // Calculate field at (r, 0) relative to charge center
+                // Note: getField needs absolute coords, but charges are centered around 0,0 inside getField logic effectively
+                // Wait, getField takes SCREEN coords. 
+                // Let's refactor getField logic slightly or simulate positions.
+                
+                // Theoretical check:
+                let fieldMag = 0;
+                const field = getField(r + widthSim/2, heightSim/2, widthSim/2, heightSim/2);
+                fieldMag = Math.sqrt(field.x*field.x + field.y*field.y);
+
+                // Mapping to graph
+                // Logarithmic Y scale visually works better, but Linear helps show "crashing to zero"
+                // Let's use a scaled linear to fit
+                
+                // Scale factor differs per mode to make curves look good
+                let yVal = 0;
+                if (mode === 0) yVal = fieldMag * 100; // Monopole scale
+                if (mode === 1) yVal = fieldMag * 5000; // Dipole scale
+                if (mode === 2) yVal = fieldMag * 200000; // Quadrupole scale (decays super fast)
+
+                const plotX = margin + px;
+                const plotY = (h - margin) - yVal;
+
+                if (plotY < margin) continue; // Don't draw off top
+
+                if (first) {
+                    ctx.moveTo(plotX, plotY);
+                    first = false;
+                } else {
+                    ctx.lineTo(plotX, plotY);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function draw() {
+            ctxSim.clearRect(0, 0, widthSim, heightSim);
+            
+            const cx = widthSim / 2;
+            const cy = heightSim / 2;
+
+            drawFieldLines(cx, cy);
+
+            // Draw Charges
+            for (let c of charges) {
+                drawSphere(ctxSim, cx + c.x, cy + c.y, c.q);
+            }
+
+            drawGraph();
+        }
+
+        // Init
+        resize();
+        setMode(0);
+
+    </script>
+</body>
+</html>

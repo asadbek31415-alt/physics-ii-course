@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive: Deriving Electrostatic Pressure</title>
+    
+    
+    
+
+    <style>
+        :root {
+            --bg-color: #121a23;
+            --card-bg: #1c2734;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0c4de;
+            --accent-color: #3498db;
+            --border-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .header-bar {
+            background-color: rgba(18, 26, 35, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+            color: white;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 3rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .def-box {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        .math-block {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .math-step {
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        .iframe-container {
+            width: 100%;
+            margin: 3rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            height: 500px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--card-bg), #2c3e50);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                macros: {
+                    vec: "\\mathbf",
+                    grad: "\\nabla",
+                    div: "\\nabla \\cdot",
+                    curl: "\\nabla \\times",
+                    dl: "d\\vec{l}",
+                    rcurs: "\\mathcal{r}"
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
+    <script src="course-map.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+
+    <div class="header-bar">
+        <div class="nav-container">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> >
+                <a href="electric_field_in_matter_index.html">Electric Fields in Matter</a> >
+                <a href="ch2_1_conductors.html">Conductors</a> >
+                Electrostatic Pressure
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <h1>Deep Dive: Deriving Electrostatic Pressure</h1>
+
+        <p>
+            Why is the force on a surface charge \(\frac{1}{2}\sigma E\) and not simply \(\sigma E\)?
+            The confusion arises because the electric field is <strong>discontinuous</strong> at the surface charge.
+        </p>
+
+        <div class="def-box">
+            <strong>The Ambiguity:</strong>
+            <ul>
+                <li>Inside the conductor, \(\vec{E} = 0\).</li>
+                <li>Immediately outside, \(\vec{E} = (\sigma / \epsilon_0) \hat{n}\).</li>
+            </ul>
+            Which field exerts the force on the charge layer itself? The answer is the <strong>average</strong> of the
+            two.
+        </div>
+
+        <!-- Placeholder for a diagram showing the "Patch" argument -->
+        <div class="iframe-container">
+            <iframe src="diagrams/electrostatic_pressure.html" title="Electrostatic Pressure Diagram"></iframe>
+        </div>
+
+        <section>
+            <h2>The "Patch" Argument</h2>
+            <p>
+                Consider a tiny patch of the surface containing charge \(\sigma da\). We can separate the total electric
+                field into two components:
+            </p>
+            <ol>
+                <li>\(\vec{E}_{patch}\): The field produced by the tiny patch itself.</li>
+                <li>\(\vec{E}_{other}\): The field produced by everything else (the rest of the conductor).</li>
+            </ol>
+
+            <p>
+                The patch cannot exert a force on itself. Therefore, the force is due entirely to \(\vec{E}_{other}\).
+            </p>
+
+            <div class="math-step">
+                The field from a flat patch of charge acts like an infinite sheet close up:
+                $$ \vec{E}_{patch} = \frac{\sigma}{2\epsilon_0} \hat{n} \quad (\text{above}), \quad
+                -\frac{\sigma}{2\epsilon_0} \hat{n} \quad (\text{below}) $$
+            </div>
+
+            <p>
+                Now look at the total field limits:
+            </p>
+            <div class="math-block">
+                $$ \vec{E}_{above} = \vec{E}_{other} + \frac{\sigma}{2\epsilon_0}\hat{n} =
+                \frac{\sigma}{\epsilon_0}\hat{n} $$
+                $$ \vec{E}_{below} = \vec{E}_{other} - \frac{\sigma}{2\epsilon_0}\hat{n} = 0 $$
+            </div>
+
+            <p>
+                Solving either equation for \(\vec{E}_{other}\) gives the same result:
+            </p>
+            <div class="math-block" style="border-left-color: var(--success-color);">
+                $$ \vec{E}_{other} = \frac{\sigma}{2\epsilon_0} \hat{n} = \frac{1}{2} \vec{E}_{outside} $$
+            </div>
+        </section>
+
+        <section>
+            <h2>The Final Result</h2>
+            <p>
+                The force per unit area (\(f\)) is charge density times the field acting on it (\(E_{other}\)):
+            </p>
+            <div class="math-block">
+                $$ f = \sigma E_{other} = \sigma \left( \frac{1}{2} E_{outside} \right) = \frac{1}{2} \sigma E_{outside}
+                $$
+            </div>
+            <p>
+                Since \(E_{outside} = \sigma / \epsilon_0\), we can write this purely in terms of the field:
+            </p>
+            <div class="math-block" style="border-left-color: var(--warning-color);">
+                $$ f = \frac{\epsilon_0}{2} E^2 $$
+            </div>
+            <p>
+                This confirms that the force is always <strong>outward</strong> (pulling the surface into the vacuum),
+                creating an electrostatic pressure.
+            </p>
+        </section>
+
+    </main>
+
+    <footer></footer>
+
+</body>
+
+</html>

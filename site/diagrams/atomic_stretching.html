@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dielectric Polarization Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            display: grid;
+            grid-template-columns: clamp(230px, 28vw, 310px) minmax(0, 1fr);
+            grid-template-rows: auto 1fr;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            grid-column: 2;
+            grid-row: 1 / span 2;
+        }
+        
+        /* UI Overlay */
+        #ui-layer {
+            position: relative;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            max-width: none;
+            background: rgba(15, 23, 30, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 14px;
+            border-radius: 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 0;
+            border-left: 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            user-select: none;
+            box-sizing: border-box;
+            z-index: 3;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #b0c4de;
+            min-width: 140px;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            cursor: pointer;
+            height: 6px;
+            background: #2c3e50;
+            border-radius: 3px;
+            -webkit-appearance: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3498db;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+            margin-top: -6px; 
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        .readout {
+            font-family: monospace;
+            color: #f1c40f;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* Legend */
+        #legend {
+            position: relative;
+            grid-column: 1;
+            grid-row: 2;
+            background: rgba(15, 23, 30, 0.8);
+            padding: 15px;
+            border-radius: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-left: 0;
+            border-bottom: 0;
+            pointer-events: none;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 2;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+        .legend-item:last-child { margin-bottom: 0; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
+        .line { width: 20px; height: 3px; border-radius: 2px; }
+        .box { width: 12px; height: 12px; border-radius: 2px; border: 1px solid #fff; }
+
+        @media (max-width: 700px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto minmax(0, 1fr);
+            }
+
+            #ui-layer {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 10px;
+                gap: 9px;
+            }
+
+            #legend {
+                grid-column: 1;
+                grid-row: 2;
+                max-height: none;
+                padding: 10px;
+            }
+
+            canvas {
+                grid-column: 1;
+                grid-row: 3;
+            }
+
+            .control-group {
+                gap: 8px;
+            }
+
+            .label {
+                min-width: 112px;
+                font-size: 0.78rem;
+            }
+        }
+
+    </style>
+    
+    <!-- Three.js Import -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../vendor/three/build/three.module.js",
+                "three/addons/": "../vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="legend">
+        <div class="legend-item"><div class="box" style="background: rgba(231, 76, 60, 0.3); border-color: #e74c3c;"></div> Positive Plate</div>
+        <div class="legend-item"><div class="box" style="background: rgba(52, 152, 219, 0.3); border-color: #3498db;"></div> Negative Plate</div>
+        <div class="legend-item"><div class="line" style="background: #f1c40f;"></div> External Field (E)</div>
+        <div class="legend-item"><div class="dot" style="background: #e74c3c; color: #e74c3c;"></div> Nucleus (+)</div>
+        <div class="legend-item"><div class="dot" style="background: #3498db; color: #3498db;"></div> Electron Cloud (-)</div>
+        <div class="legend-item"><div class="line" style="background: #2ecc71;"></div> Induced Dipole (p)</div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="control-group">
+            <div class="label">External Field (E)</div>
+            <input type="range" id="fieldSlider" min="0" max="1" step="0.01" value="0">
+            <div class="readout" id="eReadout">0.0</div>
+        </div>
+        <div style="font-size: 0.8rem; color: #8899a6; text-align: center;">
+            Increase E to charge the plates and stretch the atoms.
+        </div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- CONFIGURATION ---
+        const GRID_X = 6;
+        const GRID_Y = 3;
+        const GRID_Z = 3;
+        const SPACING = 3.0;
+        const ATOM_RADIUS = 0.9;
+        const NUCLEUS_RADIUS = 0.25;
+        const PLATE_X = 12; // Position of plates
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.FogExp2(0x050505, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        camera.position.set(0, 5, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        function resizeRenderer() {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height, false);
+        }
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(0, 10, 10);
+        scene.add(dirLight);
+
+        // --- MATERIALS ---
+        const nucleusMat = new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+            emissive: 0xaa0000,
+            emissiveIntensity: 0.5,
+            roughness: 0.1,
+            metalness: 0.8
+        });
+
+        const cloudMat = new THREE.MeshPhysicalMaterial({
+            color: 0x3498db,
+            metalness: 0.1,
+            roughness: 0.1,
+            transmission: 0.6,
+            thickness: 1.0,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+
+        const plateMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide,
+            roughness: 0.2,
+            metalness: 0.8,
+            transmission: 0.2
+        });
+
+        // --- GEOMETRY ---
+        const nucleusGeo = new THREE.SphereGeometry(NUCLEUS_RADIUS, 16, 16);
+        const cloudGeo = new THREE.SphereGeometry(ATOM_RADIUS, 32, 32);
+        const plateGeo = new THREE.BoxGeometry(1, 15, 15);
+
+        // --- BUILD SCENE ---
+        
+        // 1. Capacitor Plates
+        const leftPlate = new THREE.Mesh(plateGeo, plateMat.clone());
+        leftPlate.position.set(-PLATE_X, 0, 0);
+        scene.add(leftPlate);
+
+        const rightPlate = new THREE.Mesh(plateGeo, plateMat.clone());
+        rightPlate.position.set(PLATE_X, 0, 0);
+        scene.add(rightPlate);
+
+        // 2. Atoms
+        const atoms = [];
+        const atomGroup = new THREE.Group();
+        scene.add(atomGroup);
+
+        const offsetX = (GRID_X - 1) * SPACING / 2;
+        const offsetY = (GRID_Y - 1) * SPACING / 2;
+        const offsetZ = (GRID_Z - 1) * SPACING / 2;
+
+        for(let x = 0; x < GRID_X; x++) {
+            for(let y = 0; y < GRID_Y; y++) {
+                for(let z = 0; z < GRID_Z; z++) {
+                    const root = new THREE.Group();
+                    root.position.set(
+                        x * SPACING - offsetX,
+                        y * SPACING - offsetY,
+                        z * SPACING - offsetZ
+                    );
+
+                    const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+                    root.add(cloud);
+
+                    const nucleus = new THREE.Mesh(nucleusGeo, nucleusMat);
+                    root.add(nucleus);
+
+                    // Dipole Arrow (Green)
+                    const arrowDir = new THREE.Vector3(1, 0, 0);
+                    const arrow = new THREE.ArrowHelper(arrowDir, new THREE.Vector3(0,0,0), 1, 0x2ecc71, 0.4, 0.3);
+                    arrow.visible = false;
+                    arrow.position.x = -0.5; 
+                    root.add(arrow);
+
+                    atomGroup.add(root);
+                    atoms.push({ root, cloud, nucleus, arrow });
+                }
+            }
+        }
+
+        // 3. Field Lines (Yellow Arrows)
+        const fieldLines = new THREE.Group();
+        scene.add(fieldLines);
+        
+        // Create rows of arrows passing through
+        for(let y = 0; y < GRID_Y; y++) {
+            for(let z = 0; z < GRID_Z; z++) {
+                const dir = new THREE.Vector3(1, 0, 0);
+                // Start from left plate
+                const origin = new THREE.Vector3(-PLATE_X + 1, y * SPACING - offsetY, z * SPACING - offsetZ);
+                // Length spans to right plate
+                const len = (PLATE_X * 2) - 2;
+                const color = 0xf1c40f; 
+                const arrow = new THREE.ArrowHelper(dir, origin, len, color, 1, 0.5);
+                
+                // Make them ghost-like initially
+                arrow.line.material.transparent = true;
+                arrow.line.material.opacity = 0;
+                arrow.cone.material.transparent = true;
+                arrow.cone.material.opacity = 0;
+                
+                fieldLines.add(arrow);
+            }
+        }
+
+        // --- INTERACTION LOGIC ---
+        const slider = document.getElementById('fieldSlider');
+        const readout = document.getElementById('eReadout');
+
+        function updateSimulation() {
+            const E = parseFloat(slider.value);
+            readout.innerText = E.toFixed(2);
+
+            // 1. Update Plates (Glow)
+            // Left Plate becomes Positive (Reddish)
+            leftPlate.material.color.setHSL(0.0, 1.0, 0.5); // Red
+            leftPlate.material.emissive.setHSL(0.0, 1.0, 0.2);
+            leftPlate.material.emissiveIntensity = E * 2;
+            leftPlate.material.opacity = 0.1 + (E * 0.4);
+
+            // Right Plate becomes Negative (Blueish)
+            rightPlate.material.color.setHSL(0.6, 1.0, 0.5); // Blue
+            rightPlate.material.emissive.setHSL(0.6, 1.0, 0.2);
+            rightPlate.material.emissiveIntensity = E * 2;
+            rightPlate.material.opacity = 0.1 + (E * 0.4);
+
+            // 2. Update Field Lines
+            fieldLines.children.forEach(arrow => {
+                const opacity = E * 0.6;
+                arrow.line.material.opacity = opacity;
+                arrow.cone.material.opacity = opacity;
+            });
+
+            // 3. Update Atoms
+            atoms.forEach(atom => {
+                // Nucleus moves WITH field (Right)
+                // Cloud moves AGAINST field (Left)
+                const shift = E * 0.7; 
+
+                atom.nucleus.position.x = shift;
+                atom.cloud.position.x = -shift;
+
+                // Cloud elongates
+                atom.cloud.scale.set(1 + E*0.15, 1 - E*0.07, 1 - E*0.07);
+
+                // Dipole Arrow
+                if (E > 0.05) {
+                    atom.arrow.visible = true;
+                    atom.arrow.scale.setScalar(E);
+                    // Center arrow between charges
+                    atom.arrow.position.x = - (shift * 1.5); 
+                } else {
+                    atom.arrow.visible = false;
+                }
+            });
+        }
+
+        slider.addEventListener('input', () => {
+            controls.autoRotate = false;
+            updateSimulation();
+        });
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            resizeRenderer();
+        });
+        resizeRenderer();
+
+    </script>
+<script defer data-offline-bundle src="atomic_stretching.0.offline.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Rod Diagram</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            color: #eee;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        #scene-container {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #scene-container canvas {
+            display: block;
+        }
+
+        /* KaTeX sizing */
+        .math-label {
+            font-size: 1.1rem;
+            color: #eee;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #controls {
+            position: relative;
+            z-index: 10;
+            width: 250px;
+            padding: 14px 12px;
+            background: rgba(30, 30, 30, 0.94);
+            border-right: 1px solid #444;
+            overflow-y: auto;
+        }
+
+        h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+            color: #bb86fc;
+            border-bottom: 1px solid #555;
+            padding-bottom: 4px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type=checkbox] {
+            margin-right: 8px;
+            accent-color: #bb86fc;
+            transform: scale(0.9);
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #bb86fc;
+            margin-top: 3px;
+        }
+
+        .val-display {
+            float: right;
+            font-weight: bold;
+            color: #fff;
+            font-family: monospace;
+        }
+
+        .sub-label {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: -3px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        @media (max-width: 680px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
+            }
+
+            #controls {
+                width: 100%;
+                max-height: none;
+                border-right: 0;
+                border-bottom: 1px solid #444;
+            }
+        }
+    </style>
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <script defer src="../vendor/katex/katex.min.js"></script>
+    <script defer src="../vendor/katex/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            macros: {
+                '\\rsep': '{\\text{𝓇}}',
+                '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+            }
+        });">
+        </script>
+
+    <!-- Import Three.js -->
+    <script type="importmap">
+        { "imports": { "three": "../vendor/three/build/three.module.js", "three/addons/": "../vendor/three/examples/jsm/" } }
+    </script>
+<script src="../simulator-layout.js"></script>
+</head>
+
+<body>
+
+    <div id="app">
+        <div id="controls">
+            <h3>Infinite Line Charge</h3>
+
+            <label>
+                Density (&lambda;): <span id="val" class="val-display">5.0</span>
+            </label>
+            <input type="range" id="slider" min="-10" max="10" step="0.1" value="5.0">
+            <span class="sub-label">Controls total charge</span>
+
+            <label style="margin-top: 10px;">
+                Element Pos (z'): <span id="pos-val" class="val-display">3.0</span>
+            </label>
+            <input type="range" id="pos-slider" min="-7" max="7" step="0.1" value="3.0">
+            <span class="sub-label">Move the charge element</span>
+
+            <hr style="border-color: #444; margin: 8px 0;">
+
+            <label>
+                <input type="checkbox" id="show-field" checked> Show Field
+            </label>
+
+            <label>
+                <input type="checkbox" id="show-calc"> Show Integration
+            </label>
+
+            <label>
+                <input type="checkbox" id="show-coords"> Show Coordinates ($\vec{r}, \vec{r}'$)
+            </label>
+        </div>
+        <div id="scene-container"></div>
+    </div>
+
+    <script type="text/offline-module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const sceneContainer = document.getElementById('scene-container');
+        const camera = new THREE.PerspectiveCamera(45, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 100);
+        camera.position.set(8, 6, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        sceneContainer.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.inset = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        sceneContainer.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- GROUPS ---
+        const rodGroup = new THREE.Group();
+        const fieldGroup = new THREE.Group();
+        const calcGroup = new THREE.Group();
+        scene.add(rodGroup);
+        scene.add(fieldGroup);
+        scene.add(calcGroup);
+
+        // --- 1. THE ROD ---
+        const rodGeo = new THREE.CylinderGeometry(0.3, 0.3, 16, 32);
+        const rodMat = new THREE.MeshPhongMaterial({ color: 0xff5252, shininess: 50 });
+        const rod = new THREE.Mesh(rodGeo, rodMat);
+        rodGroup.add(rod);
+
+        // --- 1b. COORDINATE SYSTEM (Added to coordGroup below) ---
+        const axes = new THREE.AxesHelper(12);
+        const originNode = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+
+        // --- 2. THE FIELD (ARROWS) ---
+        const arrows = [];
+        const layers = 6;
+        const rings = 3;
+
+        for (let y = -5; y <= 5; y += 2) {
+            for (let r = 1.5; r <= 4.5; r += 1.5) {
+                const count = Math.floor(r * 3);
+                for (let i = 0; i < count; i++) {
+                    const theta = (i / count) * Math.PI * 2;
+                    const x = r * Math.cos(theta);
+                    const z = r * Math.sin(theta);
+
+                    const origin = new THREE.Vector3(x, y, z);
+                    const dir = new THREE.Vector3(x, 0, z).normalize(); // Radial direction
+
+                    const arrow = new THREE.ArrowHelper(dir, origin, 1, 0xffffff, 0.3, 0.2);
+                    arrow.userData = { baseDir: dir.clone(), dist: r };
+                    fieldGroup.add(arrow);
+                    arrows.push(arrow);
+                }
+            }
+        }
+
+        // --- 3. CALCULATION ELEMENTS (INTEGRAL VISUALIZATION) ---
+        calcGroup.visible = false;
+
+        // Point P
+        const pPos = new THREE.Vector3(4, 0, 0);
+        const pGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        const pMesh = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        pMesh.position.copy(pPos);
+        calcGroup.add(pMesh);
+
+        // The dx segment (source charge)
+        const dxGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.8, 32);
+        const dxMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 });
+        const dxMesh = new THREE.Mesh(dxGeo, dxMat);
+        calcGroup.add(dxMesh);
+
+        // Vector r (from dx to P)
+        const rArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 1, 0xffff00, 0.4, 0.2);
+        calcGroup.add(rArrow);
+
+        // dE Vector at P
+        const deArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), pPos, 2, 0x00ffff, 0.4, 0.2);
+        deArrow.visible = false;
+        calcGroup.add(deArrow);
+
+        // Distance z (vertical)
+        const zLineGeo = new THREE.BufferGeometry();
+        const zLine = new THREE.Line(zLineGeo, new THREE.LineBasicMaterial({ color: 0xaaaaaa }));
+        calcGroup.add(zLine);
+
+        // Distance s (horizontal to P)
+        const sLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), pPos]);
+        const sLine = new THREE.Line(sLineGeo, new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 }));
+        calcGroup.add(sLine);
+
+        // Coordinate Vectors
+        const coordGroup = new THREE.Group();
+        coordGroup.visible = false;
+        scene.add(coordGroup);
+
+        const arrowRPrime = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 3, 0xbb86fc, 0.4, 0.2);
+        const arrowR = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 4, 0x64b5f6, 0.4, 0.2);
+        coordGroup.add(arrowRPrime, arrowR, axes, originNode);
+
+        // --- LABELS (KaTeX) ---
+        function createMathLabel(str, pos, color = "white") {
+            const div = document.createElement('div');
+            div.className = 'math-label';
+            div.style.color = color;
+
+            // Try KaTeX
+            if (window.katex) {
+                try {
+                    div.innerHTML = katex.renderToString(str, {
+                        macros: {
+                            '\\rsep': '{\\text{𝓇}}',
+                            '\\vecrsep': '{\\vec{\\text{𝓇}}}',
+                            '\\hatrsep': '{\\hat{\\text{𝓇}}}'
+                        }
+                    });
+                } catch (e) { div.textContent = str; }
+            } else {
+                div.textContent = str;
+            }
+
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            return label;
+        }
+
+        const lblP = createMathLabel("P", new THREE.Vector3(pPos.x + 0.5, pPos.y, 0), "white");
+        const lblDq = createMathLabel("dq", new THREE.Vector3(0, 0, 0), "yellow");
+        const lblR = createMathLabel("\\rsep", new THREE.Vector3(0, 0, 0), "yellow");
+        const lblDe = createMathLabel("d\\vec{E}", new THREE.Vector3(0, 0, 0), "#00ffff");
+
+        const lblO = createMathLabel("O", new THREE.Vector3(-0.4, -0.4, 0), "#aaa");
+        const lblRVec = createMathLabel("\\vec{r}", new THREE.Vector3(2, -0.5, 0), "#64b5f6");
+        const lblRPrimeVec = createMathLabel("\\vec{r}'", new THREE.Vector3(-0.6, 1.5, 0), "#bb86fc");
+
+        calcGroup.add(lblP, lblDq, lblR, lblDe);
+        coordGroup.add(lblO, lblRVec, lblRPrimeVec);
+
+        // --- INTERACTION LOGIC ---
+        const slider = document.getElementById('slider');
+        const posSlider = document.getElementById('pos-slider');
+        const valDisplay = document.getElementById('val');
+        const posValDisplay = document.getElementById('pos-val');
+        const checkField = document.getElementById('show-field');
+        const checkCalc = document.getElementById('show-calc');
+        const checkCoords = document.getElementById('show-coords');
+
+        function updateScene() {
+            const lambda = parseFloat(slider.value);
+            const xPos = parseFloat(posSlider.value); // This is 'x' in the math (vertical here, typically y in threejs)
+
+            valDisplay.innerText = lambda.toFixed(1);
+            posValDisplay.innerText = xPos.toFixed(1);
+
+            // 1. Update Rod Color
+            const color = lambda > 0 ? 0xff5252 : (lambda < 0 ? 0x448aff : 0x888888);
+            rod.material.color.setHex(color);
+
+            // 2. Update Field Arrows (Full Field)
+            const mag = Math.abs(lambda);
+            const sign = Math.sign(lambda);
+
+            fieldGroup.visible = checkField.checked;
+
+            arrows.forEach(arrow => {
+                const length = (mag * 1.5) / arrow.userData.dist;
+                if (length < 0.1 || mag === 0) {
+                    arrow.visible = false;
+                } else {
+                    arrow.visible = true;
+                    // Individual arrow logic
+                    const dir = arrow.userData.baseDir.clone().multiplyScalar(sign);
+                    arrow.setDirection(dir);
+                    arrow.setLength(length, length * 0.25, length * 0.15);
+                    arrow.setColor(color);
+                }
+            });
+
+            // 3. Update Calculation Element (dq)
+            if (checkCalc.checked) {
+                calcGroup.visible = true;
+
+                // Position dq
+                dxMesh.position.set(0, xPos, 0);
+                lblDq.position.set(-0.8, xPos, 0);
+
+                // Update r' arrow
+                arrowRPrime.setDirection(new THREE.Vector3(0, Math.sign(xPos) || 1, 0));
+                arrowRPrime.setLength(Math.abs(xPos) || 0.1, 0.3, 0.15);
+                lblRPrimeVec.position.set(0.4, xPos / 2, 0);
+
+                // Ensure labels are visible if group is
+                [lblP, lblDq, lblR, lblDe].forEach(l => l.visible = true);
+                [lblO, lblRVec, lblRPrimeVec].forEach(l => l.visible = checkCoords.checked);
+
+                // Update z-line (vertical distance)
+                const pts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, xPos, 0)];
+                zLine.geometry.setFromPoints(pts);
+
+                // Update vector r (from dq to P)
+                const dqPos = new THREE.Vector3(0, xPos, 0);
+                const rVec = new THREE.Vector3().subVectors(pPos, dqPos);
+                const rLen = rVec.length();
+                const rDir = rVec.clone().normalize();
+
+                rArrow.position.copy(dqPos);
+                rArrow.setDirection(rDir);
+                rArrow.setLength(rLen - 0.2, 0.4, 0.2); // Stop short of P
+
+                // Label r (midpoint)
+                const mid = new THREE.Vector3().addVectors(dqPos, pPos).multiplyScalar(0.5);
+                mid.y += 0.5; // Offset labels up
+                lblR.position.copy(mid);
+
+                // Update dE vector (at P)
+                // dE points along rDir (if lambda > 0) or opposite (if lambda < 0)
+                const deDir = rDir.clone().multiplyScalar(sign || 1); // Default out if 0
+                const deMag = (mag > 0) ? (mag / (rLen * rLen)) * 5 : 0; // Scale factor for visibility
+
+                deArrow.position.copy(pPos);
+                deArrow.setDirection(deDir);
+                if (deMag > 0.1) {
+                    deArrow.visible = true;
+                    deArrow.setLength(deMag, deMag * 0.25, deMag * 0.15);
+                    lblDe.position.copy(pPos.clone().add(deDir.clone().multiplyScalar(deMag + 0.5)));
+                    lblDe.visible = true;
+                } else {
+                    deArrow.visible = false;
+                    lblDe.visible = false;
+                }
+
+            } else {
+                calcGroup.visible = false;
+                [lblP, lblDq, lblR, lblDe].forEach(l => l.visible = false);
+            }
+
+            coordGroup.visible = checkCoords.checked;
+            [lblO, lblRVec, lblRPrimeVec].forEach(l => l.visible = checkCoords.checked);
+        }
+
+        // Event Listeners
+        slider.addEventListener('input', updateScene);
+        posSlider.addEventListener('input', updateScene);
+
+        checkField.addEventListener('change', updateScene);
+        checkCoords.addEventListener('change', updateScene);
+        checkCalc.addEventListener('change', updateScene);
+
+        // Window Resize
+        function resizeScene() {
+            const width = Math.max(sceneContainer.clientWidth, 1);
+            const height = Math.max(sceneContainer.clientHeight, 1);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            labelRenderer.setSize(width, height);
+        }
+
+        window.addEventListener('resize', resizeScene);
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        // Init
+        resizeScene();
+        updateScene();
+        animate();
+
+    </script>
+<script defer data-offline-bundle src="diagram_rod.0.offline.js"></script>
+
+
+</body>
+
+</html>

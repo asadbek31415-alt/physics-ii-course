@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torque on Dipole</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        canvas { display: block; cursor: move; }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .controls {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            pointer-events: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: #e0e0e0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        p {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .math {
+            font-family: 'Courier New', monospace;
+            color: #facc15;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .switch-label { color: #2ecc71; font-weight: 700; font-size: 0.95rem; }
+        
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* Labels */
+        .annotation {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.3s;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+    <script src="../vendor/three-legacy/three.min.js"></script>
+    <script src="../vendor/three-legacy/OrbitControls.js"></script>
+<script src="../simulator-layout.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="controls">
+            <h2>Paramagnetic Torque</h2>
+            <p>
+                <strong>Torque</strong> (<span class="math">τ = m×B</span>) tries to align dipoles.<br>
+                <strong>Heat</strong> tries to randomize them.
+            </p>
+            
+            <div class="toggle-row">
+                <span class="switch-label">Apply B Field</span>
+                <label class="switch">
+                    <input type="checkbox" id="fieldToggle" onchange="toggleField()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Labels -->
+    <div id="label-m" class="annotation" style="color: #facc15;">m</div>
+    <div id="label-b" class="annotation" style="color: #2ecc71;">B Field</div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        // Heavy fog to create the "microscope depth" effect
+        scene.fog = new THREE.Fog(0x0f172a, 5, 25);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 2, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false;
+        controls.minDistance = 5;
+        controls.maxDistance = 20;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1.5);
+        pointLight.position.set(5, 5, 10);
+        scene.add(pointLight);
+
+        // --- ASSETS GENERATION ---
+        
+        // Helper to create an atom
+        function createAtom(isHero) {
+            const group = new THREE.Group();
+
+            // Nucleus
+            const nucMat = new THREE.MeshStandardMaterial({ 
+                color: 0xe74c3c, 
+                emissive: 0x7b241c,
+                transparent: !isHero,
+                opacity: isHero ? 1 : 0.4
+            });
+            const nucleus = new THREE.Mesh(new THREE.SphereGeometry(isHero ? 0.4 : 0.3, 16, 16), nucMat);
+            group.add(nucleus);
+
+            // Orbit
+            const orbitMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: isHero ? 0.3 : 0.1 
+            });
+            const orbit = new THREE.Mesh(new THREE.TorusGeometry(isHero ? 2 : 1.5, 0.03, 8, 32), orbitMat);
+            orbit.rotation.x = Math.PI / 2;
+            group.add(orbit);
+
+            // Electron
+            const eleMat = new THREE.MeshStandardMaterial({ 
+                color: 0x38bdf8, 
+                emissive: 0x0ea5e9,
+                transparent: !isHero,
+                opacity: isHero ? 1 : 0.4
+            });
+            const electron = new THREE.Mesh(new THREE.SphereGeometry(isHero ? 0.2 : 0.15, 8, 8), eleMat);
+            electron.position.set(isHero ? 2 : 1.5, 0, 0);
+            
+            // Pivot for electron animation
+            const pivot = new THREE.Group();
+            pivot.add(electron);
+            group.add(pivot);
+            group.userData.pivot = pivot; // Store ref for animation
+
+            // Dipole Arrow (Vector m)
+            // Points DOWN relative to orbit (assuming standard current direction)
+            const arrowColor = isHero ? 0xfacc15 : 0xca8a04;
+            const arrowLen = isHero ? 3.5 : 2.5;
+            const mArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(0, -1, 0), 
+                new THREE.Vector3(0, 0.5, 0), 
+                arrowLen, 
+                arrowColor, 
+                isHero ? 0.8 : 0.5, 
+                isHero ? 0.5 : 0.3
+            );
+            
+            // If background, fade the arrow significantly
+            if(!isHero) {
+                mArrow.line.material.transparent = true;
+                mArrow.line.material.opacity = 0.3;
+                mArrow.cone.material.transparent = true;
+                mArrow.cone.material.opacity = 0.3;
+            }
+            
+            group.add(mArrow);
+
+            // Initial Random Rotation
+            group.rotation.set(
+                Math.random() * Math.PI * 2,
+                Math.random() * Math.PI * 2,
+                Math.random() * Math.PI * 2
+            );
+
+            // Store random drift parameters for thermal noise
+            group.userData.driftSpeed = {
+                x: (Math.random() - 0.5) * 0.05,
+                y: (Math.random() - 0.5) * 0.05,
+                z: (Math.random() - 0.5) * 0.05
+            };
+
+            return group;
+        }
+
+        // --- SCENE POPULATION ---
+
+        // 1. The Hero Atom (Sharp, Foreground)
+        const heroAtom = createAtom(true);
+        scene.add(heroAtom);
+
+        // 2. Background Atoms (Blurred/Faded)
+        const bgAtoms = [];
+        for(let i=0; i<30; i++) {
+            const atom = createAtom(false);
+            
+            // Position randomly behind the hero
+            const x = (Math.random() - 0.5) * 15;
+            const y = (Math.random() - 0.5) * 10;
+            const z = -2 - (Math.random() * 15); // Push back into Z
+            
+            atom.position.set(x, y, z);
+            scene.add(atom);
+            bgAtoms.push(atom);
+        }
+
+        // --- EXTERNAL FIELD (B) ---
+        const bFieldGroup = new THREE.Group();
+        scene.add(bFieldGroup);
+        bFieldGroup.visible = false;
+
+        // Grid of Green Arrows
+        const bDir = new THREE.Vector3(0, -1, 0); // Field pointing DOWN (matching our m definition for alignment)
+        // Note: In our model, m points local (0,-1,0). To align, we want local Y to match world Y.
+        // Let's make B point DOWN in world space, so m (DOWN) aligns with B (DOWN).
+        
+        for(let x=-2; x<=2; x+=2) {
+            for(let z=-2; z<=0; z+=2) {
+                const bArrow = new THREE.ArrowHelper(
+                    bDir, 
+                    new THREE.Vector3(x*3, 5, z*3), 
+                    10, 
+                    0x2ecc71, 
+                    1, 0.5
+                );
+                bFieldGroup.add(bArrow);
+            }
+        }
+
+        // --- LOGIC ---
+        let isFieldOn = false;
+        let time = 0;
+
+        function toggleField() {
+            isFieldOn = document.getElementById('fieldToggle').checked;
+            bFieldGroup.visible = isFieldOn;
+            
+            // Fade B Label
+            document.getElementById('label-b').style.opacity = isFieldOn ? 1 : 0;
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+            controls.update();
+
+            // 1. Animate Electrons (Orbiting)
+            heroAtom.userData.pivot.rotation.y = time;
+            bgAtoms.forEach(atom => {
+                atom.userData.pivot.rotation.y = time + atom.position.x; // Offset phases
+            });
+
+            // 2. Physics: Torque vs Heat
+            const allAtoms = [heroAtom, ...bgAtoms];
+
+            if (isFieldOn) {
+                // --- ALIGNMENT PHASE ---
+                // Target: Align local dipole (0,-1,0) with World B (0,-1,0).
+                // This means the object's local rotation should approach Identity (0,0,0) relative to world UP.
+                
+                const targetQ = new THREE.Quaternion(); // Identity
+                
+                allAtoms.forEach(atom => {
+                    // Slerp towards alignment (Torque)
+                    atom.quaternion.slerp(targetQ, 0.05);
+                    
+                    // Add "Thermal Jitter" - Paramagnets never align perfectly!
+                    // They vibrate around the field lines.
+                    atom.rotation.x += Math.sin(time * 2 + atom.position.x) * 0.005;
+                    atom.rotation.z += Math.cos(time * 2 + atom.position.y) * 0.005;
+                });
+
+            } else {
+                // --- RANDOM TUMBLING PHASE (HEAT) ---
+                allAtoms.forEach(atom => {
+                    atom.rotation.x += atom.userData.driftSpeed.x;
+                    atom.rotation.y += atom.userData.driftSpeed.y;
+                    atom.rotation.z += atom.userData.driftSpeed.z;
+                });
+            }
+
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+        // --- LABELS ---
+        const lblM = document.getElementById('label-m');
+        const lblB = document.getElementById('label-b');
+
+        function updateLabels() {
+            // Label M (Tip of hero arrow)
+            const mTip = new THREE.Vector3(0, -3.5, 0); 
+            mTip.applyMatrix4(heroAtom.matrixWorld);
+            projectLabel(mTip, lblM);
+            lblM.style.opacity = 1;
+
+            // Label B
+            if(isFieldOn) {
+                const bPos = new THREE.Vector3(3, 1, 0);
+                projectLabel(bPos, lblB);
+            }
+        }
+
+        function projectLabel(vec, element) {
+            const v = vec.clone();
+            v.project(camera);
+            
+            // Check if behind camera
+            if(v.z > 1) {
+                element.style.opacity = 0;
+                return;
+            }
+
+            const x = (v.x * .5 + .5) * window.innerWidth;
+            const y = (-(v.y * .5) + .5) * window.innerHeight;
+            element.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
