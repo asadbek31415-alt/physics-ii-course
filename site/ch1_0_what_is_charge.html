@@ -23,16 +23,19 @@
     <script id="MathJax-script" async src="vendor/mathjax/tex-mml-chtml.js"></script>
 
     <style>
-        .particle-table {
-            display: block;
+        .particle-table-wrap {
             max-width: 100%;
             overflow-x: auto;
-            width: 100%;
-            border-collapse: collapse;
             margin: 2rem 0;
-            background: rgba(255, 255, 255, 0.02);
             border-radius: 12px;
             border: 1px solid var(--border-color);
+        }
+
+        .particle-table {
+            width: 100%;
+            min-width: 520px;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .particle-table th,
@@ -164,6 +167,7 @@
                 <strong>Neutrons</strong>, surrounded by a cloud of <strong>Electrons</strong>.
             </p>
 
+            <div class="particle-table-wrap">
             <table class="particle-table">
                 <thead>
                     <tr>
@@ -196,6 +200,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
 
             <div class="note-card">
                 <p><strong>Interesting Fact:</strong> Protons and Neutrons are about 1,840 times heavier than

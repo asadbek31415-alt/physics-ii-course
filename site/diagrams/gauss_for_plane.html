@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gaussian Surface: Infinite Plane</title>
+    <script>window.MathJax = { tex: { inlineMath: [['\\(', '\\)']] } };</script>
+    <script id="MathJax-script" defer src="../vendor/mathjax/tex-mml-chtml.js"></script>
     
     
     <!-- Three.js Imports -->
@@ -88,6 +90,20 @@
             font-weight: 700;
             line-height: 1.45;
         }
+        .equation + .equation { margin-top: 8px; }
+        .scene-label {
+            position: absolute;
+            z-index: 2;
+            pointer-events: none;
+            color: #fff;
+            font: 700 14px 'Inter', sans-serif;
+            text-shadow: 0 1px 4px #000, 0 1px 8px #000;
+            white-space: nowrap;
+            transform: translate(-50%, -50%);
+        }
+        .scene-label.field-label { color: #75c7ff; }
+        .scene-label.area-label { color: #ff958b; }
+        .scene-label.side-label { transform: translate(0, -50%); }
 
         .legend {
             display: grid;
@@ -168,8 +184,10 @@
 
             <div class="result-card">
                 <p class="panel-kicker">Gaussian Pillbox</p>
-                <div class="equation">&Phi;<sub>E</sub> = EA + EA = 2EA</div>
-                <div class="equation">2EA = &sigma;A / &epsilon;<sub>0</sub></div>
+                <div class="equation">\(\Phi_E = EA + EA = 2EA\)</div>
+                <div class="equation">\(2EA = \dfrac{\sigma A}{\varepsilon_0}\)</div>
+                <div class="equation">\(E = \dfrac{\sigma}{2\varepsilon_0}\)</div>
+                <p class="panel-copy">The field is parallel to the curved side, so its flux there is zero.</p>
             </div>
 
             <div class="toggle-row">
@@ -207,6 +225,20 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+
+        const labels = [];
+        function addLabel(html, position, className = '') {
+            const element = document.createElement('span');
+            element.className = `scene-label ${className}`;
+            element.innerHTML = html;
+            container.appendChild(element);
+            labels.push({ element, position: new THREE.Vector3(...position) });
+        }
+        addLabel('charged sheet', [-3.8, 0, 2.7]);
+        addLabel('top cap, <i>A</i>', [-2, 3.25, 0], 'area-label');
+        addLabel('bottom cap, <i>A</i>', [-2, -3.25, 0], 'area-label');
+        addLabel('side: zero flux', [3.2, 0.2, 0], 'field-label side-label');
+        addLabel('E', [0.5, 4.9, 0.5], 'field-label');
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -249,17 +281,6 @@
                 }
             }
             
-            // Add 'd' labels - Moved to X=3.7 to avoid overlap
-            const labelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const dTop = new THREE.Mesh(new TextGeometry('d', { font: font, size: 0.4, height: 0.05 }), labelMat);
-            dTop.position.set(3.7, 1.5, 0);
-            dTop.lookAt(camera.position); 
-            scene.add(dTop);
-            
-            const dBot = new THREE.Mesh(new TextGeometry('d', { font: font, size: 0.4, height: 0.05 }), labelMat);
-            dBot.position.set(3.7, -1.8, 0);
-            dBot.lookAt(camera.position); 
-            scene.add(dBot);
         });
 
         // 2. Gaussian Pillbox
@@ -365,6 +386,14 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
+            const canvasRect = renderer.domElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            for (const label of labels) {
+                const projected = label.position.clone().project(camera);
+                label.element.style.left = `${canvasRect.left - containerRect.left + (projected.x + 1) * canvasRect.width / 2}px`;
+                label.element.style.top = `${canvasRect.top - containerRect.top + (1 - projected.y) * canvasRect.height / 2}px`;
+                label.element.style.display = projected.z > 1 || projected.z < -1 ? 'none' : '';
+            }
             renderer.render(scene, camera);
         }
 
@@ -382,6 +411,8 @@
         animate();
     </script>
 <script defer data-offline-bundle src="gauss_for_plane.0.offline.js"></script>
+
+
 
 
 </body>

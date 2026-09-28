@@ -1,10 +1,9 @@
-## Physics II Interactive Course v0.9.5
+## Physics II Interactive Course v0.9.6
 
-This release presents the same Physics II course through a permanent website link, an offline computer ZIP, and an optional offline Android APK.
+This release updates the Physics II lessons and visualizations across the website, offline computer ZIP, and optional offline Android APK.
 
-- Course version and credits are consistent across the course and release.
-- Returning website visitors see a small, dismissible update notice.
-- The downloadable ZIP contains the full course and locally built simulator assets.
+- Refined electric-field, Gauss-law, and divergence visualizations and their accompanying lesson material.
+- The downloadable ZIP and APK include the same updated course as the website.
 - Feedback remains voluntary and is submitted only when online.
 
 ### Choose a format

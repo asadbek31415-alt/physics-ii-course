@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const gradlePath = path.join(__dirname, 'android/app/build.gradle');
-const version = (process.env.GITHUB_REF_NAME || 'v0.9.5').replace(/^v/, '');
+const version = (process.env.GITHUB_REF_NAME || 'v0.9.6').replace(/^v/, '');
 const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
 if (!match) throw new Error('Expected release tag vMAJOR.MINOR.PATCH');
 const [major, minor, patch] = match.slice(1).map(Number);

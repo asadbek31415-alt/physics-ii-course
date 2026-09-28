@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gaussian Symmetries</title>
+    <script>window.MathJax = { tex: { inlineMath: [['\\(', '\\)']] } };</script>
+    <script id="MathJax-script" defer src="../vendor/mathjax/tex-mml-chtml.js"></script>
     <style>
         body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: #eee; }
         
@@ -94,7 +96,9 @@
             color: #fff;
             font-weight: 700;
             line-height: 1.45;
+            overflow-wrap: anywhere;
         }
+        .mode-conclusion { color: #bdd0e4; margin-top: 8px; }
         .legend {
             display: grid;
             gap: 7px;
@@ -155,7 +159,7 @@
     <div id="ui-container">
         <div>
             <h3 class="panel-title">Gaussian Symmetry</h3>
-            <p>Choose the charge symmetry, then match it with the Gaussian surface that makes <strong>E</strong> constant or zero on each useful part of the surface.</p>
+            <p>Choose the charge symmetry, then match it with a Gaussian surface where \(E\) is constant or the flux is zero on each part.</p>
         </div>
         <div>
             <p class="panel-kicker">Symmetry</p>
@@ -168,7 +172,8 @@
         <div class="result-card">
             <p class="panel-kicker">Current Match</p>
             <p id="surface-text"><strong>Surface:</strong> concentric sphere around a point charge.</p>
-            <div class="equation" id="equation-text">Flux: E(4 pi r^2) = Qenc / epsilon0</div>
+            <div class="equation" id="equation-text">\(\Phi_E=E(4\pi r^2)=\dfrac{Q_{\mathrm{enc}}}{\varepsilon_0}\)</div>
+            <p class="mode-conclusion" id="mode-conclusion">The field has the same magnitude everywhere on a concentric sphere.</p>
         </div>
         <div class="legend">
             <div class="legend-row"><span class="swatch charge"></span><span>Charge source</span></div>
@@ -194,8 +199,7 @@
         
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 1.0;
+        controls.autoRotate = false;
 
         // Lights
         scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -275,12 +279,13 @@
             cylGroup.add(botCap);
 
             // Field Vectors (Radial)
-            for(let i=0; i<8; i++) {
-                const theta = (i/8) * Math.PI * 2;
+            // Omit the near/far diagonals: in this camera they project over
+            // the rod and falsely look like an axial electric field.
+            for(const theta of [0, Math.PI/2, Math.PI, 3*Math.PI/2, 3*Math.PI/4, 7*Math.PI/4]) {
                 const x = Math.cos(theta);
                 const z = Math.sin(theta);
                 const dir = new THREE.Vector3(x, 0, z);
-                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(x*1.5, 0, z*1.5), 1.0, arrowColor, 0.3, 0.2);
+                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(x*1.5, 0, z*1.5), 0.75, arrowColor, 0.25, 0.16);
                 cylGroup.add(arrow);
             }
         }
@@ -288,8 +293,8 @@
         // --- 3. PLANAR ---
         function buildPlane() {
             // Charge (Infinite Sheet)
-            const qGeo = new THREE.PlaneGeometry(8, 8);
-            const qMesh = new THREE.Mesh(qGeo, new THREE.MeshPhongMaterial({ color: 0xff5252, side: THREE.DoubleSide, transparent:true, opacity:0.8 }));
+            const qGeo = new THREE.PlaneGeometry(6, 6);
+            const qMesh = new THREE.Mesh(qGeo, new THREE.MeshPhongMaterial({ color: 0xff5252, side: THREE.DoubleSide, transparent:true, opacity:0.42, depthWrite: false }));
             qMesh.rotation.x = -Math.PI/2;
             planeGroup.add(qMesh);
 
@@ -341,29 +346,34 @@
             const desc = document.getElementById('desc');
             const surfaceText = document.getElementById('surface-text');
             const equationText = document.getElementById('equation-text');
+            const conclusionText = document.getElementById('mode-conclusion');
 
             if (mode === 'sphere') {
                 sphereGroup.visible = true;
                 title.innerText = "Spherical Symmetry";
                 desc.innerText = "Gaussian Surface: Concentric Sphere";
                 surfaceText.innerHTML = "<strong>Surface:</strong> concentric sphere around a point charge.";
-                equationText.innerText = "Flux: E(4 pi r^2) = Qenc / epsilon0";
+                equationText.textContent = String.raw`\(\Phi_E=E(4\pi r^2)=\dfrac{Q_{\mathrm{enc}}}{\varepsilon_0}\)`;
+                conclusionText.textContent = 'The field has the same magnitude everywhere on a concentric sphere.';
                 camera.position.set(6, 4, 8);
             } else if (mode === 'cylinder') {
                 cylGroup.visible = true;
                 title.innerText = "Cylindrical Symmetry";
-                desc.innerText = "Gaussian Surface: Coaxial Cylinder";
+                desc.innerText = "Radial field around a long line charge";
                 surfaceText.innerHTML = "<strong>Surface:</strong> cylinder coaxial with a long line charge.";
-                equationText.innerText = "Flux: E(2 pi rL) = lambda L / epsilon0";
+                equationText.textContent = String.raw`\(\Phi_E=E(2\pi rL)=\dfrac{\lambda L}{\varepsilon_0}\)`;
+                conclusionText.textContent = 'Only the curved side contributes flux; the end caps contribute zero.';
                 camera.position.set(6, 6, 6);
             } else if (mode === 'plane') {
                 planeGroup.visible = true;
                 title.innerText = "Planar Symmetry";
                 desc.innerText = "Gaussian Surface: Pillbox";
                 surfaceText.innerHTML = "<strong>Surface:</strong> pillbox crossing a broad charged sheet.";
-                equationText.innerText = "Flux: 2EA = sigma A / epsilon0";
+                equationText.textContent = String.raw`\(\Phi_E=2EA=\dfrac{\sigma A}{\varepsilon_0}\)`;
+                conclusionText.textContent = 'Both caps contribute equally; the curved side contributes zero.';
                 camera.position.set(6, 5, 6);
             }
+            window.MathJax?.typesetPromise?.([equationText]);
         };
 
         // --- ANIMATION ---
@@ -388,6 +398,8 @@
         animate();
     </script>
 <script defer data-offline-bundle src="gauss_symmetry.0.offline.js"></script>
+
+
 
 
 </body>

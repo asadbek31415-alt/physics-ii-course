@@ -3,36 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3b1b Style Divergence</title>
+    <title>Divergence Explorer</title>
     
-    <!-- MathJax for LaTeX rendering -->
-    <script>
-        MathJax = { 
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } 
-        };
-    </script>
-    <script id="MathJax-script" async src="../vendor/mathjax/tex-mml-chtml.js"></script>
-
     <style>
-        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Inter', sans-serif; color: #eee; }
+        body { margin: 0; background-color: #101923; overflow: hidden; font-family: 'Inter', sans-serif; color: #eee; }
         
-        canvas { display: block; }
+        #canvas-container { position: relative; min-width: 0; min-height: 0; background: #000; }
+        canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
         /* UI Overlay */
         #ui-container {
             position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 0;
+            left: 0;
             display: flex;
-            gap: 10px;
-            background: rgba(20, 20, 20, 0.9);
-            padding: 10px 20px;
+            flex-direction: column;
+            gap: 9px;
+            background: #111923;
+            padding: 16px;
             border-radius: 12px;
-            border: 1px solid #444;
-            backdrop-filter: blur(5px);
-            align-items: center;
+            border: 1px solid #2d455d;
+            box-sizing: border-box;
+            align-items: stretch;
         }
+        #ui-container h2 { color: #31aaff; font-size: 1.2rem; margin: 0 0 4px; }
+        #ui-container p { color: #bbcee0; font-size: .88rem; line-height: 1.4; margin: 0; }
 
         button {
             background: transparent;
@@ -49,25 +44,23 @@
         button.active { background: #3498db; color: #fff; border-color: #3498db; box-shadow: 0 0 10px rgba(52, 152, 219, 0.4); }
 
         /* Toggle Switch */
-        .toggle-container { display: flex; align-items: center; margin-left: 10px; border-left: 1px solid #555; padding-left: 15px; }
+        .toggle-container { display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid #364557; }
         .toggle-label { font-size: 0.85rem; color: #aaa; margin-right: 8px; }
         input[type="checkbox"] { accent-color: #3498db; cursor: pointer; transform: scale(1.2); }
 
         /* Readout Box */
         #readout {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.4);
             border-left: 4px solid #888;
-            padding: 15px;
-            border-radius: 4px;
-            pointer-events: none;
-            width: 280px;
+            padding: 12px;
+            border-radius: 7px;
+            min-width: 0;
         }
+        #conclusion { background: #09121d; border: 1px solid #34536e; padding: 11px; border-radius: 7px; }
+        #conclusion strong { display: block; color: #fff; margin-bottom: 5px; }
         
         .readout-title { font-size: 0.85rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-        .readout-val { font-size: 2rem; font-weight: 700; font-family: 'Courier New', monospace; }
+        .readout-val { font-size: 1.45rem; font-weight: 700; font-family: 'Courier New', monospace; }
         .readout-desc { font-size: 0.95rem; margin-top: 8px; line-height: 1.4; color: #ddd; }
         
         .highlight { font-weight: bold; }
@@ -75,44 +68,62 @@
         .neg { color: #448aff; }
         .neu { color: #fff; }
 
+        @media (max-width: 760px) {
+            #readout {
+                position: fixed;
+                top: 8px;
+                right: 8px;
+                z-index: 20;
+                width: 150px;
+                padding: 8px;
+                background: rgba(7, 14, 23, 0.9);
+                pointer-events: none;
+            }
+            .readout-title { font-size: .67rem; }
+            .readout-val { font-size: 1.1rem; }
+            .readout-desc { font-size: .72rem; line-height: 1.25; }
+        }
+
     </style>
 <script src="../simulator-layout.js"></script>
 </head>
 <body>
 
-    <div id="readout">
-        <div class="readout-title">Divergence ($\nabla \cdot \vec{F}$)</div>
-        <div id="div-val" class="readout-val neu">0.00</div>
-        <div id="div-desc" class="readout-desc">Move mouse to probe field.</div>
-    </div>
-
     <div id="ui-container">
+        <div><h2>Divergence Explorer</h2><p>Move the cursor across the field to see where it spreads out or gathers in.</p></div>
         <button onclick="setScene(0)" class="active" id="btn0">1. Sources & Sinks</button>
         <button onclick="setScene(1)" id="btn1">2. Variable Expansion</button>
         <button onclick="setScene(2)" id="btn2">3. Sinusoidal</button>
         <button onclick="setScene(3)" id="btn3">4. Pure Rotation</button>
         
-        <div class="toggle-container">
-            <span class="toggle-label">Fluid</span>
-            <input type="checkbox" id="fluidToggle" checked>
+        <div id="conclusion"><strong>What this shows</strong><p id="conclusion-text">A source has positive divergence; a sink has negative divergence. Away from them, the field mostly passes through.</p></div>
+        <div id="readout">
+            <div class="readout-title">Divergence (∇ · F)</div>
+            <div id="div-val" class="readout-val neu">—</div>
+            <div id="div-desc" class="readout-desc">Move the cursor over the field to probe it.</div>
         </div>
+        <label class="toggle-container">
+            <span class="toggle-label">Show moving tracers</span>
+            <input type="checkbox" id="fluidToggle" checked>
+        </label>
     </div>
 
-    <canvas id="simCanvas"></canvas>
+    <div id="canvas-container"><canvas id="simCanvas" aria-label="Interactive vector field"></canvas></div>
 
     <script>
         const canvas = document.getElementById('simCanvas');
+        const stage = document.getElementById('canvas-container');
         const ctx = canvas.getContext('2d');
         
         // --- CONFIGURATION ---
         let width, height, cx, cy;
-        const SCALE = 50; // Pixels per unit
-        const PARTICLE_COUNT = 2000;
-        const ARROW_SPACING = 30;
+        let SCALE = 50; // Pixels per unit; narrowed for small screens on resize.
+        const PARTICLE_COUNT = 650;
+        const ARROW_SPACING = 38;
         const PROBE_RADIUS = 15;
 
         // --- STATE ---
-        let mouse = { x: 0, y: 0 };
+        let mouse = { x: 0, y: 0, active: false };
         let currentScene = 0;
         let showFluid = true;
         
@@ -120,8 +131,8 @@
         const particles = [];
         for(let i=0; i<PARTICLE_COUNT; i++) {
             particles.push({
-                x: Math.random() * window.innerWidth,
-                y: Math.random() * window.innerHeight,
+                x: Math.random() * 1000,
+                y: Math.random() * 700,
                 age: Math.random() * 100
             });
         }
@@ -231,6 +242,7 @@
         }
 
         function drawProbe() {
+            if (!mouse.active) return;
             // 1. Draw Circle
             ctx.beginPath();
             ctx.arc(mouse.x, mouse.y, PROBE_RADIUS, 0, Math.PI * 2);
@@ -268,8 +280,15 @@
                 valEl.innerText = "0.00";
                 valEl.className = "readout-val neu";
                 box.style.borderLeftColor = "#fff";
-                descEl.innerHTML = "<span class='neu highlight'>(Almost) Zero Divergence</span><br>(Almost) Field just passes through ";
+                descEl.innerHTML = "<span class='neu highlight'>(Almost) Zero Divergence</span><br>The field passes through without local spreading.";
             }
+        }
+
+        function resetReadout() {
+            document.getElementById('div-val').textContent = '—';
+            document.getElementById('div-val').className = 'readout-val neu';
+            document.getElementById('div-desc').textContent = 'Move the cursor over the field to probe it.';
+            document.getElementById('readout').style.borderLeftColor = '#888';
         }
 
         function loop() {
@@ -284,6 +303,26 @@
                     const mag = Math.sqrt(f.x*f.x + f.y*f.y);
                     const color = `hsl(${180 + mag*50}, 70%, 50%)`; 
                     drawArrow(x, y, f.x, f.y, color, 0.3);
+                }
+            }
+
+            if (currentScene === 0) {
+                for (const marker of [
+                    { x: cx - 3 * SCALE, color: '#ff5252', symbol: '+' },
+                    { x: cx + 3 * SCALE, color: '#448aff', symbol: '−' }
+                ]) {
+                    ctx.beginPath();
+                    ctx.arc(marker.x, cy, 11, 0, Math.PI * 2);
+                    ctx.fillStyle = marker.color;
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 16px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(marker.symbol, marker.x, cy);
                 }
             }
 
@@ -317,35 +356,56 @@
 
         // --- EVENTS ---
         window.addEventListener('resize', resize);
-        window.addEventListener('mousemove', e => {
+        new ResizeObserver(resize).observe(stage);
+        canvas.addEventListener('pointermove', e => {
             const rect = canvas.getBoundingClientRect();
             mouse.x = e.clientX - rect.left;
             mouse.y = e.clientY - rect.top;
+            mouse.active = true;
         });
+        canvas.addEventListener('pointerleave', () => { mouse.active = false; resetReadout(); });
 
         document.getElementById('fluidToggle').addEventListener('change', (e) => {
             showFluid = e.target.checked;
         });
 
         function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
+            const rect = stage.getBoundingClientRect();
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            SCALE = Math.min(50, width / 8);
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             cx = width / 2;
             cy = height / 2;
+            for (const particle of particles) {
+                particle.x = Math.random() * width;
+                particle.y = Math.random() * height;
+            }
         }
 
         window.setScene = function(idx) {
             currentScene = idx;
+            const conclusions = [
+                'A source has positive divergence; a sink has negative divergence. Away from them, the field mostly passes through.',
+                'The field spreads out on both sides, so divergence is positive except on the center line.',
+                'Alternating patches of positive and negative divergence show where the wave field locally spreads or gathers.',
+                'The field circulates, but its divergence is zero: rotation alone does not create a source or sink.'
+            ];
+            document.getElementById('conclusion-text').textContent = conclusions[idx];
+            if (mouse.active) updateReadout(getDivergence(mouse.x, mouse.y));
+            else resetReadout();
             for(let i=0; i<4; i++) {
                 document.getElementById(`btn${i}`).className = (i===idx) ? 'active' : '';
             }
+            ctx.clearRect(0, 0, width, height);
         }
 
         // Init
         resize();
-        mouse.x = cx + 100; 
+        mouse.x = cx;
         mouse.y = cy;
         loop();
 

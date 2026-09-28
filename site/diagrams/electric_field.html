@@ -726,6 +726,7 @@
             const points = [startPoint.clone()];
             let current = startPoint.clone();
             let hitSink = false;
+            let escaped = false;
 
             for (let i = 0; i < maxSteps; i++) {
                 const next = rk2Step(current, directionSign, step);
@@ -741,9 +742,12 @@
                     break;
                 }
 
-                if (current.distanceTo(center) > bounds) break;
+                if (current.distanceTo(center) > bounds) {
+                    escaped = true;
+                    break;
+                }
             }
-            return { points, hitSink };
+            return { points, hitSink, escaped };
         }
 
         function pointInRange(point, radius = fieldSize) {
@@ -753,17 +757,6 @@
 
         function lineFullyInRange(points) {
             return points.every(point => pointInRange(point));
-        }
-
-        function openLineInteriorSegment(points) {
-            const center = fieldCenter();
-            const softLimit = fieldSize * 0.78;
-            const segment = [];
-            for (const point of points) {
-                if (point.distanceTo(center) > softLimit) break;
-                segment.push(point);
-            }
-            return segment.length > 5 ? segment : [];
         }
 
         function distanceToSegment(point, a, b) {
@@ -784,8 +777,12 @@
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
             const material = new THREE.LineBasicMaterial({ color: colors.line, transparent: true, opacity: 0.86 });
             groups.lines.add(new THREE.Line(geometry, material));
+            if (points.length < 3) return;
 
-            const idx = Math.max(1, Math.min(points.length - 2, Math.floor(points.length * 0.58)));
+            const center = fieldCenter();
+            const firstBeyondView = points.findIndex(point => point.distanceTo(center) > fieldSize * 0.9);
+            const visibleLength = firstBeyondView < 0 ? points.length : Math.max(3, firstBeyondView);
+            const idx = Math.max(1, Math.min(visibleLength - 2, Math.floor(visibleLength * 0.58)));
             const from = arrowForward ? points[idx - 1] : points[idx + 1];
             const to = points[idx];
             const dir = new THREE.Vector3().subVectors(to, from);
@@ -822,6 +819,7 @@
             const negatives = sources.filter(c => c.q < 0);
             const positiveStrength = positives.reduce((sum, charge) => sum + Math.abs(charge.q), 0);
             const negativeStrength = negatives.reduce((sum, charge) => sum + Math.abs(charge.q), 0);
+            const netStrength = positiveStrength - negativeStrength;
 
             const drawLinesFromSource = (source, count, asNegativeOnly = false) => {
                 const directionSign = source.q > 0 ? 1 : -1;
@@ -832,11 +830,12 @@
                     const start = projectedPosition(source.position).add(dir.multiplyScalar(CHARGE_RADIUS * 1.18));
                     const result = traceFieldLine(start, directionSign, sources);
                     if (asNegativeOnly && result.hitSink) continue;
-                    if (result.hitSink && lineFullyInRange(result.points)) {
+                    if (result.hitSink) {
+                        if (lineFullyInRange(result.points)) addFieldLine(result.points, source.q > 0);
+                    } else if (result.escaped && directionSign * netStrength > 1e-9) {
+                        // Only unmatched charge flux can reach infinity. Keep its
+                        // actual traced path so it exits the viewport naturally.
                         addFieldLine(result.points, source.q > 0);
-                    } else {
-                        const segment = openLineInteriorSegment(result.points);
-                        if (segment.length) addFieldLine(segment, source.q > 0);
                     }
                 }
             };
@@ -1202,7 +1201,7 @@
         }
 
         renderer.domElement.addEventListener('pointerdown', event => {
-            if (event.button === 2 && charges.length > 0) {
+            if (event.button === 2 && !is2DMode && charges.length > 0) {
                 pivotCameraAroundCenter();
             }
         }, { capture: true });
@@ -1332,6 +1331,7 @@
         animate();
     </script>
 <script defer data-offline-bundle src="electric_field.0.offline.js"></script>
+
 
 </body>
 
