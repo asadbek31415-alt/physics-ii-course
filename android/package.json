@@ -1,6 +1,6 @@
 {
   "name": "turin-prepnik-physics-ii-android",
-  "version": "0.9.0",
+  "version": "0.9.5",
   "private": true,
   "dependencies": {
     "@capacitor/android": "8.5.2",

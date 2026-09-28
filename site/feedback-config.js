@@ -4,7 +4,7 @@
  Academic co-author / scientific reviewer:
  Prof. Xolboyev Yunusali Xasan o‘g‘li
  Published under Turin Prepnik
- Pilot Beta v0.9
+ Pilot release v0.9.5
 */
 
 window.PHYSICS_II_FEEDBACK_CONFIG = {

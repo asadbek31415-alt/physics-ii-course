@@ -4,7 +4,7 @@
  Academic co-author / scientific reviewer:
  Prof. Xolboyev Yunusali Xasan o'g'li
  Published under Turin Prepnik
- Pilot Beta v0.9
+ Pilot release v0.9.5
 */
 
 window.MathJax = window.MathJax || {};
@@ -117,7 +117,7 @@ window.MathJax.tex.macros = Object.assign({
   function projectInfo() {
     return window.PHYSICS_II_PROJECT_INFO || {
       project: 'Physics II Interactive Course',
-      version: '0.9',
+      version: '0.9.5',
       stage: 'Pilot Beta',
       year: '2026',
       lead_creator: "Asadbek Jumaboyev Shokirjon o'g'li",
@@ -482,6 +482,38 @@ window.MathJax.tex.macros = Object.assign({
         '</nav>';
     }
 
+  }
+
+  function setupReleaseNotice() {
+    if (location.protocol !== 'https:' && location.protocol !== 'http:') return;
+    var previous;
+    try { previous = localStorage.getItem('physics-ii-seen-version'); }
+    catch (_) { return; }
+    fetch('version.json', { cache: 'no-store' }).then(function (response) {
+      if (!response.ok) throw new Error('Version unavailable');
+      return response.json();
+    }).then(function (release) {
+      if (!release.version || previous === release.version) return;
+      var header = document.querySelector('.header-bar');
+      if (!header || document.querySelector('.course-release-notice')) return;
+      var notice = document.createElement('div');
+      notice.className = 'course-release-notice';
+      notice.setAttribute('role', 'status');
+      var message = document.createElement('span');
+      message.textContent = 'Course updated to v' + release.version + '.';
+      var link = document.createElement('a');
+      link.href = 'https://github.com/asadbek31415-alt/physics-ii-course/releases/tag/v' + encodeURIComponent(release.version);
+      link.textContent = 'What changed';
+      var dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.setAttribute('aria-label', 'Dismiss course update notice');
+      dismiss.textContent = '\u00d7';
+      dismiss.addEventListener('click', function () { notice.remove(); });
+      notice.append(message, link, dismiss);
+      header.insertAdjacentElement('afterend', notice);
+      try { localStorage.setItem('physics-ii-seen-version', release.version); }
+      catch (_) {}
+    }).catch(function () {});
   }
 
   function setupLessonNavigation() {
@@ -911,6 +943,7 @@ window.MathJax.tex.macros = Object.assign({
     updateDiveLinks();
     setupDeepDivePage();
     setupCourseFooter();
+    setupReleaseNotice();
     setupLessonNavigation();
     supportReady.then(setupContextFeedback);
     setupActiveConceptTracking();
