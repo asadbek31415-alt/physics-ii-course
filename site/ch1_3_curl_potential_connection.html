@@ -67,6 +67,7 @@
             max-width: 960px; 
             margin: 0 auto;
             padding: 0 20px;
+            box-sizing: border-box;
         }
 
         .breadcrumb { font-size: 0.9rem; color: var(--text-secondary); }
@@ -78,6 +79,7 @@
             max-width: 960px; 
             margin: 0 auto;
             padding: 2rem 20px;
+            box-sizing: border-box;
         }
 
         h1 { font-size: 3rem; margin-top: 1rem; margin-bottom: 1rem; color: white; }
@@ -114,6 +116,7 @@
         /* IFRAMES */
         .iframe-container {
             width: 100%;
+            box-sizing: border-box;
             margin: 3rem 0;
             border: 1px solid var(--border-color);
             border-radius: 12px;
@@ -215,9 +218,12 @@
                 Does this matter? <strong>No.</strong>
             </p>
             <ul>
-                <li><strong>Potential Difference:</strong> \((V'_b - V'_a) = (V_b + K) - (V_a + K) = V_b - V_a\). The constant cancels out.</li>
+                <li><strong>Potential Difference:</strong> The constant cancels out.</li>
                 <li><strong>Electric Field:</strong> Since \(\vec{E} = -\nabla V\), and the derivative of a constant is zero, \(\nabla (V + K) = \nabla V\). The physical field remains the same.</li>
             </ul>
+            <div class="math-block">
+                $$ (V'_b - V'_a) = (V_b + K) - (V_a + K) = V_b - V_a $$
+            </div>
         </section>
 
         <!-- SECTION 3: PATH INDEPENDENCE -->
@@ -259,17 +265,17 @@
         <section>
             <h2>5. Visualizing Curl-Free Fields</h2>
             <p>
-                A field with zero curl is "irrotational." It has no intrinsic swirl. This is what allows us to define a unique potential height \(V\) at every point.
+                A field with zero curl is locally irrotational. A single-valued potential also requires zero circulation around every closed path in the region.
             </p>
             <p>
-                In the simulator below, compare <strong>"Irrotational Vortex"</strong> (Curl = 0, \(V\) exists) vs <strong>"Solid Rotation"</strong> (Curl \(\neq\) 0, \(V\) cannot exist).
+                Compare <strong>"Irrotational Vortex"</strong>, whose curl is nearly zero away from its core but whose circulation around the core is nonzero, with <strong>"Solid Rotation"</strong>, whose curl is nonzero throughout. The vortex cannot have a single-valued potential on a region that encloses its core.
             </p>
             
             <div class="iframe-container">
                 <iframe src="simulators/curl_visualizer.html" title="Curl Visualizer"></iframe>
             </div>
             <p style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
-                <em>Interactive: Explore vector fields. Notice that fields with Curl have a "swirl" or rotation. If a field swirls, you cannot define a stable Potential \(V\) (it would be like an infinite spiral staircase).</em>
+                <em>Move the rectangular loop to compare local curl with circulation around its boundary. The loop also shows why visible swirling alone does not determine local curl.</em>
             </p>
         </section>
 

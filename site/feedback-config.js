@@ -2,9 +2,9 @@
  Physics II Interactive Course
  Lead creator & developer: Asadbek Jumaboyev Shokirjon o'g'li
  Academic co-author / scientific reviewer:
- Prof. Xolboyev Yunusali Xasan o‘g‘li
+ Xolboyev Yunusali Xasan o‘g‘li
  Published under Turin Prepnik
- Pilot release v0.9.6
+ Pilot release v0.9.7
 */
 
 window.PHYSICS_II_FEEDBACK_CONFIG = {

@@ -14,7 +14,7 @@ Contributions:
 - maintenance and further development
 
 ## Academic co-author / scientific reviewer
-Prof. Xolboyev Yunusali Xasan o‘g‘li
+Xolboyev Yunusali Xasan o‘g‘li (Master's degree)
 
 Contributions:
 - academic review

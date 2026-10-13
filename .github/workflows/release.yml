@@ -65,10 +65,15 @@ jobs:
         run: "$ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose Physics-II-Android.apk"
       - name: Package offline computer ZIP
         run: |
-          mkdir -p dist/Physics-II-Interactive-Course
-          cp -R site/. dist/Physics-II-Interactive-Course/
+          mkdir -p dist/Physics-II-Course-Offline/course_files
+          cp '01 START PHYSICS II COURSE.vbs' 'START HERE.txt' dist/Physics-II-Course-Offline/
+          cp -R site/. dist/Physics-II-Course-Offline/course_files/
+          test -f dist/Physics-II-Course-Offline/course_files/index.html
+          test -f dist/Physics-II-Course-Offline/01\ START\ PHYSICS\ II\ COURSE.vbs
+          test "$(find dist/Physics-II-Course-Offline -maxdepth 1 -type f | wc -l)" -eq 2
+          test "$(find dist/Physics-II-Course-Offline -maxdepth 1 -name '*.html' | wc -l)" -eq 0
           cd dist
-          zip -q -r "$GITHUB_WORKSPACE/Physics-II-Interactive-Course.zip" Physics-II-Interactive-Course
+          zip -q -r "$GITHUB_WORKSPACE/Physics-II-Interactive-Course.zip" Physics-II-Course-Offline
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

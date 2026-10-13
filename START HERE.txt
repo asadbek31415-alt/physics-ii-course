@@ -1,0 +1,8 @@
+PHYSICS II INTERACTIVE COURSE - OFFLINE COMPUTER EDITION
+
+Windows: double-click 01 START PHYSICS II COURSE.vbs and choose a browser.
+macOS or Linux: open course_files/index.html in a desktop browser.
+
+Keep the course_files folder next to the launcher. Lessons and simulations are
+included for offline study. Sending feedback requires an internet connection.
+Download a newer ZIP to update this offline copy.

@@ -149,12 +149,24 @@
 
         @media (max-width: 680px) {
             .layout {
-                grid-template-columns: 232px 1fr;
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: minmax(260px, 1fr) auto;
+                height: 100dvh;
+                min-height: 0;
             }
 
             .panel {
-                padding: 8px;
+                grid-row: 2;
+                max-height: min(46dvh, 430px);
+                overflow-y: auto;
+                padding: 10px 12px;
                 gap: 7px;
+                border-right: 0;
+                border-top: 1px solid var(--border);
+            }
+
+            .canvas-wrap {
+                grid-row: 1;
             }
 
             h1 {
@@ -169,12 +181,16 @@
             }
 
             .explain {
-                min-height: 92px;
+                min-height: 0;
             }
 
             .formula {
-                min-height: 96px;
-                padding: 7px;
+                min-height: 0;
+                padding: 5px 0;
+            }
+
+            .slider-card {
+                margin-top: 0;
             }
         }
     </style>
