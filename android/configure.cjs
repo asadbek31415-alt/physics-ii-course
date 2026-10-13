@@ -25,7 +25,7 @@ for (const name of ['ic_launcher.xml', 'ic_launcher_round.xml']) {
   fs.writeFileSync(path.join(adaptive, name), adaptiveIcon);
 }
 
-const version = (process.env.GITHUB_REF_NAME || 'v0.9.7').replace(/^v/, '');
+const version = (process.env.GITHUB_REF_NAME || 'v0.9.8').replace(/^v/, '');
 const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
 if (!match) throw new Error('Expected release tag vMAJOR.MINOR.PATCH');
 const [major, minor, patch] = match.slice(1).map(Number);

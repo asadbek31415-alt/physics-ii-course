@@ -4,12 +4,12 @@
  Academic co-author / scientific reviewer:
  Xolboyev Yunusali Xasan o‘g‘li
  Published under Turin Prepnik
- Pilot release v0.9.7
+ Pilot release v0.9.8
 */
 
 window.PHYSICS_II_PROJECT_INFO = {
   "project": "Physics II Interactive Course",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "stage": "Pilot Beta",
   "year": "2026",
   "lead_creator": "Asadbek Jumaboyev Shokirjon o'g'li",

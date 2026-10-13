@@ -1,10 +1,10 @@
-## Physics II Interactive Course v0.9.7
+## Physics II Interactive Course v0.9.8
 
-This release restores the computer download's launcher-first layout and corrects the course credits.
+This release fixes mathematical text in the offline computer ZIP.
 
-- The computer ZIP now places the Windows launcher and short instructions at the top, with lessons and simulations together in `course_files/`.
-- The academic co-author and scientific reviewer is credited without the incorrect professor title; the full credits state his master's degree.
-- The Android APK includes the updated app icon. The website, ZIP, and APK share the current course material.
+- Formulas in the Lorentz force, Biot-Savart, and divergence/curl lessons now render when the extracted course is opened directly from disk.
+- The launcher-first ZIP layout and corrected course credits from v0.9.7 remain in place.
+- The website, ZIP, and APK use the same release version.
 - Feedback remains voluntary and is submitted only when online.
 
 ### Choose a format
